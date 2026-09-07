@@ -1,0 +1,5 @@
+// spikes/network-poc/proto/ping.proto — throwaway, not the real schema
+syntax = "proto3";
+message Ping {
+  string text = 1;
+}
