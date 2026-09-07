@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		17F93B2B3000255867466FC1 /* DesktopDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E463FF8C0BB9BC3D6173AC9 /* DesktopDiscovery.swift */; };
+		745D20E0789F973A851751A7 /* DesktopConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4202D243315FE7D25A3191B /* DesktopConnection.swift */; };
 		7478CD6F1961A2828A808C0D /* NetworkPOCApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE612C0C9865CEC662676B26 /* NetworkPOCApp.swift */; };
 		BA2E6B62442EA244930446CD /* ping.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08433BFEAF1DB80E38C2BAE5 /* ping.pb.swift */; };
 		C7333EB9BD5190D803975DB7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D5DAC854ACDF8F9DA62F20 /* ContentView.swift */; };
@@ -18,6 +19,7 @@
 		08433BFEAF1DB80E38C2BAE5 /* ping.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ping.pb.swift; sourceTree = "<group>"; };
 		5E463FF8C0BB9BC3D6173AC9 /* DesktopDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopDiscovery.swift; sourceTree = "<group>"; };
 		C6AC66C742B4900FA262958F /* NetworkPOC.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NetworkPOC.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D4202D243315FE7D25A3191B /* DesktopConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopConnection.swift; sourceTree = "<group>"; };
 		F0D5DAC854ACDF8F9DA62F20 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FE612C0C9865CEC662676B26 /* NetworkPOCApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPOCApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -62,6 +64,7 @@
 			isa = PBXGroup;
 			children = (
 				F0D5DAC854ACDF8F9DA62F20 /* ContentView.swift */,
+				D4202D243315FE7D25A3191B /* DesktopConnection.swift */,
 				5E463FF8C0BB9BC3D6173AC9 /* DesktopDiscovery.swift */,
 				FE612C0C9865CEC662676B26 /* NetworkPOCApp.swift */,
 				563529133EFEE11F736FB1F6 /* Generated */,
@@ -134,6 +137,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C7333EB9BD5190D803975DB7 /* ContentView.swift in Sources */,
+				745D20E0789F973A851751A7 /* DesktopConnection.swift in Sources */,
 				17F93B2B3000255867466FC1 /* DesktopDiscovery.swift in Sources */,
 				7478CD6F1961A2828A808C0D /* NetworkPOCApp.swift in Sources */,
 				BA2E6B62442EA244930446CD /* ping.pb.swift in Sources */,
