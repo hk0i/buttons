@@ -1,14 +1,23 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var discovery = DesktopDiscovery()
+
     var body: some View {
-        Text("Buttons Network POC")
-            .padding()
-            .onAppear {
-                var ping = Ping()
-                ping.text = "codegen check"
-                print(ping)
+        VStack {
+            if let endpoint = discovery.discoveredEndpoint {
+                Text("Discovered: \(String(describing: endpoint))")
+            } else {
+                Text("Searching for desktop…")
             }
+        }
+        .padding()
+        .onAppear {
+            discovery.start()
+        }
+        .onDisappear {
+            discovery.stop()
+        }
     }
 }
 
