@@ -17,7 +17,8 @@ struct ContentView: View {
             }
 
             Button("Reply") {
-                // Wired up in the next step.
+                guard let ping = connection.receivedPing else { return }
+                connection.sendReply(toOriginalText: ping.text)
             }
             .disabled(connection.receivedPing == nil)
         }

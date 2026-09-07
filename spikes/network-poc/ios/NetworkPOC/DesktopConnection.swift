@@ -70,6 +70,23 @@ final class DesktopConnection: NSObject, ObservableObject {
         }
     }
 
+    func sendReply(toOriginalText originalText: String) {
+        var reply = Ping()
+        reply.text = "Reply To: \(originalText)"
+        do {
+            let data = try reply.serializedData()
+            webSocketTask?.send(.data(data)) { error in
+                if let error {
+                    print("Failed to send reply Ping: \(error)")
+                } else {
+                    print("Sent reply Ping: \(reply)")
+                }
+            }
+        } catch {
+            print("Failed to encode reply Ping: \(error)")
+        }
+    }
+
     func disconnect() {
         netService?.stop()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
