@@ -6,7 +6,7 @@ mod ping {
     include!(concat!(env!("OUT_DIR"), "/_.rs"));
 }
 
-const SERVICE_TYPE: &str = "_streamdeck._tcp.local.";
+const SERVICE_TYPE: &str = "_buttonspoc._tcp.local.";
 const INSTANCE_NAME: &str = "network-poc-desktop";
 const PORT: u16 = 8765;
 
