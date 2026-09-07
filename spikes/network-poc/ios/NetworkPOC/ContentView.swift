@@ -5,14 +5,21 @@ struct ContentView: View {
     @StateObject private var connection = DesktopConnection()
 
     var body: some View {
-        VStack {
-            if connection.isConnected {
-                Text("Connected")
-            } else if let endpoint = discovery.discoveredEndpoint {
-                Text("Discovered: \(String(describing: endpoint))")
+        VStack(spacing: 16) {
+            if let ping = connection.receivedPing {
+                Text(ping.text)
+            } else if connection.isConnected {
+                Text("Connected — waiting for message…")
+            } else if discovery.discoveredEndpoint != nil {
+                Text("Discovered — connecting…")
             } else {
                 Text("Searching for desktop…")
             }
+
+            Button("Reply") {
+                // Wired up in the next step.
+            }
+            .disabled(connection.receivedPing == nil)
         }
         .padding()
         .onAppear {

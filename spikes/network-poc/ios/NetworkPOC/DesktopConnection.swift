@@ -13,6 +13,7 @@ import Network
 /// addresses, so it's the reliable path here.
 final class DesktopConnection: NSObject, ObservableObject {
     @Published var isConnected = false
+    @Published var receivedPing: Ping?
 
     private var netService: NetService?
     private var webSocketTask: URLSessionWebSocketTask?
@@ -42,12 +43,30 @@ final class DesktopConnection: NSObject, ObservableObject {
         webSocketTask?.receive { [weak self] result in
             switch result {
             case .success(let message):
-                print("WebSocket received: \(message)")
+                self?.handle(message)
                 self?.receiveLoop()
             case .failure(let error):
                 print("WebSocket receive error: \(error)")
-                self?.isConnected = false
+                DispatchQueue.main.async {
+                    self?.isConnected = false
+                }
             }
+        }
+    }
+
+    private func handle(_ message: URLSessionWebSocketTask.Message) {
+        guard case let .data(data) = message else {
+            print("Ignoring non-binary WebSocket message: \(message)")
+            return
+        }
+        do {
+            let ping = try Ping(serializedBytes: data)
+            print("Decoded Ping: \(ping)")
+            DispatchQueue.main.async {
+                self.receivedPing = ping
+            }
+        } catch {
+            print("Failed to decode Ping: \(error)")
         }
     }
 
