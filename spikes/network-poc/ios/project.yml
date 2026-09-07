@@ -1,0 +1,26 @@
+name: NetworkPOC
+options:
+  bundleIdPrefix: com.buttons.networkpoc
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  NetworkPOC:
+    type: application
+    platform: iOS
+    sources:
+      - NetworkPOC
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.buttons.networkpoc
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 6URP555BR7
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: Generated-Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSLocalNetworkUsageDescription: >-
+          Buttons POC discovers and connects to the desktop app on your
+          local network to test message exchange.
+        NSBonjourServices:
+          - _buttonspoc._tcp
