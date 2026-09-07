@@ -1,4 +1,4 @@
-package com.example.buttons.data
+package gg.pekk.buttons.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow

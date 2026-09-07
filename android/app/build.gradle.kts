@@ -5,10 +5,10 @@ plugins {
 }
 
 android {
-    namespace = "com.example.buttons"
+    namespace = "gg.pekk.buttons"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.example.buttons"
+        applicationId = "gg.pekk.buttons"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

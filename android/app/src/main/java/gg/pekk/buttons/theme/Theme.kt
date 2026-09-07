@@ -1,4 +1,4 @@
-package com.example.buttons.theme
+package gg.pekk.buttons.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

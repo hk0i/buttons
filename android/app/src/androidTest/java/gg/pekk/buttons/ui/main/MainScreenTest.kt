@@ -1,4 +1,4 @@
-package com.example.buttons.ui.main
+package gg.pekk.buttons.ui.main
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -7,7 +7,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-/** UI tests for [com.example.buttons.ui.main.MainScreen]. */
+/** UI tests for [gg.pekk.buttons.ui.main.MainScreen]. */
 class MainScreenTest {
 
   @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()

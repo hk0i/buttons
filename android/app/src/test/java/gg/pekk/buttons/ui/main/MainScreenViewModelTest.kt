@@ -1,6 +1,6 @@
-package com.example.buttons.ui.main
+package gg.pekk.buttons.ui.main
 
-import com.example.buttons.data.DataRepository
+import gg.pekk.buttons.data.DataRepository
 import junit.framework.TestCase.assertEquals
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first

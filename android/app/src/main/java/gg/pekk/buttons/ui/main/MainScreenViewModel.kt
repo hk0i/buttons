@@ -1,9 +1,9 @@
-package com.example.buttons.ui.main
+package gg.pekk.buttons.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.buttons.data.DataRepository
-import com.example.buttons.ui.main.MainScreenUiState.Success
+import gg.pekk.buttons.data.DataRepository
+import gg.pekk.buttons.ui.main.MainScreenUiState.Success
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
