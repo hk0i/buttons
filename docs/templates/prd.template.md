@@ -1,11 +1,23 @@
+<!-- Save as docs/NN. Title.prd.md — PRD is the highest-authority doc; the EDD
+and slice specs derive from it and update to match, never the reverse. -->
+
 # PRD: [Product/Feature Name]
 
-| Doc Type | Author | Date | Status | Reviewers |
-|---|---|---|---|---|
-| PRD | [Name] | [YYYY-MM-DD] | Draft | [Names, or "—"] |
+| | |
+|---|---|
+| **Doc Type** | PRD |
+| **Author** | [Name] |
+| **Date** | [YYYY-MM-DD] |
+| **Status** | Draft |
+| **Reviewers** | [Names, or "—"] |
 
 **TL;DR:** [2 sentences: what this is and why it matters. Someone should be
 able to read only this line and know what's being built.]
+
+> **Style:** terse over complete — cut words that don't carry a decision,
+> fact, or constraint. Write for a human skimming and an agent executing:
+> concrete nouns, exact names, exact commands, not vague gestures at intent.
+> Use a Mermaid diagram instead of prose for any topology, sequence, or flow.
 
 ---
 

@@ -1,11 +1,24 @@
+<!-- Save as docs/slices/NN. Slice Name.spec.md — NN matches the EDD roadmap
+step this implements. Bounded, literal, disposable: a work ticket, not a
+lasting reference. -->
+
 # Slice Spec: [Slice Name]
 
-| Doc Type | Author | Date | Status | Reviewers |
-|---|---|---|---|---|
-| Slice Spec | [Name] | [YYYY-MM-DD] | Draft | [Names, or "—"] |
+| | |
+|---|---|
+| **Doc Type** | Slice Spec |
+| **Author** | [Name] |
+| **Date** | [YYYY-MM-DD] |
+| **Status** | Draft |
+| **Reviewers** | [Names, or "—"] |
 
 **Implements:** [EDD filename], Testing & Rollout Plan step [N].
 **TL;DR:** [1 sentence: what this slice proves, end-to-end.]
+
+> **Style:** terse over complete — cut words that don't carry a decision,
+> fact, or constraint. Write for a human skimming and an agent executing:
+> concrete nouns, exact names, exact commands, not vague gestures at intent.
+> Use a Mermaid diagram instead of prose for any multi-step exchange.
 
 ---
 

@@ -1,11 +1,23 @@
+<!-- Save as docs/NN. Title.edd.md, numbered after its PRD. Derives from the
+PRD — if the two conflict, update this doc, not the PRD. -->
+
 # EDD: [System/Feature Name]
 
-| Doc Type | Author | Date | Status | Reviewers |
-|---|---|---|---|---|
-| EDD | [Name] | [YYYY-MM-DD] | Draft | [Names, or "—"] |
+| | |
+|---|---|
+| **Doc Type** | EDD |
+| **Author** | [Name] |
+| **Date** | [YYYY-MM-DD] |
+| **Status** | Draft |
+| **Reviewers** | [Names, or "—"] |
 
 **TL;DR:** [2 sentences: the chosen solution, one level more technical than
 the PRD's TL;DR. Point to the PRD for product rationale.]
+
+> **Style:** terse over complete — cut words that don't carry a decision,
+> fact, or constraint. Write for a human skimming and an agent executing:
+> concrete nouns, exact names, exact commands, not vague gestures at intent.
+> Use a Mermaid diagram instead of prose for any topology, sequence, or flow.
 
 ---
 
@@ -81,8 +93,8 @@ don't invent metrics/dashboards this project doesn't need yet.]
 
 **Testing & Rollout Plan:** [The vertical-slice roadmap lives here — each
 slice independently runnable/testable end-to-end, not grouped by
-architectural layer. Number them; each becomes a Slice Spec when it's time to
-build it.]
+architectural layer. Number them; each becomes a Spec when it's time to build
+it.]
 
 1. [Slice name] — [what it proves, in one line].
 
