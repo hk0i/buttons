@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 
-use futures_util::SinkExt;
+use futures_util::{SinkExt, StreamExt};
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 use prost::Message as _;
 use qrcode::render::unicode;
@@ -61,6 +61,24 @@ async fn handle_connection(stream: TcpStream, addr: SocketAddr) {
         return;
     }
     println!("Sent Ping to {addr}: {ping:?}");
+
+    while let Some(message) = ws_stream.next().await {
+        match message {
+            Ok(Message::Binary(bytes)) => match ping::Ping::decode(bytes.as_ref()) {
+                Ok(reply) => println!("Received Ping from {addr}: {reply:?}"),
+                Err(err) => eprintln!("Failed to decode Ping from {addr}: {err}"),
+            },
+            Ok(Message::Close(_)) => {
+                println!("Client {addr} closed the connection");
+                break;
+            }
+            Ok(other) => println!("Ignoring non-binary frame from {addr}: {other:?}"),
+            Err(err) => {
+                eprintln!("WebSocket error from {addr}: {err}");
+                break;
+            }
+        }
+    }
 }
 
 #[tokio::main]
