@@ -1,9 +1,13 @@
 use std::collections::HashMap;
-use std::net::{IpAddr, UdpSocket};
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 
+use futures_util::SinkExt;
 use mdns_sd::{ServiceDaemon, ServiceInfo};
+use prost::Message as _;
 use qrcode::render::unicode;
 use qrcode::QrCode;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::tungstenite::Message;
 
 mod ping {
     include!(concat!(env!("OUT_DIR"), "/_.rs"));
@@ -36,6 +40,29 @@ fn print_pairing_qr(device_id: &str, ip: IpAddr, port: u16) {
     println!("{payload}\n{image}");
 }
 
+async fn handle_connection(stream: TcpStream, addr: SocketAddr) {
+    let mut ws_stream = match tokio_tungstenite::accept_async(stream).await {
+        Ok(ws) => ws,
+        Err(err) => {
+            eprintln!("WebSocket handshake with {addr} failed: {err}");
+            return;
+        }
+    };
+    println!("Client connected: {addr}");
+
+    let ping = ping::Ping {
+        text: "Hello from Buttons desktop POC".to_string(),
+    };
+    if let Err(err) = ws_stream
+        .send(Message::Binary(ping.encode_to_vec().into()))
+        .await
+    {
+        eprintln!("Failed to send Ping to {addr}: {err}");
+        return;
+    }
+    println!("Sent Ping to {addr}: {ping:?}");
+}
+
 #[tokio::main]
 async fn main() {
     let mdns = ServiceDaemon::new().expect("failed to create mDNS daemon");
@@ -59,11 +86,28 @@ async fn main() {
 
     print_pairing_qr(INSTANCE_NAME, local_ip(), PORT);
 
-    println!("Waiting for Ctrl+C");
-
-    tokio::signal::ctrl_c()
+    let listener = TcpListener::bind(("0.0.0.0", PORT))
         .await
-        .expect("failed to listen for ctrl_c");
+        .expect("failed to bind WebSocket listener");
+    println!("WebSocket server listening on port {PORT} — waiting for Ctrl+C");
+
+    let accept_loop = async {
+        loop {
+            match listener.accept().await {
+                Ok((stream, addr)) => {
+                    tokio::spawn(handle_connection(stream, addr));
+                }
+                Err(err) => eprintln!("Failed to accept connection: {err}"),
+            }
+        }
+    };
+
+    tokio::select! {
+        () = accept_loop => {}
+        result = tokio::signal::ctrl_c() => {
+            result.expect("failed to listen for ctrl_c");
+        }
+    }
 
     println!("Shutting down mDNS advertisement...");
     mdns.shutdown().expect("failed to shut down mDNS daemon");
