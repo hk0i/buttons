@@ -1,9 +1,14 @@
 <script lang="ts">
-  import { mockButtons } from "$lib/data/mockButtons";
+  import { onMount } from "svelte";
+  import { buttonStore } from "$lib/stores/buttons.svelte";
+
+  onMount(() => {
+    buttonStore.load();
+  });
 </script>
 
 <div class="button-grid">
-  {#each mockButtons as button (button.id)}
+  {#each buttonStore.buttons as button (button.id)}
     <button class="grid-button" type="button">
       {#if button.icon}
         <span class="icon">{button.icon}</span>
