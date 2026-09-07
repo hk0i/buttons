@@ -1,7 +1,7 @@
 export interface MockButton {
   id: string;
   label?: string;
-  icon?: string; // path or data URI
+  icon?: string; // emoji/text glyph for now, rendered as-is; real icon assets (path/data URI) come with a later icon-picker slice
 }
 
 export const mockButtons: MockButton[] = [
