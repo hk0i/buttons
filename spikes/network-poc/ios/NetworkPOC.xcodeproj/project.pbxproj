@@ -8,14 +8,28 @@
 
 /* Begin PBXBuildFile section */
 		7478CD6F1961A2828A808C0D /* NetworkPOCApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE612C0C9865CEC662676B26 /* NetworkPOCApp.swift */; };
+		BA2E6B62442EA244930446CD /* ping.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08433BFEAF1DB80E38C2BAE5 /* ping.pb.swift */; };
 		C7333EB9BD5190D803975DB7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D5DAC854ACDF8F9DA62F20 /* ContentView.swift */; };
+		D70BE10506B5D08F9DB4C90D /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = C44E212014A92A468635CAEF /* SwiftProtobuf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		08433BFEAF1DB80E38C2BAE5 /* ping.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ping.pb.swift; sourceTree = "<group>"; };
 		C6AC66C742B4900FA262958F /* NetworkPOC.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NetworkPOC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0D5DAC854ACDF8F9DA62F20 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		FE612C0C9865CEC662676B26 /* NetworkPOCApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPOCApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B0974CE70591912283FA7EB7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D70BE10506B5D08F9DB4C90D /* SwiftProtobuf in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		481DF3FDE02A8C32E5E744C3 /* Products */ = {
@@ -24,6 +38,14 @@
 				C6AC66C742B4900FA262958F /* NetworkPOC.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		563529133EFEE11F736FB1F6 /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				08433BFEAF1DB80E38C2BAE5 /* ping.pb.swift */,
+			);
+			path = Generated;
 			sourceTree = "<group>";
 		};
 		95EE3BFEDF0968E49AB85131 = {
@@ -39,6 +61,7 @@
 			children = (
 				F0D5DAC854ACDF8F9DA62F20 /* ContentView.swift */,
 				FE612C0C9865CEC662676B26 /* NetworkPOCApp.swift */,
+				563529133EFEE11F736FB1F6 /* Generated */,
 			);
 			path = NetworkPOC;
 			sourceTree = "<group>";
@@ -51,6 +74,7 @@
 			buildConfigurationList = 52700F90F8EEF19C413CBF9E /* Build configuration list for PBXNativeTarget "NetworkPOC" */;
 			buildPhases = (
 				390133C30B9C83E59DBDC63D /* Sources */,
+				B0974CE70591912283FA7EB7 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -58,6 +82,7 @@
 			);
 			name = NetworkPOC;
 			packageProductDependencies = (
+				C44E212014A92A468635CAEF /* SwiftProtobuf */,
 			);
 			productName = NetworkPOC;
 			productReference = C6AC66C742B4900FA262958F /* NetworkPOC.app */;
@@ -87,6 +112,9 @@
 			);
 			mainGroup = 95EE3BFEDF0968E49AB85131;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				CF139C1F90BC6593A0CC1338 /* XCRemoteSwiftPackageReference "swift-protobuf" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 481DF3FDE02A8C32E5E744C3 /* Products */;
 			projectDirPath = "";
@@ -104,6 +132,7 @@
 			files = (
 				C7333EB9BD5190D803975DB7 /* ContentView.swift in Sources */,
 				7478CD6F1961A2828A808C0D /* NetworkPOCApp.swift in Sources */,
+				BA2E6B62442EA244930446CD /* ping.pb.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -287,6 +316,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		CF139C1F90BC6593A0CC1338 /* XCRemoteSwiftPackageReference "swift-protobuf" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-protobuf.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.38.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C44E212014A92A468635CAEF /* SwiftProtobuf */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CF139C1F90BC6593A0CC1338 /* XCRemoteSwiftPackageReference "swift-protobuf" */;
+			productName = SwiftProtobuf;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 52BBC689C65AAF587DE0BF03 /* Project object */;
 }
