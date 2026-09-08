@@ -54,7 +54,7 @@
 
   let newActionType = $state<Action["type"]>("launchApp");
   let newPath = $state("");
-  let newKeys = $state("");
+  let newKeys = $state<string[]>([]);
   let newMediaKey = $state<MediaKeyKind>("playPause");
   let editingIndex = $state<number | null>(null);
   let isRecordingHotkey = $state(false);
@@ -117,17 +117,21 @@
       }
 
       if (modifierKeyNames.has(event.key)) {
-        newKeys = modifiers.join(", ");
+        newKeys = modifiers;
         return;
       }
 
-      newKeys = [...modifiers, keyToToken(event.key)].join(", ");
+      newKeys = [...modifiers, keyToToken(event.key)];
       isRecordingHotkey = false;
     }
 
     window.addEventListener("keydown", handleKeydown, true);
     return () => window.removeEventListener("keydown", handleKeydown, true);
   });
+
+  function removeKeyToken(index: number) {
+    newKeys = newKeys.filter((_, i) => i !== index);
+  }
 
   async function pickAppPath() {
     // directory: false is deliberate — on macOS, NSOpenPanel still lets you
@@ -140,7 +144,7 @@
   function resetActionForm() {
     editingIndex = null;
     newPath = "";
-    newKeys = "";
+    newKeys = [];
     isRecordingHotkey = false;
   }
 
@@ -151,7 +155,7 @@
     if (action.type === "launchApp") {
       newPath = action.path;
     } else if (action.type === "hotkey") {
-      newKeys = action.keys.join(", ");
+      newKeys = [...action.keys];
     } else {
       newMediaKey = action.key;
     }
@@ -170,11 +174,7 @@
     if (newActionType === "launchApp") {
       if (newPath) actions[index] = { type: "launchApp", path: newPath };
     } else if (newActionType === "hotkey") {
-      const keys = newKeys
-        .split(",")
-        .map((k) => k.trim())
-        .filter((k) => k.length > 0);
-      if (keys.length > 0) actions[index] = { type: "hotkey", keys };
+      if (newKeys.length > 0) actions[index] = { type: "hotkey", keys: newKeys };
     } else {
       actions[index] = { type: "mediaKey", key: newMediaKey };
     }
@@ -185,12 +185,8 @@
       if (!newPath) return;
       actions.push({ type: "launchApp", path: newPath });
     } else if (newActionType === "hotkey") {
-      const keys = newKeys
-        .split(",")
-        .map((k) => k.trim())
-        .filter((k) => k.length > 0);
-      if (keys.length === 0) return;
-      actions.push({ type: "hotkey", keys });
+      if (newKeys.length === 0) return;
+      actions.push({ type: "hotkey", keys: newKeys });
     } else {
       actions.push({ type: "mediaKey", key: newMediaKey });
     }
@@ -311,12 +307,28 @@
         <input type="text" bind:value={newPath} placeholder="/path/to/app" />
         <button type="button" onclick={pickAppPath}>Browse…</button>
       {:else if newActionType === "hotkey"}
-        <input
-          type="text"
-          bind:value={newKeys}
-          readonly={isRecordingHotkey}
-          placeholder={isRecordingHotkey ? "Press keys…" : "cmd, shift, s"}
-        />
+        <div class="hotkey-chips" class:recording={isRecordingHotkey}>
+          {#each newKeys as key, index (index)}
+            {#if index > 0}<span class="key-plus">+</span>{/if}
+            <span class="key-chip">
+              {key}
+              {#if !isRecordingHotkey}
+                <button
+                  type="button"
+                  class="chip-remove"
+                  onclick={() => removeKeyToken(index)}
+                  aria-label="Remove {key}"
+                >
+                  ×
+                </button>
+              {/if}
+            </span>
+          {:else}
+            <span class="hotkey-placeholder">
+              {isRecordingHotkey ? "Press keys…" : "No keys set"}
+            </span>
+          {/each}
+        </div>
         <button type="button" onclick={() => (isRecordingHotkey = !isRecordingHotkey)}>
           {isRecordingHotkey ? "Stop" : "Record"}
         </button>
@@ -464,6 +476,58 @@
   .new-action select {
     flex: 1;
     padding: 6px 10px;
+  }
+
+  .hotkey-chips {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: var(--neutral-400);
+    border: 1px solid var(--neutral-600);
+    border-radius: 4px;
+    padding: 6px 10px;
+    min-height: 32px;
+    box-sizing: border-box;
+  }
+
+  .hotkey-chips.recording {
+    border-color: var(--primary-700);
+  }
+
+  .key-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--neutral-600);
+    border: 1px solid var(--neutral-700);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .key-plus {
+    opacity: 0.6;
+    font-size: 13px;
+  }
+
+  .chip-remove {
+    all: unset;
+    cursor: pointer;
+    opacity: 0.6;
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  .chip-remove:hover {
+    opacity: 1;
+  }
+
+  .hotkey-placeholder {
+    opacity: 0.5;
+    font-size: 13px;
   }
 
   button {
