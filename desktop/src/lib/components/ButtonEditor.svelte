@@ -57,6 +57,77 @@
   let newKeys = $state("");
   let newMediaKey = $state<MediaKeyKind>("playPause");
   let editingIndex = $state<number | null>(null);
+  let isRecordingHotkey = $state(false);
+
+  const modifierKeyNames = new Set(["Meta", "Control", "Alt", "Shift"]);
+
+  // Maps a KeyboardEvent.key to the token vocabulary parse_key (actions.rs)
+  // already understands, so a recorded combo round-trips the same as one
+  // typed by hand.
+  function keyToToken(key: string): string {
+    switch (key) {
+      case "Meta":
+        return "cmd";
+      case "Control":
+        return "ctrl";
+      case "Alt":
+        return "alt";
+      case "Shift":
+        return "shift";
+      case " ":
+        return "space";
+      case "ArrowUp":
+        return "up";
+      case "ArrowDown":
+        return "down";
+      case "ArrowLeft":
+        return "left";
+      case "ArrowRight":
+        return "right";
+      default:
+        return key.toLowerCase();
+    }
+  }
+
+  // Captures a live key combo instead of requiring it typed by hand.
+  // Modifier-only keydowns update the in-progress preview; the first
+  // non-modifier key finalizes the combo and stops recording. Escape alone
+  // cancels rather than being recorded, matching how most hotkey recorders
+  // behave.
+  $effect(() => {
+    if (newActionType !== "hotkey") isRecordingHotkey = false;
+  });
+
+  $effect(() => {
+    if (!isRecordingHotkey) return;
+
+    function handleKeydown(event: KeyboardEvent) {
+      event.preventDefault();
+      if (event.repeat) return;
+
+      const modifiers: string[] = [];
+      if (event.metaKey) modifiers.push("cmd");
+      if (event.ctrlKey) modifiers.push("ctrl");
+      if (event.altKey) modifiers.push("alt");
+      if (event.shiftKey) modifiers.push("shift");
+
+      if (event.key === "Escape" && modifiers.length === 0) {
+        isRecordingHotkey = false;
+        return;
+      }
+
+      if (modifierKeyNames.has(event.key)) {
+        newKeys = modifiers.join(", ");
+        return;
+      }
+
+      newKeys = [...modifiers, keyToToken(event.key)].join(", ");
+      isRecordingHotkey = false;
+    }
+
+    window.addEventListener("keydown", handleKeydown, true);
+    return () => window.removeEventListener("keydown", handleKeydown, true);
+  });
 
   async function pickAppPath() {
     // directory: false is deliberate — on macOS, NSOpenPanel still lets you
@@ -70,6 +141,7 @@
     editingIndex = null;
     newPath = "";
     newKeys = "";
+    isRecordingHotkey = false;
   }
 
   function startEditAction(index: number) {
@@ -239,7 +311,15 @@
         <input type="text" bind:value={newPath} placeholder="/path/to/app" />
         <button type="button" onclick={pickAppPath}>Browse…</button>
       {:else if newActionType === "hotkey"}
-        <input type="text" bind:value={newKeys} placeholder="cmd, shift, s" />
+        <input
+          type="text"
+          bind:value={newKeys}
+          readonly={isRecordingHotkey}
+          placeholder={isRecordingHotkey ? "Press keys…" : "cmd, shift, s"}
+        />
+        <button type="button" onclick={() => (isRecordingHotkey = !isRecordingHotkey)}>
+          {isRecordingHotkey ? "Stop" : "Record"}
+        </button>
       {:else}
         <select bind:value={newMediaKey}>
           <option value="playPause">Play/Pause</option>
