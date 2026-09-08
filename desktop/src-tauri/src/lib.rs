@@ -1,3 +1,4 @@
+mod actions;
 mod config;
 
 use config::Button;
@@ -48,6 +49,17 @@ fn reorder_buttons(app: tauri::AppHandle, order: Vec<String>) -> Result<(), Stri
     config::save_buttons(&path, &reordered)
 }
 
+#[tauri::command]
+fn press_button(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    let path = config_path(&app)?;
+    let buttons = config::load_buttons(&path)?;
+    let button = buttons
+        .iter()
+        .find(|b| b.id == id)
+        .ok_or_else(|| format!("no such button: {id}"))?;
+    actions::run(&button.actions)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -56,7 +68,8 @@ pub fn run() {
             list_buttons,
             save_button,
             delete_button,
-            reorder_buttons
+            reorder_buttons,
+            press_button
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
