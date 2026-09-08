@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -29,23 +28,15 @@ pub enum MediaKeyKind {
     PreviousTrack,
 }
 
-fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    Ok(dir.join("buttons.json"))
-}
-
-pub fn load_buttons(app: &AppHandle) -> Result<Vec<Button>, String> {
-    let path = config_path(app)?;
-    if !path.exists() {
+pub fn load_buttons(config_path: &Path) -> Result<Vec<Button>, String> {
+    if !config_path.exists() {
         return Ok(Vec::new());
     }
-    let data = fs::read_to_string(&path).map_err(|e| e.to_string())?;
+    let data = fs::read_to_string(config_path).map_err(|e| e.to_string())?;
     serde_json::from_str(&data).map_err(|e| e.to_string())
 }
 
-pub fn save_buttons(app: &AppHandle, buttons: &[Button]) -> Result<(), String> {
-    let path = config_path(app)?;
+pub fn save_buttons(config_path: &Path, buttons: &[Button]) -> Result<(), String> {
     let data = serde_json::to_string_pretty(buttons).map_err(|e| e.to_string())?;
-    fs::write(&path, data).map_err(|e| e.to_string())
+    fs::write(config_path, data).map_err(|e| e.to_string())
 }
