@@ -1,0 +1,9 @@
+[package]
+name = "egui-desktop-poc"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+eframe = "0.29"
+egui = "0.29"
