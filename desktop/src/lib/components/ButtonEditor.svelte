@@ -190,18 +190,21 @@
 <div class="panel">
   <h2>{button ? "Edit Button" : "Add Button"}</h2>
 
-  <div class="identity-row">
-    <div class="icon-preview">
-      <DeckButton {icon} {label} />
+  <div class="appearance-group">
+    <span class="section-label">Appearance</span>
+    <div class="identity-row">
+      <div class="icon-preview">
+        <DeckButton {icon} {label} />
+      </div>
+      <label class="label-field">
+        Button Label:
+        <input type="text" bind:value={label} placeholder="None" />
+      </label>
+      <label class="icon-field">
+        Icon:
+        <input type="text" bind:value={icon} placeholder="🔘" maxlength="4" />
+      </label>
     </div>
-    <label class="label-field">
-      Button Label:
-      <input type="text" bind:value={label} placeholder="None" />
-    </label>
-    <label class="icon-field">
-      Icon:
-      <input type="text" bind:value={icon} placeholder="🔘" maxlength="4" />
-    </label>
   </div>
 
   <div class="action-list">
@@ -259,10 +262,7 @@
 
 <style>
   .panel {
-    background: var(--neutral-500);
     color: var(--key-white);
-    border-radius: 4px;
-    padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -275,6 +275,20 @@
     font-weight: 700;
     font-size: 20px;
     margin: 0;
+  }
+
+  .appearance-group,
+  .action-list,
+  .footer-actions {
+    background: var(--neutral-500);
+    border-radius: 4px;
+    padding: 16px;
+  }
+
+  .appearance-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .identity-row {
@@ -407,8 +421,6 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    padding-top: 16px;
-    border-top: 1px solid var(--neutral-600);
   }
 
   .footer-actions .danger {
