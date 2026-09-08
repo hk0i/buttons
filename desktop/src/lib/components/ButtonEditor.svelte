@@ -108,18 +108,39 @@
     }
   });
 
-  function submitAction() {
+  let justAddedIndex = $state<number | null>(null);
+  let justAddedTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  function flashJustAdded(index: number) {
+    justAddedIndex = index;
+    clearTimeout(justAddedTimeout);
+    justAddedTimeout = setTimeout(() => (justAddedIndex = null), 1000);
+  }
+
+  // EXPERIMENTAL (option a from the UX discussion): auto-commit the new-action
+  // draft the instant it becomes valid, instead of requiring an explicit Add
+  // click — mirrors the edit-in-place effect above. This is a feel test
+  // against option (b) (loud "unsaved draft" state + confirm-to-discard), not
+  // a settled decision. Known rough edge: Media Key has no empty/invalid
+  // state, so every dropdown change here adds a new action outright rather
+  // than updating a pending one.
+  $effect(() => {
+    if (editingIndex !== null) return;
+
     if (newActionType === "launchApp") {
       if (!newPath) return;
       actions.push({ type: "launchApp", path: newPath });
+      newPath = "";
     } else if (newActionType === "hotkey") {
       if (newKeys.length === 0) return;
       actions.push({ type: "hotkey", keys: newKeys });
+      newKeys = [];
     } else {
       actions.push({ type: "mediaKey", key: newMediaKey });
     }
-    resetActionForm();
-  }
+
+    flashJustAdded(actions.length - 1);
+  });
 
   function removeAction(index: number) {
     actions.splice(index, 1);
@@ -215,7 +236,7 @@
   <div class="action-list">
     <span class="section-label">Actions</span>
     {#each actions as action, index (index)}
-      <div class="action-row" class:editing={editingIndex === index}>
+      <div class="action-row" class:editing={editingIndex === index} class:just-added={justAddedIndex === index}>
         <span class="action-summary">{summarize(action)}</span>
         <button type="button" onclick={() => startEditAction(index)}>✎</button>
         <button type="button" onclick={() => moveAction(index, -1)} disabled={index === 0}>↑</button>
@@ -238,9 +259,7 @@
       {:else}
         <MediaKeyField bind:key={newMediaKey} />
       {/if}
-      {#if editingIndex === null}
-        <button type="button" class="primary" onclick={submitAction}>Add</button>
-      {:else}
+      {#if editingIndex !== null}
         <button type="button" onclick={stopEditingAction} aria-label="Done editing action">✕</button>
       {/if}
     </div>
@@ -338,10 +357,17 @@
     align-items: center;
     gap: 6px;
     border-radius: 4px;
+    background: transparent;
+    transition: background 1s ease;
   }
 
   .action-row.editing {
     background: var(--neutral-400);
+  }
+
+  .action-row.just-added {
+    background: var(--primary-700);
+    transition: none;
   }
 
   .action-summary {
