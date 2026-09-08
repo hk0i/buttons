@@ -262,10 +262,12 @@
 
 <style>
   .panel {
+    flex: 1;
+    min-height: 0;
     color: var(--key-white);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px;
     font-family: var(--font-body);
     font-weight: 300;
   }
@@ -421,6 +423,8 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    margin-top: auto;
+    padding-top: 8px;
   }
 
   .footer-actions .danger {
