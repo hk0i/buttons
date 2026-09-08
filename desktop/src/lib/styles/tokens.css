@@ -16,3 +16,47 @@
   --font-heading: "Work Sans", Avenir, Helvetica, Arial, sans-serif;
   --font-body: "Rubik", Avenir, Helvetica, Arial, sans-serif;
 }
+
+/* Base form-control look, shared across ButtonEditor and its extracted
+   action field components (LaunchAppField, HotkeyField, MediaKeyField). */
+input,
+select {
+  background: var(--neutral-400);
+  border: 1px solid var(--neutral-600);
+  color: var(--key-white);
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 16px;
+}
+
+button {
+  background: var(--neutral-600);
+  border: 1px solid var(--neutral-700);
+  color: var(--key-white);
+  border-radius: 4px;
+  padding: 4px 16px;
+  height: 32px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--primary-700);
+  border-color: var(--primary-900);
+  box-shadow: 2px 2px 2px var(--primary-900);
+}
+
+button.danger {
+  background: transparent;
+  border-color: #c0392b;
+  color: #ff8a75;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

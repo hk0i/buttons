@@ -1,9 +1,11 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { open } from "@tauri-apps/plugin-dialog";
   import type { Action, Button as ButtonModel, MediaKeyKind } from "$lib/types/button";
   import { buttonStore } from "$lib/stores/buttons.svelte";
   import DeckButton from "./DeckButton.svelte";
+  import LaunchAppField from "./LaunchAppField.svelte";
+  import HotkeyField from "./HotkeyField.svelte";
+  import MediaKeyField from "./MediaKeyField.svelte";
 
   let {
     button,
@@ -59,78 +61,13 @@
   let editingIndex = $state<number | null>(null);
   let isRecordingHotkey = $state(false);
 
-  const modifierKeyNames = new Set(["Meta", "Control", "Alt", "Shift"]);
-
-  // Maps a KeyboardEvent.key to the token vocabulary parse_key (actions.rs)
-  // already understands, so a recorded combo round-trips the same as one
-  // typed by hand.
-  const KEY_TOKENS: Record<string, string> = {
-    Meta: "cmd",
-    Control: "ctrl",
-    Alt: "alt",
-    Shift: "shift",
-    " ": "space",
-    ArrowUp: "up",
-    ArrowDown: "down",
-    ArrowLeft: "left",
-    ArrowRight: "right",
-  };
-
-  function keyToToken(key: string): string {
-    return KEY_TOKENS[key] ?? key.toLowerCase();
-  }
-
-  // Captures a live key combo instead of requiring it typed by hand.
-  // Modifier-only keydowns update the in-progress preview; the first
-  // non-modifier key finalizes the combo and stops recording. Escape alone
-  // cancels rather than being recorded, matching how most hotkey recorders
-  // behave.
+  // Guards against a stray keydown listener: HotkeyField unmounts (and cleans
+  // itself up) when the dropdown moves off "hotkey", but the bound recording
+  // flag would otherwise stay stuck true and silently resume capturing keys
+  // if the user switches back to "hotkey" later.
   $effect(() => {
     if (newActionType !== "hotkey") isRecordingHotkey = false;
   });
-
-  $effect(() => {
-    if (!isRecordingHotkey) return;
-
-    function handleKeydown(event: KeyboardEvent) {
-      event.preventDefault();
-      if (event.repeat) return;
-
-      const modifiers: string[] = [];
-      if (event.metaKey) modifiers.push("cmd");
-      if (event.ctrlKey) modifiers.push("ctrl");
-      if (event.altKey) modifiers.push("alt");
-      if (event.shiftKey) modifiers.push("shift");
-
-      if (event.key === "Escape" && modifiers.length === 0) {
-        isRecordingHotkey = false;
-        return;
-      }
-
-      if (modifierKeyNames.has(event.key)) {
-        newKeys = modifiers;
-        return;
-      }
-
-      newKeys = [...modifiers, keyToToken(event.key)];
-      isRecordingHotkey = false;
-    }
-
-    window.addEventListener("keydown", handleKeydown, true);
-    return () => window.removeEventListener("keydown", handleKeydown, true);
-  });
-
-  function removeKeyToken(index: number) {
-    newKeys = newKeys.filter((_, i) => i !== index);
-  }
-
-  async function pickAppPath() {
-    // directory: false is deliberate — on macOS, NSOpenPanel still lets you
-    // pick a .app bundle this way since it treats bundles as packages, not
-    // browsable folders.
-    const path = await open({ directory: false, multiple: false });
-    if (path) newPath = path;
-  }
 
   function resetActionForm() {
     editingIndex = null;
@@ -295,41 +232,11 @@
       </select>
 
       {#if newActionType === "launchApp"}
-        <input type="text" bind:value={newPath} placeholder="/path/to/app" />
-        <button type="button" onclick={pickAppPath}>Browse…</button>
+        <LaunchAppField bind:path={newPath} />
       {:else if newActionType === "hotkey"}
-        <div class="hotkey-chips" class:recording={isRecordingHotkey}>
-          {#each newKeys as key, index (index)}
-            {#if index > 0}<span class="key-plus">+</span>{/if}
-            <span class="key-chip">
-              {key}
-              {#if !isRecordingHotkey}
-                <button
-                  type="button"
-                  class="chip-remove"
-                  onclick={() => removeKeyToken(index)}
-                  aria-label="Remove {key}"
-                >
-                  ×
-                </button>
-              {/if}
-            </span>
-          {:else}
-            <span class="hotkey-placeholder">
-              {isRecordingHotkey ? "Press keys…" : "No keys set"}
-            </span>
-          {/each}
-        </div>
-        <button type="button" onclick={() => (isRecordingHotkey = !isRecordingHotkey)}>
-          {isRecordingHotkey ? "Stop" : "Record"}
-        </button>
+        <HotkeyField bind:keys={newKeys} bind:recording={isRecordingHotkey} />
       {:else}
-        <select bind:value={newMediaKey}>
-          <option value="playPause">Play/Pause</option>
-          <option value="mute">Mute</option>
-          <option value="nextTrack">Next Track</option>
-          <option value="previousTrack">Previous Track</option>
-        </select>
+        <MediaKeyField bind:key={newMediaKey} />
       {/if}
       {#if editingIndex === null}
         <button type="button" class="primary" onclick={submitAction}>Add</button>
@@ -414,18 +321,6 @@
     width: 96px;
   }
 
-  input,
-  select {
-    background: var(--neutral-400);
-    border: 1px solid var(--neutral-600);
-    color: var(--key-white);
-    border-radius: 4px;
-    padding: 10px 16px;
-    font-family: var(--font-body);
-    font-weight: 300;
-    font-size: 16px;
-  }
-
   .action-list {
     display: flex;
     flex-direction: column;
@@ -463,92 +358,9 @@
     margin-top: 4px;
   }
 
-  .new-action input,
   .new-action select {
     flex: 1;
     padding: 6px 10px;
-  }
-
-  .hotkey-chips {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    background: var(--neutral-400);
-    border: 1px solid var(--neutral-600);
-    border-radius: 4px;
-    padding: 6px 10px;
-    min-height: 32px;
-    box-sizing: border-box;
-  }
-
-  .hotkey-chips.recording {
-    border-color: var(--primary-700);
-  }
-
-  .key-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--neutral-600);
-    border: 1px solid var(--neutral-700);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 13px;
-    line-height: 1.4;
-  }
-
-  .key-plus {
-    opacity: 0.6;
-    font-size: 13px;
-  }
-
-  .chip-remove {
-    all: unset;
-    cursor: pointer;
-    opacity: 0.6;
-    font-size: 13px;
-    line-height: 1;
-  }
-
-  .chip-remove:hover {
-    opacity: 1;
-  }
-
-  .hotkey-placeholder {
-    opacity: 0.5;
-    font-size: 13px;
-  }
-
-  button {
-    background: var(--neutral-600);
-    border: 1px solid var(--neutral-700);
-    color: var(--key-white);
-    border-radius: 4px;
-    padding: 4px 16px;
-    height: 32px;
-    font-family: var(--font-body);
-    font-weight: 500;
-    font-size: 12px;
-    cursor: pointer;
-  }
-
-  button.primary {
-    background: var(--primary-700);
-    border-color: var(--primary-900);
-    box-shadow: 2px 2px 2px var(--primary-900);
-  }
-
-  button.danger {
-    background: transparent;
-    border-color: #c0392b;
-    color: #ff8a75;
-  }
-
-  button:disabled {
-    opacity: 0.4;
-    cursor: default;
   }
 
   .test-result {
