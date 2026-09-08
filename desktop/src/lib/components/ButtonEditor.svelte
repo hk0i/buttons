@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import { open } from "@tauri-apps/plugin-dialog";
   import type { Action, Button as ButtonModel, MediaKeyKind } from "$lib/types/button";
   import { buttonStore } from "$lib/stores/buttons.svelte";
   import DeckButton from "./DeckButton.svelte";
@@ -56,6 +57,14 @@
   let newKeys = $state("");
   let newMediaKey = $state<MediaKeyKind>("playPause");
   let editingIndex = $state<number | null>(null);
+
+  async function pickAppPath() {
+    // directory: false is deliberate — on macOS, NSOpenPanel still lets you
+    // pick a .app bundle this way since it treats bundles as packages, not
+    // browsable folders.
+    const path = await open({ directory: false, multiple: false });
+    if (path) newPath = path;
+  }
 
   function resetActionForm() {
     editingIndex = null;
@@ -228,6 +237,7 @@
 
       {#if newActionType === "launchApp"}
         <input type="text" bind:value={newPath} placeholder="/path/to/app" />
+        <button type="button" onclick={pickAppPath}>Browse…</button>
       {:else if newActionType === "hotkey"}
         <input type="text" bind:value={newKeys} placeholder="cmd, shift, s" />
       {:else}
