@@ -16,9 +16,40 @@
     onCancelled: () => void;
   } = $props();
 
+  const id = button?.id ?? crypto.randomUUID();
+
   let label = $state(button?.label ?? "");
   let icon = $state(button?.icon ?? "");
   let actions = $state<Action[]>(button?.actions ? [...button.actions] : []);
+
+  let hasAutosaved = $state(false);
+  let saveTimeout: ReturnType<typeof setTimeout> | undefined;
+
+  $effect(() => {
+    // Reference every field so any edit re-arms the debounce below.
+    label;
+    icon;
+    JSON.stringify(actions);
+
+    // Don't autosave a blank new-button draft — avoids a phantom empty
+    // tile showing up in the preview grid before the user types anything.
+    if (!label.trim() && !icon.trim() && actions.length === 0) return;
+
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(persist, 500);
+
+    return () => clearTimeout(saveTimeout);
+  });
+
+  async function persist() {
+    hasAutosaved = true;
+    await buttonStore.save({
+      id,
+      label: label || undefined,
+      icon: icon || undefined,
+      actions,
+    });
+  }
 
   let newActionType = $state<Action["type"]>("launchApp");
   let newPath = $state("");
@@ -64,25 +95,29 @@
     }
   }
 
-  async function save() {
-    const id = button?.id ?? crypto.randomUUID();
-    await buttonStore.save({
-      id,
-      label: label || undefined,
-      icon: icon || undefined,
-      actions,
-    });
+  async function finish() {
+    clearTimeout(saveTimeout);
+    await persist();
     onSaved(id);
   }
 
   async function remove() {
+    clearTimeout(saveTimeout);
     if (button) {
       await buttonStore.remove(button.id);
     }
     onDeleted();
   }
 
-  function cancel() {
+  async function cancel() {
+    clearTimeout(saveTimeout);
+    if (button) {
+      // Revert any autosaved edits back to the last-saved values.
+      await buttonStore.save({ id, label: button.label, icon: button.icon, actions: button.actions });
+    } else if (hasAutosaved) {
+      // Discard the draft that autosave created.
+      await buttonStore.remove(id);
+    }
     onCancelled();
   }
 
@@ -161,7 +196,7 @@
       <button type="button" class="danger" onclick={remove}>Delete</button>
     {/if}
     <button type="button" onclick={cancel}>Cancel</button>
-    <button type="button" class="primary" onclick={save}>Save</button>
+    <button type="button" class="primary" onclick={finish}>Done</button>
   </div>
 </div>
 
