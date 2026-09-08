@@ -424,7 +424,6 @@
     justify-content: flex-end;
     gap: 8px;
     margin-top: auto;
-    padding-top: 8px;
   }
 
   .footer-actions .danger {
