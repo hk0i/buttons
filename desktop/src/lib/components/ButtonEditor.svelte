@@ -267,7 +267,7 @@
     color: var(--key-white);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 16px;
     font-family: var(--font-body);
     font-weight: 300;
   }
