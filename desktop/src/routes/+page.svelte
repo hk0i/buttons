@@ -7,20 +7,13 @@
   import type { Button as ButtonModel } from "$lib/types/button";
 
   let selected = $state<ButtonModel | "new" | undefined>(undefined);
-  let previousSelected = $state<ButtonModel | undefined>(undefined);
   let orientation = $state<"portrait" | "landscape">("portrait");
 
   onMount(async () => {
     await buttonStore.load();
-    if (buttonStore.buttons.length > 0) {
-      selected = buttonStore.buttons[0];
-    }
   });
 
   function startAdd() {
-    if (selected !== "new") {
-      previousSelected = selected;
-    }
     selected = "new";
   }
 
@@ -37,7 +30,7 @@
   }
 
   function onCancelled() {
-    selected = previousSelected;
+    selected = undefined;
   }
 </script>
 
@@ -55,7 +48,7 @@
       />
     </div>
 
-    <div class="editor-pane">
+    <div class="editor-pane" class:active={selected !== undefined}>
       <div class="editor-scroll">
         {#if selected === "new"}
           {#key "new"}
@@ -66,7 +59,7 @@
             <ButtonEditor button={selected} {onSaved} {onDeleted} {onCancelled} />
           {/key}
         {:else}
-          <p class="empty-state">No buttons yet — add one to get started.</p>
+          <p class="empty-state">Select a button in the preview to edit it, or click + Add button to create one.</p>
         {/if}
       </div>
 
@@ -159,13 +152,19 @@
   }
 
   /* Below this width, the two-column layout gets cramped — fall back to
-     showing the editor as a full-screen overlay instead of squeezing it. */
+     showing the editor as a full-screen overlay instead of squeezing it,
+     and only when it actually has a button to edit. Otherwise leave it
+     out of the layout entirely so the preview gets the full canvas. */
   @media (max-width: 700px) {
     .app-body {
       position: relative;
     }
 
-    .editor-pane {
+    .editor-pane:not(.active) {
+      display: none;
+    }
+
+    .editor-pane.active {
       position: fixed;
       inset: 0;
       top: 46px;

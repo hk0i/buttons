@@ -83,16 +83,7 @@
   }
 
   function cancel() {
-    if (button) {
-      // Discard in-place edits, revert to the last-saved values.
-      label = button.label ?? "";
-      icon = button.icon ?? "";
-      actions = button.actions ? [...button.actions] : [];
-      testResult = null;
-    } else {
-      // Discard an unsaved new-button draft entirely.
-      onCancelled();
-    }
+    onCancelled();
   }
 
   let testResult = $state<{ ok: boolean; message: string } | null>(null);
