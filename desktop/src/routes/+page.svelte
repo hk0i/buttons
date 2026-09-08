@@ -21,8 +21,8 @@
     selected = buttonStore.buttons.find((b) => b.id === id) ?? buttonStore.buttons[0] ?? undefined;
   }
 
-  function onSaved(id: string) {
-    selectById(id);
+  function onSaved() {
+    selected = undefined;
   }
 
   function onDeleted() {

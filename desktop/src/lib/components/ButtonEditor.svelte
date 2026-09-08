@@ -11,7 +11,7 @@
     onCancelled,
   }: {
     button: ButtonModel | null;
-    onSaved: (id: string) => void;
+    onSaved: () => void;
     onDeleted: () => void;
     onCancelled: () => void;
   } = $props();
@@ -98,7 +98,7 @@
   async function finish() {
     clearTimeout(saveTimeout);
     await persist();
-    onSaved(id);
+    onSaved();
   }
 
   async function remove() {
