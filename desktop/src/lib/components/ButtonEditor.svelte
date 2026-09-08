@@ -332,6 +332,9 @@
     font-size: 13px;
     margin: 0;
     color: #7ee787;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
   }
 
   .test-result.error {

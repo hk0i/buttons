@@ -74,6 +74,16 @@
     background: var(--neutral-600);
     color: var(--key-white);
     font-family: var(--font-body);
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+  }
+
+  :global(input),
+  :global(textarea) {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
   }
 
   .app {
