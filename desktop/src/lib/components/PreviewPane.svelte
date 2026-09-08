@@ -27,7 +27,7 @@
   }
 </script>
 
-<div class="preview-pane">
+<div class="preview-pane" class:landscape={orientation === "landscape"}>
   <div class="preview-header">
     <span class="preview-label">Preview</span>
     <button
@@ -83,6 +83,21 @@
     justify-content: space-between;
   }
 
+  /* Landscape is height-constrained, not width-constrained — trade the
+     header's own row for a left-hand sidebar so the grid's top edge
+     lines up with the "Preview" label instead of sitting below it. */
+  .preview-pane.landscape {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .preview-pane.landscape .preview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   .preview-label {
     font-family: var(--font-heading);
     font-weight: 700;
@@ -123,6 +138,9 @@
     max-height: 50vh;
     width: auto;
     height: 100%;
+    margin: 0;
+    flex: 1;
+    min-width: 0;
   }
 
   .button-grid {
