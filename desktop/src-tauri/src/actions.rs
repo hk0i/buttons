@@ -6,10 +6,19 @@ use std::process::Command;
 /// control. Plain Rust, no Tauri types — keeps this reusable regardless of
 /// the UI layer (see slice 3 spec's Tauri-agnostic-core note).
 pub fn run(actions: &[Action]) -> Result<(), String> {
-    for action in actions {
-        run_one(action)?;
+    // Run every action even if an earlier one fails — a multi-action button
+    // (PRD: "one press starts the stream, switches scene, unmutes the mic")
+    // shouldn't have step 3 silently skipped because step 2 errored.
+    let errors: Vec<String> = actions
+        .iter()
+        .filter_map(|action| run_one(action).err())
+        .collect();
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
     }
-    Ok(())
 }
 
 fn run_one(action: &Action) -> Result<(), String> {
@@ -66,6 +75,28 @@ fn parse_key(name: &str) -> Result<Key, String> {
         "shift" => Ok(Key::Shift),
         "ctrl" | "control" => Ok(Key::Control),
         "alt" | "option" => Ok(Key::Alt),
+        "space" => Ok(Key::Space),
+        "enter" | "return" => Ok(Key::Return),
+        "tab" => Ok(Key::Tab),
+        "escape" | "esc" => Ok(Key::Escape),
+        "backspace" => Ok(Key::Backspace),
+        "delete" => Ok(Key::Delete),
+        "up" => Ok(Key::UpArrow),
+        "down" => Ok(Key::DownArrow),
+        "left" => Ok(Key::LeftArrow),
+        "right" => Ok(Key::RightArrow),
+        "f1" => Ok(Key::F1),
+        "f2" => Ok(Key::F2),
+        "f3" => Ok(Key::F3),
+        "f4" => Ok(Key::F4),
+        "f5" => Ok(Key::F5),
+        "f6" => Ok(Key::F6),
+        "f7" => Ok(Key::F7),
+        "f8" => Ok(Key::F8),
+        "f9" => Ok(Key::F9),
+        "f10" => Ok(Key::F10),
+        "f11" => Ok(Key::F11),
+        "f12" => Ok(Key::F12),
         "f13" => Ok(Key::F13),
         "f14" => Ok(Key::F14),
         "f15" => Ok(Key::F15),

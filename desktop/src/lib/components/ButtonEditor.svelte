@@ -70,9 +70,17 @@
     onClose();
   }
 
+  let testResult = $state<{ ok: boolean; message: string } | null>(null);
+
   async function test() {
     if (!button) return;
-    await invoke("press_button", { id: button.id });
+    testResult = null;
+    try {
+      await invoke("press_button", { id: button.id });
+      testResult = { ok: true, message: "All actions ran successfully." };
+    } catch (e) {
+      testResult = { ok: false, message: String(e) };
+    }
   }
 </script>
 
@@ -132,6 +140,10 @@
         <button type="button" onclick={addAction}>Add</button>
       </div>
     </div>
+
+    {#if testResult}
+      <p class="test-result" class:error={!testResult.ok}>{testResult.message}</p>
+    {/if}
 
     <div class="footer-actions">
       {#if button}
@@ -217,6 +229,16 @@
   .new-action input,
   .new-action select {
     flex: 1;
+  }
+
+  .test-result {
+    font-size: 0.8rem;
+    margin: 0;
+    color: #2e7d32;
+  }
+
+  .test-result.error {
+    color: #c0392b;
   }
 
   .footer-actions {
