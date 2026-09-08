@@ -64,29 +64,20 @@
   // Maps a KeyboardEvent.key to the token vocabulary parse_key (actions.rs)
   // already understands, so a recorded combo round-trips the same as one
   // typed by hand.
+  const KEY_TOKENS: Record<string, string> = {
+    Meta: "cmd",
+    Control: "ctrl",
+    Alt: "alt",
+    Shift: "shift",
+    " ": "space",
+    ArrowUp: "up",
+    ArrowDown: "down",
+    ArrowLeft: "left",
+    ArrowRight: "right",
+  };
+
   function keyToToken(key: string): string {
-    switch (key) {
-      case "Meta":
-        return "cmd";
-      case "Control":
-        return "ctrl";
-      case "Alt":
-        return "alt";
-      case "Shift":
-        return "shift";
-      case " ":
-        return "space";
-      case "ArrowUp":
-        return "up";
-      case "ArrowDown":
-        return "down";
-      case "ArrowLeft":
-        return "left";
-      case "ArrowRight":
-        return "right";
-      default:
-        return key.toLowerCase();
-    }
+    return KEY_TOKENS[key] ?? key.toLowerCase();
   }
 
   // Captures a live key combo instead of requiring it typed by hand.
