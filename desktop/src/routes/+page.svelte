@@ -47,6 +47,14 @@
   </header>
 
   <div class="app-body" class:landscape={orientation === "landscape"}>
+    <div class="preview-wrapper">
+      <PreviewPane
+        selectedId={selected && selected !== "new" ? selected.id : undefined}
+        onSelect={(b) => (selected = b)}
+        bind:orientation
+      />
+    </div>
+
     <div class="editor-pane">
       <div class="editor-scroll">
         {#if selected === "new"}
@@ -63,14 +71,6 @@
       </div>
 
       <button type="button" class="add-button" onclick={startAdd}>+ Add button</button>
-    </div>
-
-    <div class="preview-wrapper">
-      <PreviewPane
-        selectedId={selected && selected !== "new" ? selected.id : undefined}
-        onSelect={(b) => (selected = b)}
-        bind:orientation
-      />
     </div>
   </div>
 </div>
