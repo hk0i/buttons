@@ -43,7 +43,7 @@
 
 <div class="app">
   <header class="app-header">
-    <h1>Buttons Desktop</h1>
+    <h1>Buttons</h1>
   </header>
 
   <div class="app-body" class:landscape={orientation === "landscape"}>
