@@ -8,6 +8,7 @@
 
   let selected = $state<ButtonModel | "new" | undefined>(undefined);
   let previousSelected = $state<ButtonModel | undefined>(undefined);
+  let orientation = $state<"portrait" | "landscape">("portrait");
 
   onMount(async () => {
     await buttonStore.load();
@@ -45,7 +46,7 @@
     <h1>Buttons Desktop</h1>
   </header>
 
-  <div class="app-body">
+  <div class="app-body" class:landscape={orientation === "landscape"}>
     <div class="editor-pane">
       <div class="editor-scroll">
         {#if selected === "new"}
@@ -64,10 +65,13 @@
       <button type="button" class="add-button" onclick={startAdd}>+ Add button</button>
     </div>
 
-    <PreviewPane
-      selectedId={selected && selected !== "new" ? selected.id : undefined}
-      onSelect={(b) => (selected = b)}
-    />
+    <div class="preview-wrapper">
+      <PreviewPane
+        selectedId={selected && selected !== "new" ? selected.id : undefined}
+        onSelect={(b) => (selected = b)}
+        bind:orientation
+      />
+    </div>
   </div>
 </div>
 
@@ -101,8 +105,13 @@
 
   .app-body {
     display: flex;
+    flex-direction: row;
     flex: 1;
     min-height: 0;
+  }
+
+  .app-body.landscape {
+    flex-direction: column;
   }
 
   .editor-pane {
@@ -112,6 +121,17 @@
     flex-direction: column;
     gap: 16px;
     overflow-y: auto;
+  }
+
+  .preview-wrapper {
+    flex: 0 0 380px;
+    min-width: 340px;
+  }
+
+  .app-body.landscape .preview-wrapper {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
   }
 
   .editor-scroll {

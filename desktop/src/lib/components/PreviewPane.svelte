@@ -3,10 +3,15 @@
   import DeckButton from "./DeckButton.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
 
-  let { selectedId, onSelect }: { selectedId: string | undefined; onSelect: (button: ButtonModel) => void } =
-    $props();
-
-  let orientation = $state<"portrait" | "landscape">("portrait");
+  let {
+    selectedId,
+    onSelect,
+    orientation = $bindable("portrait"),
+  }: {
+    selectedId: string | undefined;
+    onSelect: (button: ButtonModel) => void;
+    orientation: "portrait" | "landscape";
+  } = $props();
 
   let draggedId = $state<string | null>(null);
 
@@ -67,10 +72,9 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%;
     height: 100%;
     box-sizing: border-box;
-    flex: 0 0 380px;
-    min-width: 340px;
   }
 
   .preview-header {
@@ -116,6 +120,9 @@
   .phone.landscape {
     aspect-ratio: 812 / 375;
     max-width: none;
+    max-height: 50vh;
+    width: auto;
+    height: 100%;
   }
 
   .button-grid {
