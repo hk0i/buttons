@@ -1,0 +1,18 @@
+/* Design tokens pulled from the Figma file (897oW5lEveySDqkumaDVW0).
+   Dark mode only for now — Light mode values exist in the file
+   (Neutral/50 #F2F8FF, Neutral/100 #D9EAFF) but aren't wired up yet. */
+:root {
+  --neutral-300: #a7ceff;
+  --neutral-400: #7590b2;
+  --neutral-500: #546880;
+  --neutral-600: #333f4e;
+  --neutral-700: #232b36;
+  --neutral-800: #12161c;
+  --primary-700: #f57900;
+  --primary-900: #ce5c00;
+  --secondary-700: #75507b;
+  --key-white: #ffffff;
+
+  --font-heading: "Work Sans", Avenir, Helvetica, Arial, sans-serif;
+  --font-body: "Rubik", Avenir, Helvetica, Arial, sans-serif;
+}

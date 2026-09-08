@@ -2,12 +2,23 @@
   import { invoke } from "@tauri-apps/api/core";
   import type { Action, Button as ButtonModel, MediaKeyKind } from "$lib/types/button";
   import { buttonStore } from "$lib/stores/buttons.svelte";
+  import DeckButton from "./DeckButton.svelte";
 
-  let { button, onClose }: { button: ButtonModel | null; onClose: () => void } = $props();
+  let {
+    button,
+    onSaved,
+    onDeleted,
+    onCancelled,
+  }: {
+    button: ButtonModel | null;
+    onSaved: (id: string) => void;
+    onDeleted: () => void;
+    onCancelled: () => void;
+  } = $props();
 
   let label = $state(button?.label ?? "");
   let icon = $state(button?.icon ?? "");
-  let actions = $state<Action[]>(button?.actions ?? []);
+  let actions = $state<Action[]>(button?.actions ? [...button.actions] : []);
 
   let newActionType = $state<Action["type"]>("launchApp");
   let newPath = $state("");
@@ -54,20 +65,34 @@
   }
 
   async function save() {
+    const id = button?.id ?? crypto.randomUUID();
     await buttonStore.save({
-      id: button?.id ?? crypto.randomUUID(),
+      id,
       label: label || undefined,
       icon: icon || undefined,
       actions,
     });
-    onClose();
+    onSaved(id);
   }
 
   async function remove() {
     if (button) {
       await buttonStore.remove(button.id);
     }
-    onClose();
+    onDeleted();
+  }
+
+  function cancel() {
+    if (button) {
+      // Discard in-place edits, revert to the last-saved values.
+      label = button.label ?? "";
+      icon = button.icon ?? "";
+      actions = button.actions ? [...button.actions] : [];
+      testResult = null;
+    } else {
+      // Discard an unsaved new-button draft entirely.
+      onCancelled();
+    }
   }
 
   let testResult = $state<{ ok: boolean; message: string } | null>(null);
@@ -84,126 +109,141 @@
   }
 </script>
 
-<div
-  class="overlay"
-  role="presentation"
-  onclick={onClose}
-  onkeydown={(e) => e.key === "Escape" && onClose()}
->
-  <div
-    class="panel"
-    role="dialog"
-    aria-modal="true"
-    tabindex="-1"
-    onclick={(e) => e.stopPropagation()}
-  >
-    <h2>{button ? "Edit Button" : "Add Button"}</h2>
-    <label>
-      Icon
+<div class="panel">
+  <h2>{button ? "Edit Button" : "Add Button"}</h2>
+
+  <div class="identity-row">
+    <div class="icon-preview">
+      <DeckButton {icon} {label} />
+    </div>
+    <label class="label-field">
+      Button Label:
+      <input type="text" bind:value={label} placeholder="None" />
+    </label>
+    <label class="icon-field">
+      Icon:
       <input type="text" bind:value={icon} placeholder="🔘" maxlength="4" />
     </label>
-    <label>
-      Label
-      <input type="text" bind:value={label} placeholder="Button label" />
-    </label>
+  </div>
 
-    <div class="action-list">
-      <span class="section-label">Actions</span>
-      {#each actions as action, index (index)}
-        <div class="action-row">
-          <span class="action-summary">{summarize(action)}</span>
-          <button type="button" onclick={() => moveAction(index, -1)} disabled={index === 0}>↑</button>
-          <button type="button" onclick={() => moveAction(index, 1)} disabled={index === actions.length - 1}>↓</button>
-          <button type="button" class="danger" onclick={() => removeAction(index)}>×</button>
-        </div>
-      {/each}
-
-      <div class="new-action">
-        <select bind:value={newActionType}>
-          <option value="launchApp">Launch App</option>
-          <option value="hotkey">Hotkey</option>
-          <option value="mediaKey">Media Key</option>
-        </select>
-
-        {#if newActionType === "launchApp"}
-          <input type="text" bind:value={newPath} placeholder="/path/to/app" />
-        {:else if newActionType === "hotkey"}
-          <input type="text" bind:value={newKeys} placeholder="cmd, shift, s" />
-        {:else}
-          <select bind:value={newMediaKey}>
-            <option value="playPause">Play/Pause</option>
-            <option value="mute">Mute</option>
-            <option value="nextTrack">Next Track</option>
-            <option value="previousTrack">Previous Track</option>
-          </select>
-        {/if}
-        <button type="button" onclick={addAction}>Add</button>
+  <div class="action-list">
+    <span class="section-label">Actions</span>
+    {#each actions as action, index (index)}
+      <div class="action-row">
+        <span class="action-summary">{summarize(action)}</span>
+        <button type="button" onclick={() => moveAction(index, -1)} disabled={index === 0}>↑</button>
+        <button type="button" onclick={() => moveAction(index, 1)} disabled={index === actions.length - 1}>↓</button>
+        <button type="button" class="danger" onclick={() => removeAction(index)}>×</button>
       </div>
-    </div>
+    {/each}
 
-    {#if testResult}
-      <p class="test-result" class:error={!testResult.ok}>{testResult.message}</p>
-    {/if}
+    <div class="new-action">
+      <select bind:value={newActionType}>
+        <option value="launchApp">Launch App</option>
+        <option value="hotkey">Hotkey</option>
+        <option value="mediaKey">Media Key</option>
+      </select>
 
-    <div class="footer-actions">
-      {#if button}
-        <button type="button" onclick={test}>Test</button>
-        <button type="button" class="danger" onclick={remove}>Delete</button>
+      {#if newActionType === "launchApp"}
+        <input type="text" bind:value={newPath} placeholder="/path/to/app" />
+      {:else if newActionType === "hotkey"}
+        <input type="text" bind:value={newKeys} placeholder="cmd, shift, s" />
+      {:else}
+        <select bind:value={newMediaKey}>
+          <option value="playPause">Play/Pause</option>
+          <option value="mute">Mute</option>
+          <option value="nextTrack">Next Track</option>
+          <option value="previousTrack">Previous Track</option>
+        </select>
       {/if}
-      <button type="button" onclick={onClose}>Cancel</button>
-      <button type="button" onclick={save}>Save</button>
+      <button type="button" class="primary" onclick={addAction}>Add</button>
     </div>
+  </div>
+
+  {#if testResult}
+    <p class="test-result" class:error={!testResult.ok}>{testResult.message}</p>
+  {/if}
+
+  <div class="footer-actions">
+    {#if button}
+      <button type="button" class="primary" onclick={test}>Test</button>
+      <button type="button" class="danger" onclick={remove}>Delete</button>
+    {/if}
+    <button type="button" onclick={cancel}>Cancel</button>
+    <button type="button" class="primary" onclick={save}>Save</button>
   </div>
 </div>
 
 <style>
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
   .panel {
-    background: #ffffff;
-    color: #0f0f0f;
-    border-radius: 12px;
-    padding: 20px;
-    min-width: 320px;
+    background: var(--neutral-500);
+    color: var(--key-white);
+    border-radius: 4px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+    font-family: var(--font-body);
+    font-weight: 300;
   }
 
-  label {
+  h2 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0;
+  }
+
+  .identity-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+  }
+
+  .icon-preview {
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+  }
+
+  .label-field,
+  .icon-field {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 0.85rem;
-    text-align: left;
+    font-size: 16px;
+  }
+
+  .label-field {
+    flex: 1;
+  }
+
+  .icon-field {
+    width: 96px;
   }
 
   input,
   select {
-    border-radius: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    padding: 0.5em 0.75em;
-    font-size: 1em;
+    background: var(--neutral-400);
+    border: 1px solid var(--neutral-600);
+    color: var(--key-white);
+    border-radius: 4px;
+    padding: 10px 16px;
+    font-family: var(--font-body);
+    font-weight: 300;
+    font-size: 16px;
   }
 
   .action-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    text-align: left;
   }
 
   .section-label {
-    font-size: 0.75rem;
+    font-size: 12px;
     text-transform: uppercase;
-    opacity: 0.6;
+    opacity: 0.7;
   }
 
   .action-row {
@@ -214,7 +254,7 @@
 
   .action-summary {
     flex: 1;
-    font-size: 0.85rem;
+    font-size: 14px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -229,44 +269,56 @@
   .new-action input,
   .new-action select {
     flex: 1;
+    padding: 6px 10px;
+  }
+
+  button {
+    background: var(--neutral-600);
+    border: 1px solid var(--neutral-700);
+    color: var(--key-white);
+    border-radius: 4px;
+    padding: 4px 16px;
+    height: 32px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  button.primary {
+    background: var(--primary-700);
+    border-color: var(--primary-900);
+    box-shadow: 2px 2px 2px var(--primary-900);
+  }
+
+  button.danger {
+    background: transparent;
+    border-color: #c0392b;
+    color: #ff8a75;
+  }
+
+  button:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
   .test-result {
-    font-size: 0.8rem;
+    font-size: 13px;
     margin: 0;
-    color: #2e7d32;
+    color: #7ee787;
   }
 
   .test-result.error {
-    color: #c0392b;
+    color: #ff8a75;
   }
 
   .footer-actions {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
-    margin-top: 8px;
-  }
-
-  .danger {
-    color: #c0392b;
   }
 
   .footer-actions .danger {
     margin-right: auto;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .panel {
-      background: #2f2f2f;
-      color: #f6f6f6;
-    }
-
-    input,
-    select {
-      background: #0f0f0f98;
-      border-color: rgba(255, 255, 255, 0.2);
-      color: #f6f6f6;
-    }
   }
 </style>
