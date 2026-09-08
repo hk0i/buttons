@@ -407,6 +407,8 @@
     display: flex;
     justify-content: flex-end;
     gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--neutral-600);
   }
 
   .footer-actions .danger {
