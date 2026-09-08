@@ -91,14 +91,14 @@
 
   .app-header {
     background: var(--neutral-700);
-    padding: 24px;
+    padding: 10px 24px;
     flex-shrink: 0;
   }
 
   .app-header h1 {
     font-family: var(--font-heading);
     font-weight: 700;
-    font-size: 34px;
+    font-size: 24px;
     margin: 0;
     color: var(--key-white);
   }
@@ -168,7 +168,7 @@
     .editor-pane {
       position: fixed;
       inset: 0;
-      top: 82px;
+      top: 46px;
       background: var(--neutral-600);
       z-index: 10;
     }
