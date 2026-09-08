@@ -55,33 +55,73 @@
   let newPath = $state("");
   let newKeys = $state("");
   let newMediaKey = $state<MediaKeyKind>("playPause");
+  let editingIndex = $state<number | null>(null);
 
-  function addAction() {
+  function resetActionForm() {
+    editingIndex = null;
+    newPath = "";
+    newKeys = "";
+  }
+
+  function startEditAction(index: number) {
+    const action = actions[index];
+    editingIndex = index;
+    newActionType = action.type;
+    if (action.type === "launchApp") {
+      newPath = action.path;
+    } else if (action.type === "hotkey") {
+      newKeys = action.keys.join(", ");
+    } else {
+      newMediaKey = action.key;
+    }
+  }
+
+  function cancelEditAction() {
+    resetActionForm();
+  }
+
+  function submitAction() {
+    let action: Action;
     if (newActionType === "launchApp") {
       if (!newPath) return;
-      actions.push({ type: "launchApp", path: newPath });
-      newPath = "";
+      action = { type: "launchApp", path: newPath };
     } else if (newActionType === "hotkey") {
       const keys = newKeys
         .split(",")
         .map((k) => k.trim())
         .filter((k) => k.length > 0);
       if (keys.length === 0) return;
-      actions.push({ type: "hotkey", keys });
-      newKeys = "";
+      action = { type: "hotkey", keys };
     } else {
-      actions.push({ type: "mediaKey", key: newMediaKey });
+      action = { type: "mediaKey", key: newMediaKey };
     }
+
+    if (editingIndex !== null) {
+      actions[editingIndex] = action;
+    } else {
+      actions.push(action);
+    }
+    resetActionForm();
   }
 
   function removeAction(index: number) {
     actions.splice(index, 1);
+    if (editingIndex === index) {
+      resetActionForm();
+    } else if (editingIndex !== null && index < editingIndex) {
+      editingIndex -= 1;
+    }
   }
 
   function moveAction(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= actions.length) return;
     [actions[index], actions[target]] = [actions[target], actions[index]];
+    if (editingIndex === index) {
+      editingIndex = target;
+    } else if (editingIndex === target) {
+      editingIndex = index;
+    }
   }
 
   function summarize(action: Action): string {
@@ -155,8 +195,9 @@
   <div class="action-list">
     <span class="section-label">Actions</span>
     {#each actions as action, index (index)}
-      <div class="action-row">
+      <div class="action-row" class:editing={editingIndex === index}>
         <span class="action-summary">{summarize(action)}</span>
+        <button type="button" onclick={() => startEditAction(index)}>✎</button>
         <button type="button" onclick={() => moveAction(index, -1)} disabled={index === 0}>↑</button>
         <button type="button" onclick={() => moveAction(index, 1)} disabled={index === actions.length - 1}>↓</button>
         <button type="button" class="danger" onclick={() => removeAction(index)}>×</button>
@@ -182,7 +223,10 @@
           <option value="previousTrack">Previous Track</option>
         </select>
       {/if}
-      <button type="button" class="primary" onclick={addAction}>Add</button>
+      <button type="button" class="primary" onclick={submitAction}>{editingIndex === null ? "Add" : "Update"}</button>
+      {#if editingIndex !== null}
+        <button type="button" onclick={cancelEditAction}>Cancel</button>
+      {/if}
     </div>
   </div>
 
@@ -276,6 +320,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    border-radius: 4px;
+  }
+
+  .action-row.editing {
+    background: var(--neutral-400);
   }
 
   .action-summary {
