@@ -76,30 +76,42 @@
     }
   }
 
-  function cancelEditAction() {
+  function stopEditingAction() {
     resetActionForm();
   }
 
+  // While editing, apply form changes to the action in place as the user
+  // types — mirrors the whole-button autosave, no separate commit step.
+  $effect(() => {
+    if (editingIndex === null) return;
+    const index = editingIndex;
+
+    if (newActionType === "launchApp") {
+      if (newPath) actions[index] = { type: "launchApp", path: newPath };
+    } else if (newActionType === "hotkey") {
+      const keys = newKeys
+        .split(",")
+        .map((k) => k.trim())
+        .filter((k) => k.length > 0);
+      if (keys.length > 0) actions[index] = { type: "hotkey", keys };
+    } else {
+      actions[index] = { type: "mediaKey", key: newMediaKey };
+    }
+  });
+
   function submitAction() {
-    let action: Action;
     if (newActionType === "launchApp") {
       if (!newPath) return;
-      action = { type: "launchApp", path: newPath };
+      actions.push({ type: "launchApp", path: newPath });
     } else if (newActionType === "hotkey") {
       const keys = newKeys
         .split(",")
         .map((k) => k.trim())
         .filter((k) => k.length > 0);
       if (keys.length === 0) return;
-      action = { type: "hotkey", keys };
+      actions.push({ type: "hotkey", keys });
     } else {
-      action = { type: "mediaKey", key: newMediaKey };
-    }
-
-    if (editingIndex !== null) {
-      actions[editingIndex] = action;
-    } else {
-      actions.push(action);
+      actions.push({ type: "mediaKey", key: newMediaKey });
     }
     resetActionForm();
   }
@@ -223,9 +235,10 @@
           <option value="previousTrack">Previous Track</option>
         </select>
       {/if}
-      <button type="button" class="primary" onclick={submitAction}>{editingIndex === null ? "Add" : "Update"}</button>
-      {#if editingIndex !== null}
-        <button type="button" onclick={cancelEditAction}>Cancel</button>
+      {#if editingIndex === null}
+        <button type="button" class="primary" onclick={submitAction}>Add</button>
+      {:else}
+        <button type="button" onclick={stopEditingAction} aria-label="Done editing action">✕</button>
       {/if}
     </div>
   </div>
