@@ -44,6 +44,7 @@
       <PreviewPane
         selectedId={selected && selected !== "new" ? selected.id : undefined}
         onSelect={(b) => (selected = b)}
+        onAdd={startAdd}
         bind:orientation
       />
     </div>
@@ -59,11 +60,9 @@
             <ButtonEditor button={selected} {onSaved} {onDeleted} {onCancelled} />
           {/key}
         {:else}
-          <p class="empty-state">Select a button in the preview to edit it, or click + Add button to create one.</p>
+          <p class="empty-state">Select a button in the preview to edit it, or click + Add to create one.</p>
         {/if}
       </div>
-
-      <button type="button" class="add-button" onclick={startAdd}>+ Add button</button>
     </div>
   </div>
 </div>
@@ -146,21 +145,6 @@
   .empty-state {
     opacity: 0.7;
     font-size: 16px;
-  }
-
-  .add-button {
-    align-self: flex-start;
-    background: var(--primary-700);
-    border: 1px solid var(--primary-900);
-    box-shadow: 2px 2px 2px var(--primary-900);
-    color: var(--key-white);
-    border-radius: 4px;
-    padding: 4px 16px;
-    height: 32px;
-    font-family: var(--font-body);
-    font-weight: 500;
-    font-size: 12px;
-    cursor: pointer;
   }
 
   /* Below this width, the two-column layout gets cramped — fall back to

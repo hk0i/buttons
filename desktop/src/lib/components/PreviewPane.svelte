@@ -6,10 +6,12 @@
   let {
     selectedId,
     onSelect,
+    onAdd,
     orientation = $bindable("portrait"),
   }: {
     selectedId: string | undefined;
     onSelect: (button: ButtonModel) => void;
+    onAdd: () => void;
     orientation: "portrait" | "landscape";
   } = $props();
 
@@ -30,13 +32,16 @@
 <div class="preview-pane" class:landscape={orientation === "landscape"}>
   <div class="preview-header">
     <span class="preview-label">Preview</span>
-    <button
-      type="button"
-      class="orientation-toggle"
-      onclick={() => (orientation = orientation === "portrait" ? "landscape" : "portrait")}
-    >
-      {orientation === "portrait" ? "Portrait" : "Landscape"}
-    </button>
+    <div class="preview-header-actions">
+      <button
+        type="button"
+        class="orientation-toggle"
+        onclick={() => (orientation = orientation === "portrait" ? "landscape" : "portrait")}
+      >
+        {orientation === "portrait" ? "Portrait" : "Landscape"}
+      </button>
+      <button type="button" class="add-button" onclick={onAdd}>+ Add</button>
+    </div>
   </div>
 
   <div class="phone" class:landscape={orientation === "landscape"}>
@@ -98,6 +103,12 @@
     flex-shrink: 0;
   }
 
+  .preview-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .preview-label {
     font-family: var(--font-heading);
     font-weight: 700;
@@ -108,6 +119,20 @@
   .orientation-toggle {
     background: var(--neutral-600);
     border: 1px solid var(--neutral-700);
+    color: var(--key-white);
+    border-radius: 4px;
+    padding: 4px 12px;
+    height: 28px;
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .add-button {
+    background: var(--primary-700);
+    border: 1px solid var(--primary-900);
+    box-shadow: 2px 2px 2px var(--primary-900);
     color: var(--key-white);
     border-radius: 4px;
     padding: 4px 12px;
