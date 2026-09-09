@@ -84,7 +84,7 @@ fn default_config() -> Config {
     Config {
         profiles: vec![Profile {
             id: profile_id.clone(),
-            name: "Default".to_string(),
+            name: "Default Profile".to_string(),
             pages: vec![Page {
                 id: new_id("page"),
                 name: None,
