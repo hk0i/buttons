@@ -1,6 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Button, Config, Page, Profile } from "$lib/types/button";
 
+// Matches the original Stream Deck's own Page cap — kept simple rather than
+// building a navigation UI that scales past what's actually usable to swipe
+// through.
+export const MAX_PAGES = 10;
+
 class ConfigStore {
   config = $state<Config | null>(null);
 
@@ -102,7 +107,7 @@ class ConfigStore {
 
   async addPage(name?: string) {
     const profile = this.activeProfile;
-    if (!profile) return;
+    if (!profile || profile.pages.length >= MAX_PAGES) return;
     const page: Page = { id: crypto.randomUUID(), name, buttons: [] };
     profile.pages.push(page);
     this.selectPage(page.id);

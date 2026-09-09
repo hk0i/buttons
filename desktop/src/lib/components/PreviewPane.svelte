@@ -3,7 +3,7 @@
   import { configStore } from "$lib/stores/config.svelte";
   import DeckButton from "./DeckButton.svelte";
   import ProfileSwitcher from "./ProfileSwitcher.svelte";
-  import PageTabs from "./PageTabs.svelte";
+  import PagePager from "./PagePager.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
 
   let {
@@ -76,42 +76,45 @@
     </div>
 
     <ProfileSwitcher />
-    <PageTabs />
   </div>
 
-  <div class="phone" class:landscape={orientation === "landscape"}>
-    <div class="button-grid">
-      {#each configStore.visibleButtons as button (button.id)}
-        <div
-          class="cell"
-          role="group"
-          draggable={button.content.type !== "back"}
-          ondragstart={(e) => {
-            if (button.content.type === "back") return;
-            draggedId = button.id;
-            e.dataTransfer?.setData("text/plain", button.id);
-          }}
-          ondragover={(e) => e.preventDefault()}
-          ondrop={(e) => {
-            e.preventDefault();
-            onDrop(button.id);
-          }}
-        >
-          <button
-            class="grid-button-wrapper"
-            type="button"
-            onclick={() => onSelect(button)}
-            ondblclick={() => fire(button)}
+  <div class="preview-main">
+    <div class="phone" class:landscape={orientation === "landscape"}>
+      <div class="button-grid">
+        {#each configStore.visibleButtons as button (button.id)}
+          <div
+            class="cell"
+            role="group"
+            draggable={button.content.type !== "back"}
+            ondragstart={(e) => {
+              if (button.content.type === "back") return;
+              draggedId = button.id;
+              e.dataTransfer?.setData("text/plain", button.id);
+            }}
+            ondragover={(e) => e.preventDefault()}
+            ondrop={(e) => {
+              e.preventDefault();
+              onDrop(button.id);
+            }}
           >
-            <DeckButton
-              icon={button.icon ?? (button.content.type === "back" ? "⬅" : undefined)}
-              label={button.label ?? (button.content.type === "back" ? "Back" : undefined)}
-              selected={button.id === selectedId}
-            />
-          </button>
-        </div>
-      {/each}
+            <button
+              class="grid-button-wrapper"
+              type="button"
+              onclick={() => onSelect(button)}
+              ondblclick={() => fire(button)}
+            >
+              <DeckButton
+                icon={button.icon ?? (button.content.type === "back" ? "⬅" : undefined)}
+                label={button.label ?? (button.content.type === "back" ? "Back" : undefined)}
+                selected={button.id === selectedId}
+              />
+            </button>
+          </div>
+        {/each}
+      </div>
     </div>
+
+    <PagePager />
   </div>
 </div>
 
@@ -155,6 +158,22 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+
+  /* Wraps the grid + pager together so the pager always renders directly
+     underneath the grid — the standard pager placement — in both
+     orientations, rather than living in the landscape sidebar where it'd
+     eat into already-scarce horizontal space. */
+  .preview-main {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .preview-pane.landscape .preview-main {
+    flex: 1;
+    min-height: 0;
   }
 
   .preview-header-actions {

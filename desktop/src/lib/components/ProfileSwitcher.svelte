@@ -1,18 +1,45 @@
 <script lang="ts">
   import { configStore } from "$lib/stores/config.svelte";
 
-  function createProfile() {
-    const name = prompt("New profile name:");
-    if (!name?.trim()) return;
-    configStore.createProfile(name.trim());
+  // window.prompt() doesn't render in Tauri's WKWebView (it needs the host
+  // to implement a native text-input panel delegate, which isn't wired up by
+  // default) — an inline input is the reliable cross-platform substitute.
+  // confirm() does have a default WKWebView implementation, so it's kept for
+  // delete's are-you-sure below.
+  let editing = $state<"create" | "rename" | null>(null);
+  let draftName = $state("");
+
+  function startCreate() {
+    editing = "create";
+    draftName = "";
   }
 
-  function renameProfile() {
+  function startRename() {
     const profile = configStore.activeProfile;
     if (!profile) return;
-    const name = prompt("Rename profile:", profile.name);
-    if (!name?.trim()) return;
-    configStore.renameProfile(profile.id, name.trim());
+    editing = "rename";
+    draftName = profile.name;
+  }
+
+  function cancelEdit() {
+    editing = null;
+    draftName = "";
+  }
+
+  function confirmEdit() {
+    const name = draftName.trim();
+    if (!name) return cancelEdit();
+    if (editing === "create") {
+      configStore.createProfile(name);
+    } else if (editing === "rename") {
+      const profile = configStore.activeProfile;
+      if (profile) configStore.renameProfile(profile.id, name);
+    }
+    cancelEdit();
+  }
+
+  function focusOnMount(node: HTMLInputElement) {
+    node.focus();
   }
 
   function deleteProfile() {
@@ -24,25 +51,40 @@
 </script>
 
 <div class="profile-switcher">
-  <select
-    value={configStore.activeProfile?.id}
-    onchange={(e) => configStore.switchProfile(e.currentTarget.value)}
-  >
-    {#each configStore.config?.profiles ?? [] as profile (profile.id)}
-      <option value={profile.id}>{profile.name}</option>
-    {/each}
-  </select>
-  <button type="button" onclick={createProfile} title="New profile">+</button>
-  <button type="button" onclick={renameProfile} title="Rename profile">✎</button>
-  <button
-    type="button"
-    class="danger"
-    onclick={deleteProfile}
-    disabled={(configStore.config?.profiles.length ?? 0) <= 1}
-    title="Delete profile"
-  >
-    ×
-  </button>
+  {#if editing}
+    <input
+      type="text"
+      bind:value={draftName}
+      placeholder="Profile name"
+      use:focusOnMount
+      onkeydown={(e) => {
+        if (e.key === "Enter") confirmEdit();
+        else if (e.key === "Escape") cancelEdit();
+      }}
+    />
+    <button type="button" onclick={confirmEdit} title="Confirm">✓</button>
+    <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
+  {:else}
+    <select
+      value={configStore.activeProfile?.id}
+      onchange={(e) => configStore.switchProfile(e.currentTarget.value)}
+    >
+      {#each configStore.config?.profiles ?? [] as profile (profile.id)}
+        <option value={profile.id}>{profile.name}</option>
+      {/each}
+    </select>
+    <button type="button" onclick={startCreate} title="New profile">+</button>
+    <button type="button" onclick={startRename} title="Rename profile">✎</button>
+    <button
+      type="button"
+      class="danger"
+      onclick={deleteProfile}
+      disabled={(configStore.config?.profiles.length ?? 0) <= 1}
+      title="Delete profile"
+    >
+      ×
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -52,7 +94,8 @@
     gap: 6px;
   }
 
-  select {
+  select,
+  input {
     flex: 1;
     min-width: 0;
     padding: 4px 8px;
@@ -63,6 +106,7 @@
     font-family: var(--font-body);
     font-size: 12px;
     height: 28px;
+    box-sizing: border-box;
   }
 
   button {
