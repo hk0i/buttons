@@ -253,9 +253,17 @@
     margin: 0;
   }
 
+  /* Fixed column count, not auto-fill: auto-fill recomputes *how many*
+     columns fit from raw pixel width and stretches them to fill the row, so
+     a shrinking phone would fit fewer, bigger buttons — backwards from what
+     a real device does. A fixed fraction-of-container column count instead
+     scales every button in lockstep with the phone itself, keeping "how many
+     buttons fit" an accurate, size-independent property of the device grid.
+     4 matches the density the old 80px-per-button floor implied at the
+     375px reference width. */
   .button-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     padding: 8px;
   }
 
