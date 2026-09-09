@@ -21,6 +21,12 @@
 
   const id = button?.id ?? crypto.randomUUID();
 
+  // Snapshot of where this button lives, captured once at open time — saves
+  // always target this fixed location, not wherever navigation has since
+  // moved on to (see config store's saveButtonAt).
+  const homePageId = configStore.currentPageId;
+  const homeFolderPath = [...configStore.folderStack];
+
   let label = $state(button?.label ?? "");
   let icon = $state(button?.icon ?? "");
   let actions = $state<Action[]>(
@@ -65,7 +71,7 @@
     const content: ButtonContent = isFolder
       ? { type: "folder", buttons: folderButtons }
       : { type: "actions", actions };
-    await configStore.saveButton({
+    await configStore.saveButtonAt(homePageId, homeFolderPath, {
       id,
       label: label || undefined,
       icon: icon || undefined,
@@ -74,12 +80,10 @@
   }
 
   // Navigates into this folder's own grid — same dispatch a double-click in
-  // the preview grid triggers. Flushes any pending autosave first: once
-  // enterFolder switches the store's navigation context, a *later* debounced
-  // persist() would resolve `visibleButtons` against the folder's own
-  // contents instead of wherever this button actually lives, nesting a copy
-  // of it inside itself. Then closes the editor — leaving it open would keep
-  // editing a button that's no longer even in view.
+  // the preview grid triggers. Flushes any pending autosave first so the
+  // folder-toggle change is on disk before its contents come into view, then
+  // closes the editor — leaving it open would keep editing a button that's
+  // no longer even in view.
   async function showContent() {
     clearTimeout(saveTimeout);
     await persist();
@@ -228,7 +232,7 @@
   async function remove() {
     clearTimeout(saveTimeout);
     if (button) {
-      await configStore.removeButton(button.id);
+      await configStore.removeButtonAt(homePageId, homeFolderPath, button.id);
     }
     onDeleted();
   }
@@ -240,10 +244,10 @@
     clearTimeout(saveTimeout);
     if (button) {
       // Revert any autosaved edits back to the last-saved values.
-      await configStore.saveButton({ id, label: button.label, icon: button.icon, content: button.content });
+      await configStore.saveButtonAt(homePageId, homeFolderPath, { id, label: button.label, icon: button.icon, content: button.content });
     } else if (hasAutosaved) {
       // Discard the draft that autosave created.
-      await configStore.removeButton(id);
+      await configStore.removeButtonAt(homePageId, homeFolderPath, id);
     }
     onCancelled();
   }

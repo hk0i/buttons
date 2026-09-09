@@ -8,11 +8,13 @@
     selectedId,
     onSelect,
     onAdd,
+    onNavigate,
     orientation = $bindable("portrait"),
   }: {
     selectedId: string | undefined;
     onSelect: (button: ButtonModel) => void;
     onAdd: () => void;
+    onNavigate: () => void;
     orientation: "portrait" | "landscape";
   } = $props();
 
@@ -35,7 +37,9 @@
 
   // Double-click "fires" a cell: run its actions, navigate into a Folder, or
   // navigate up on Back — the same dispatch the editor's own fire affordance
-  // (Test / Show Content / Go Back) will use once it's wired up.
+  // (Test / Show Content / Go Back) uses. Only entering a folder closes
+  // whatever editor is open — same reasoning as the editor's own Show
+  // Content, it'd otherwise be left open on a button no longer in view.
   async function fire(button: ButtonModel) {
     switch (button.content.type) {
       case "actions":
@@ -43,6 +47,7 @@
         break;
       case "folder":
         configStore.enterFolder(button);
+        onNavigate();
         break;
       case "back":
         configStore.exitFolder();

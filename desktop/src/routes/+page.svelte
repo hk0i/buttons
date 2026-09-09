@@ -45,6 +45,7 @@
         selectedId={selected && selected !== "new" ? selected.id : undefined}
         onSelect={(b) => (selected = b)}
         onAdd={startAdd}
+        onNavigate={() => (selected = undefined)}
         bind:orientation
       />
     </div>
