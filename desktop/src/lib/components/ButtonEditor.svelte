@@ -23,7 +23,9 @@
 
   let label = $state(button?.label ?? "");
   let icon = $state(button?.icon ?? "");
-  let actions = $state<Action[]>(button?.actions ? [...button.actions] : []);
+  let actions = $state<Action[]>(
+    button?.content.type === "actions" ? [...button.content.actions] : [],
+  );
 
   let hasAutosaved = $state(false);
   let saveTimeout: ReturnType<typeof setTimeout> | undefined;
@@ -50,7 +52,7 @@
       id,
       label: label || undefined,
       icon: icon || undefined,
-      actions,
+      content: { type: "actions", actions },
     });
   }
 
@@ -202,7 +204,7 @@
     clearTimeout(saveTimeout);
     if (button) {
       // Revert any autosaved edits back to the last-saved values.
-      await buttonStore.save({ id, label: button.label, icon: button.icon, actions: button.actions });
+      await buttonStore.save({ id, label: button.label, icon: button.icon, content: button.content });
     } else if (hasAutosaved) {
       // Discard the draft that autosave created.
       await buttonStore.remove(id);
