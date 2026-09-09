@@ -2,6 +2,8 @@
   import { invoke } from "@tauri-apps/api/core";
   import { configStore } from "$lib/stores/config.svelte";
   import DeckButton from "./DeckButton.svelte";
+  import ProfileSwitcher from "./ProfileSwitcher.svelte";
+  import PageTabs from "./PageTabs.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
 
   let {
@@ -58,18 +60,23 @@
 </script>
 
 <div class="preview-pane" class:landscape={orientation === "landscape"}>
-  <div class="preview-header">
-    <span class="preview-label">Preview</span>
-    <div class="preview-header-actions">
-      <button
-        type="button"
-        class="orientation-toggle"
-        onclick={() => (orientation = orientation === "portrait" ? "landscape" : "portrait")}
-      >
-        {orientation === "portrait" ? "Portrait" : "Landscape"}
-      </button>
-      <button type="button" class="add-button" onclick={onAdd}>+ Add</button>
+  <div class="preview-top">
+    <div class="preview-header">
+      <span class="preview-label">Preview</span>
+      <div class="preview-header-actions">
+        <button
+          type="button"
+          class="orientation-toggle"
+          onclick={() => (orientation = orientation === "portrait" ? "landscape" : "portrait")}
+        >
+          {orientation === "portrait" ? "Portrait" : "Landscape"}
+        </button>
+        <button type="button" class="add-button" onclick={onAdd}>+ Add</button>
+      </div>
     </div>
+
+    <ProfileSwitcher />
+    <PageTabs />
   </div>
 
   <div class="phone" class:landscape={orientation === "landscape"}>
@@ -120,6 +127,12 @@
     box-sizing: border-box;
   }
 
+  .preview-top {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .preview-header {
     display: flex;
     align-items: center;
@@ -134,11 +147,14 @@
     align-items: flex-start;
   }
 
+  .preview-pane.landscape .preview-top {
+    flex-shrink: 0;
+  }
+
   .preview-pane.landscape .preview-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    flex-shrink: 0;
   }
 
   .preview-header-actions {
