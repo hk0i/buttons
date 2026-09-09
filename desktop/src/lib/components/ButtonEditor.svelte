@@ -74,15 +74,22 @@
   }
 
   // Navigates into this folder's own grid — same dispatch a double-click in
-  // the preview grid triggers. Built from live local state rather than the
-  // (possibly stale) `button` prop so it works even mid-edit, before the
-  // folder toggle has autosaved.
-  function showContent() {
+  // the preview grid triggers. Flushes any pending autosave first: once
+  // enterFolder switches the store's navigation context, a *later* debounced
+  // persist() would resolve `visibleButtons` against the folder's own
+  // contents instead of wherever this button actually lives, nesting a copy
+  // of it inside itself. Then closes the editor — leaving it open would keep
+  // editing a button that's no longer even in view.
+  async function showContent() {
+    clearTimeout(saveTimeout);
+    await persist();
     configStore.enterFolder({ id, label, icon, content: { type: "folder", buttons: folderButtons } });
+    onSaved();
   }
 
   function goBack() {
     configStore.exitFolder();
+    onCancelled();
   }
 
   let newActionType = $state<Action["type"]>("launchApp");
