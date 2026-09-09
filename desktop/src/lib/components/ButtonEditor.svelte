@@ -1,6 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import type { Action, Button as ButtonModel, MediaKeyKind } from "$lib/types/button";
+  import type { Action, Button as ButtonModel, ButtonContent, MediaKeyKind } from "$lib/types/button";
   import { configStore } from "$lib/stores/config.svelte";
   import DeckButton from "./DeckButton.svelte";
   import LaunchAppField from "./LaunchAppField.svelte";
@@ -27,6 +27,19 @@
     button?.content.type === "actions" ? [...button.content.actions] : [],
   );
 
+  // A folder button's own nested grid. Kept around even while `isFolder` is
+  // off so toggling folder-ness on and off within one editing session (or
+  // just editing label/icon on an existing folder) never clobbers whatever
+  // nested buttons already live inside it.
+  let isFolder = $state(button?.content.type === "folder");
+  let folderButtons = $state<ButtonModel[]>(
+    button?.content.type === "folder" ? [...button.content.buttons] : newFolderButtons(),
+  );
+
+  function newFolderButtons(): ButtonModel[] {
+    return [{ id: crypto.randomUUID(), content: { type: "back" } }];
+  }
+
   let hasAutosaved = $state(false);
   let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -34,11 +47,12 @@
     // Reference every field so any edit re-arms the debounce below.
     label;
     icon;
+    isFolder;
     JSON.stringify(actions);
 
     // Don't autosave a blank new-button draft — avoids a phantom empty
     // tile showing up in the preview grid before the user types anything.
-    if (!label.trim() && !icon.trim() && actions.length === 0) return;
+    if (!label.trim() && !icon.trim() && actions.length === 0 && !isFolder) return;
 
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(persist, 500);
@@ -48,12 +62,27 @@
 
   async function persist() {
     hasAutosaved = true;
+    const content: ButtonContent = isFolder
+      ? { type: "folder", buttons: folderButtons }
+      : { type: "actions", actions };
     await configStore.saveButton({
       id,
       label: label || undefined,
       icon: icon || undefined,
-      content: { type: "actions", actions },
+      content,
     });
+  }
+
+  // Navigates into this folder's own grid — same dispatch a double-click in
+  // the preview grid triggers. Built from live local state rather than the
+  // (possibly stale) `button` prop so it works even mid-edit, before the
+  // folder toggle has autosaved.
+  function showContent() {
+    configStore.enterFolder({ id, label, icon, content: { type: "folder", buttons: folderButtons } });
+  }
+
+  function goBack() {
+    configStore.exitFolder();
   }
 
   let newActionType = $state<Action["type"]>("launchApp");
@@ -215,10 +244,9 @@
   let testResult = $state<{ ok: boolean; message: string } | null>(null);
 
   async function test() {
-    if (!button) return;
     testResult = null;
     try {
-      await invoke("press_button", { id: button.id });
+      await invoke("run_actions", { actions });
       testResult = { ok: true, message: "All actions ran successfully." };
     } catch (e) {
       testResult = { ok: false, message: String(e) };
@@ -226,76 +254,102 @@
   }
 </script>
 
-<div class="panel">
-  <h2>{button ? "Edit Button" : "Add Button"}</h2>
-
-  <div class="appearance-group">
-    <span class="section-label">Appearance</span>
-    <div class="identity-row">
-      <div class="icon-preview">
-        <DeckButton {icon} {label} />
-      </div>
-      <label class="label-field">
-        Button Label:
-        <input type="text" bind:value={label} placeholder="None" />
-      </label>
-      <label class="icon-field">
-        Icon:
-        <input type="text" bind:value={icon} placeholder="🔘" maxlength="4" />
-      </label>
+{#if button?.content.type === "back"}
+  <div class="panel">
+    <h2>Back</h2>
+    <div class="action-list">
+      <span class="section-label">Navigation</span>
+      <button type="button" class="primary" onclick={goBack}>Go Back</button>
+    </div>
+    <div class="footer-actions">
+      <button type="button" onclick={onCancelled}>Close</button>
     </div>
   </div>
+{:else}
+  <div class="panel">
+    <h2>{button ? "Edit Button" : "Add Button"}</h2>
 
-  <div class="action-list">
-    <span class="section-label">Actions</span>
-    {#each actions as action, index (index)}
-      <div class="action-row" class:editing={editingIndex === index} class:just-added={justAddedIndex === index}>
-        <span class="action-summary">{summarize(action)}</span>
-        <button type="button" onclick={() => startEditAction(index)}>✎</button>
-        <button type="button" onclick={() => moveAction(index, -1)} disabled={index === 0}>↑</button>
-        <button type="button" onclick={() => moveAction(index, 1)} disabled={index === actions.length - 1}>↓</button>
-        <button type="button" class="danger" onclick={() => removeAction(index)}>×</button>
+    <div class="appearance-group">
+      <span class="section-label">Appearance</span>
+      <div class="identity-row">
+        <div class="icon-preview">
+          <DeckButton {icon} {label} />
+        </div>
+        <label class="label-field">
+          Button Label:
+          <input type="text" bind:value={label} placeholder="None" />
+        </label>
+        <label class="icon-field">
+          Icon:
+          <input type="text" bind:value={icon} placeholder="🔘" maxlength="4" />
+        </label>
       </div>
-    {/each}
-
-    <div class="new-action" class:has-draft={hasPendingDraft}>
-      <select bind:value={newActionType}>
-        <option value="launchApp">Launch App</option>
-        <option value="hotkey">Hotkey</option>
-        <option value="mediaKey">Media Key</option>
-      </select>
-
-      {#if newActionType === "launchApp"}
-        <LaunchAppField bind:path={newPath} />
-      {:else if newActionType === "hotkey"}
-        <HotkeyField bind:keys={newKeys} bind:recording={isRecordingHotkey} />
-      {:else}
-        <MediaKeyField bind:key={newMediaKey} />
-      {/if}
-      {#if editingIndex === null}
-        <button type="button" class="primary" onclick={submitAction}>Add</button>
-      {:else}
-        <button type="button" onclick={stopEditingAction} aria-label="Done editing action">✕</button>
-      {/if}
+      <label class="folder-toggle">
+        <input type="checkbox" bind:checked={isFolder} />
+        Is folder
+      </label>
     </div>
-    {#if hasPendingDraft}
-      <p class="draft-hint">Unsaved — click Add to include this action.</p>
-    {/if}
-  </div>
 
-  {#if testResult}
-    <p class="test-result" class:error={!testResult.ok}>{testResult.message}</p>
-  {/if}
+    {#if isFolder}
+      <div class="action-list">
+        <span class="section-label">Content</span>
+        <button type="button" class="primary" onclick={showContent}>Show Content</button>
+      </div>
+    {:else}
+      <div class="action-list">
+        <span class="section-label">Actions</span>
+        {#each actions as action, index (index)}
+          <div class="action-row" class:editing={editingIndex === index} class:just-added={justAddedIndex === index}>
+            <span class="action-summary">{summarize(action)}</span>
+            <button type="button" onclick={() => startEditAction(index)}>✎</button>
+            <button type="button" onclick={() => moveAction(index, -1)} disabled={index === 0}>↑</button>
+            <button type="button" onclick={() => moveAction(index, 1)} disabled={index === actions.length - 1}>↓</button>
+            <button type="button" class="danger" onclick={() => removeAction(index)}>×</button>
+          </div>
+        {/each}
 
-  <div class="footer-actions">
-    {#if button}
-      <button type="button" class="primary" onclick={test}>Test</button>
-      <button type="button" class="danger" onclick={remove}>Delete</button>
+        <div class="new-action" class:has-draft={hasPendingDraft}>
+          <select bind:value={newActionType}>
+            <option value="launchApp">Launch App</option>
+            <option value="hotkey">Hotkey</option>
+            <option value="mediaKey">Media Key</option>
+          </select>
+
+          {#if newActionType === "launchApp"}
+            <LaunchAppField bind:path={newPath} />
+          {:else if newActionType === "hotkey"}
+            <HotkeyField bind:keys={newKeys} bind:recording={isRecordingHotkey} />
+          {:else}
+            <MediaKeyField bind:key={newMediaKey} />
+          {/if}
+          {#if editingIndex === null}
+            <button type="button" class="primary" onclick={submitAction}>Add</button>
+          {:else}
+            <button type="button" onclick={stopEditingAction} aria-label="Done editing action">✕</button>
+          {/if}
+        </div>
+        {#if hasPendingDraft}
+          <p class="draft-hint">Unsaved — click Add to include this action.</p>
+        {/if}
+      </div>
     {/if}
-    <button type="button" onclick={cancel}>Cancel</button>
-    <button type="button" class="primary" onclick={finish}>Done</button>
+
+    {#if testResult}
+      <p class="test-result" class:error={!testResult.ok}>{testResult.message}</p>
+    {/if}
+
+    <div class="footer-actions">
+      {#if button && !isFolder}
+        <button type="button" class="primary" onclick={test}>Test</button>
+      {/if}
+      {#if button}
+        <button type="button" class="danger" onclick={remove}>Delete</button>
+      {/if}
+      <button type="button" onclick={cancel}>Cancel</button>
+      <button type="button" class="primary" onclick={finish}>Done</button>
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
   .panel {
@@ -356,6 +410,14 @@
 
   .icon-field {
     width: 96px;
+  }
+
+  .folder-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    cursor: pointer;
   }
 
   .action-list {
