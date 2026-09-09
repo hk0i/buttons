@@ -76,6 +76,7 @@
     </div>
 
     <ProfileSwitcher />
+    <span class="page-label">{configStore.currentPageLabel}</span>
   </div>
 
   <div class="preview-main">
@@ -187,6 +188,13 @@
     font-weight: 700;
     font-size: 20px;
     color: var(--key-white);
+  }
+
+  .page-label {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--key-white);
+    opacity: 0.8;
   }
 
   .orientation-toggle {

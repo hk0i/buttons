@@ -26,6 +26,18 @@ class ConfigStore {
     return profile.pages.find((p) => p.id === this.currentPageId) ?? null;
   }
 
+  // Falls back to a positional "Page N" label — named pages are a real
+  // feature (a page-name concept the original Stream Deck doesn't have at
+  // all), but most pages will stay unnamed, and the pager itself is
+  // deliberately just numbers to stay compact.
+  get currentPageLabel(): string {
+    const page = this.currentPage;
+    if (!page) return "";
+    if (page.name) return page.name;
+    const index = this.activeProfile?.pages.findIndex((p) => p.id === page.id) ?? 0;
+    return `Page ${index + 1}`;
+  }
+
   // Resolves a Page id + folder-drill path down to the actual buttons array
   // it points at. Used both for the live `visibleButtons` (current nav
   // state) and for saves pinned to a *captured* path (see saveButtonAt) so
