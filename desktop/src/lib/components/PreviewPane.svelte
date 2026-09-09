@@ -90,7 +90,11 @@
             onclick={() => onSelect(button)}
             ondblclick={() => fire(button)}
           >
-            <DeckButton icon={button.icon} label={button.label} selected={button.id === selectedId} />
+            <DeckButton
+              icon={button.icon ?? (button.content.type === "back" ? "⬅" : undefined)}
+              label={button.label ?? (button.content.type === "back" ? "Back" : undefined)}
+              selected={button.id === selectedId}
+            />
           </button>
         </div>
       {/each}
