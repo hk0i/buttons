@@ -100,6 +100,38 @@ class ConfigStore {
     }
   }
 
+  async addPage(name?: string) {
+    const profile = this.activeProfile;
+    if (!profile) return;
+    const page: Page = { id: crypto.randomUUID(), name, buttons: [] };
+    profile.pages.push(page);
+    this.selectPage(page.id);
+    await this.persist();
+  }
+
+  async renamePage(id: string, name: string) {
+    const page = this.activeProfile?.pages.find((p) => p.id === id);
+    if (!page) return;
+    page.name = name.trim() || undefined;
+    await this.persist();
+  }
+
+  // Blocks removing the last remaining Page in a Profile — same "always at
+  // least one" invariant Profiles themselves carry, and matches how every
+  // Profile is bootstrapped with exactly one Page.
+  async removePage(id: string) {
+    const profile = this.activeProfile;
+    if (!profile || profile.pages.length <= 1) return;
+    const index = profile.pages.findIndex((p) => p.id === id);
+    if (index < 0) return;
+    const wasCurrent = this.currentPageId === id;
+    profile.pages.splice(index, 1);
+    if (wasCurrent) {
+      this.selectPage(profile.pages[0].id);
+    }
+    await this.persist();
+  }
+
   enterFolder(button: Button) {
     if (button.content.type !== "folder") return;
     this.folderStack = [...this.folderStack, button.id];
