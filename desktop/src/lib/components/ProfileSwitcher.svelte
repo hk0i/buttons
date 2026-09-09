@@ -1,12 +1,12 @@
 <script lang="ts">
   import { configStore } from "$lib/stores/config.svelte";
 
-  // window.prompt() doesn't render in Tauri's WKWebView (it needs the host
-  // to implement a native text-input panel delegate, which isn't wired up by
-  // default) — an inline input is the reliable cross-platform substitute.
-  // confirm() does have a default WKWebView implementation, so it's kept for
-  // delete's are-you-sure below.
-  let editing = $state<"create" | "rename" | null>(null);
+  // Neither window.prompt() nor window.confirm() work in Tauri's WKWebView
+  // without a native panel delegate the host wires up — prompt() renders
+  // nothing, and confirm() silently returns true (so a guarded destructive
+  // action fires with no dialog). Both the name inputs and the delete
+  // are-you-sure below are therefore inline UI, same substitute pattern.
+  let editing = $state<"create" | "rename" | "delete" | null>(null);
   let draftName = $state("");
 
   function startCreate() {
@@ -42,16 +42,24 @@
     node.focus();
   }
 
-  function deleteProfile() {
+  function startDelete() {
+    if (!configStore.activeProfile) return;
+    editing = "delete";
+  }
+
+  function confirmDelete() {
     const profile = configStore.activeProfile;
-    if (!profile) return;
-    if (!confirm(`Delete profile "${profile.name}"? This cannot be undone.`)) return;
-    configStore.deleteProfile(profile.id);
+    if (profile) configStore.deleteProfile(profile.id);
+    cancelEdit();
   }
 </script>
 
 <div class="profile-switcher">
-  {#if editing}
+  {#if editing === "delete"}
+    <span class="delete-prompt">Delete "{configStore.activeProfile?.name}"?</span>
+    <button type="button" class="danger" onclick={confirmDelete} title="Confirm delete">✓</button>
+    <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
+  {:else if editing}
     <input
       type="text"
       bind:value={draftName}
@@ -78,7 +86,7 @@
     <button
       type="button"
       class="danger"
-      onclick={deleteProfile}
+      onclick={startDelete}
       disabled={(configStore.config?.profiles.length ?? 0) <= 1}
       title="Delete profile"
     >
@@ -124,6 +132,17 @@
 
   button.danger:not(:disabled) {
     color: #ff8a75;
+  }
+
+  .delete-prompt {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--key-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   button:disabled {
