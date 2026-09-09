@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { buttonStore } from "$lib/stores/buttons.svelte";
+  import { configStore } from "$lib/stores/config.svelte";
   import DeckButton from "./DeckButton.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
 
@@ -19,13 +19,13 @@
 
   function onDrop(targetId: string) {
     if (!draggedId || draggedId === targetId) return;
-    const ids = buttonStore.buttons.map((b) => b.id);
+    const ids = configStore.visibleButtons.map((b) => b.id);
     const fromIndex = ids.indexOf(draggedId);
     const toIndex = ids.indexOf(targetId);
     ids.splice(fromIndex, 1);
     ids.splice(toIndex, 0, draggedId);
     draggedId = null;
-    buttonStore.reorder(ids);
+    configStore.reorderButtons(ids);
   }
 </script>
 
@@ -46,7 +46,7 @@
 
   <div class="phone" class:landscape={orientation === "landscape"}>
     <div class="button-grid">
-      {#each buttonStore.buttons as button (button.id)}
+      {#each configStore.visibleButtons as button (button.id)}
         <div
           class="cell"
           role="group"

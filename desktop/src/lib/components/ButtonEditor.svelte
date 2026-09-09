@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import type { Action, Button as ButtonModel, MediaKeyKind } from "$lib/types/button";
-  import { buttonStore } from "$lib/stores/buttons.svelte";
+  import { configStore } from "$lib/stores/config.svelte";
   import DeckButton from "./DeckButton.svelte";
   import LaunchAppField from "./LaunchAppField.svelte";
   import HotkeyField from "./HotkeyField.svelte";
@@ -48,7 +48,7 @@
 
   async function persist() {
     hasAutosaved = true;
-    await buttonStore.save({
+    await configStore.saveButton({
       id,
       label: label || undefined,
       icon: icon || undefined,
@@ -192,7 +192,7 @@
   async function remove() {
     clearTimeout(saveTimeout);
     if (button) {
-      await buttonStore.remove(button.id);
+      await configStore.removeButton(button.id);
     }
     onDeleted();
   }
@@ -204,10 +204,10 @@
     clearTimeout(saveTimeout);
     if (button) {
       // Revert any autosaved edits back to the last-saved values.
-      await buttonStore.save({ id, label: button.label, icon: button.icon, content: button.content });
+      await configStore.saveButton({ id, label: button.label, icon: button.icon, content: button.content });
     } else if (hasAutosaved) {
       // Discard the draft that autosave created.
-      await buttonStore.remove(id);
+      await configStore.removeButton(id);
     }
     onCancelled();
   }

@@ -1,7 +1,7 @@
 <script lang="ts">
   import "$lib/styles/tokens.css";
   import { onMount } from "svelte";
-  import { buttonStore } from "$lib/stores/buttons.svelte";
+  import { configStore } from "$lib/stores/config.svelte";
   import ButtonEditor from "$lib/components/ButtonEditor.svelte";
   import PreviewPane from "$lib/components/PreviewPane.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
@@ -10,7 +10,7 @@
   let orientation = $state<"portrait" | "landscape">("portrait");
 
   onMount(async () => {
-    await buttonStore.load();
+    await configStore.load();
   });
 
   function startAdd() {
@@ -18,7 +18,7 @@
   }
 
   function selectById(id: string | undefined) {
-    selected = buttonStore.buttons.find((b) => b.id === id) ?? buttonStore.buttons[0] ?? undefined;
+    selected = configStore.visibleButtons.find((b) => b.id === id) ?? configStore.visibleButtons[0] ?? undefined;
   }
 
   function onSaved() {
