@@ -93,7 +93,7 @@
 
   .app-header {
     background: var(--neutral-700);
-    padding: 10px 24px;
+    padding: 10px 16px;
     flex-shrink: 0;
   }
 
