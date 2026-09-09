@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/core";
   import { configStore } from "$lib/stores/config.svelte";
   import DeckButton from "./DeckButton.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
@@ -19,13 +20,34 @@
 
   function onDrop(targetId: string) {
     if (!draggedId || draggedId === targetId) return;
-    const ids = configStore.visibleButtons.map((b) => b.id);
+    const buttons = configStore.visibleButtons;
+    // buttons[0] is always Back once we're inside a folder — never a valid
+    // drop target, since nothing may land ahead of it.
+    if (buttons[0]?.content.type === "back" && targetId === buttons[0].id) return;
+    const ids = buttons.map((b) => b.id);
     const fromIndex = ids.indexOf(draggedId);
     const toIndex = ids.indexOf(targetId);
     ids.splice(fromIndex, 1);
     ids.splice(toIndex, 0, draggedId);
     draggedId = null;
     configStore.reorderButtons(ids);
+  }
+
+  // Double-click "fires" a cell: run its actions, navigate into a Folder, or
+  // navigate up on Back — the same dispatch the editor's own fire affordance
+  // (Test / Show Content / Go Back) will use once it's wired up.
+  async function fire(button: ButtonModel) {
+    switch (button.content.type) {
+      case "actions":
+        await invoke("run_actions", { actions: button.content.actions });
+        break;
+      case "folder":
+        configStore.enterFolder(button);
+        break;
+      case "back":
+        configStore.exitFolder();
+        break;
+    }
   }
 </script>
 
@@ -50,8 +72,9 @@
         <div
           class="cell"
           role="group"
-          draggable="true"
+          draggable={button.content.type !== "back"}
           ondragstart={(e) => {
+            if (button.content.type === "back") return;
             draggedId = button.id;
             e.dataTransfer?.setData("text/plain", button.id);
           }}
@@ -61,7 +84,12 @@
             onDrop(button.id);
           }}
         >
-          <button class="grid-button-wrapper" type="button" onclick={() => onSelect(button)}>
+          <button
+            class="grid-button-wrapper"
+            type="button"
+            onclick={() => onSelect(button)}
+            ondblclick={() => fire(button)}
+          >
             <DeckButton icon={button.icon} label={button.label} selected={button.id === selectedId} />
           </button>
         </div>
