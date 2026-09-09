@@ -267,6 +267,16 @@
     padding: 8px;
   }
 
+  /* Landscape's box is ~2.2x wider than tall, but its buttons are still
+     square — at the same 4 columns, that only leaves room for ~2 rows
+     before it scrolls. Doubling the column count halves each button's
+     size, which buys back roughly 4x the rows (since row count scales with
+     both the column count and the box's own width:height ratio),
+     landing in the 3-4 comfortable range this shape should fit. */
+  .phone.landscape .button-grid {
+    grid-template-columns: repeat(8, 1fr);
+  }
+
   .cell {
     padding: 6px;
     box-sizing: border-box;
