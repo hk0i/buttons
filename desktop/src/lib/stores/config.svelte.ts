@@ -55,6 +55,51 @@ class ConfigStore {
     this.folderStack = [];
   }
 
+  // Switching Profile is a lateral move, same as switching Page — it resets
+  // to that Profile's first Page, not another level of the folder stack.
+  async switchProfile(id: string) {
+    if (!this.config) return;
+    this.config.activeProfileId = id;
+    this.currentPageId = this.activeProfile?.pages[0]?.id ?? null;
+    this.folderStack = [];
+    await this.persist();
+  }
+
+  async createProfile(name: string) {
+    if (!this.config) return;
+    const profile: Profile = {
+      id: crypto.randomUUID(),
+      name,
+      pages: [{ id: crypto.randomUUID(), name: undefined, buttons: [] }],
+    };
+    this.config.profiles.push(profile);
+    await this.switchProfile(profile.id);
+  }
+
+  async renameProfile(id: string, name: string) {
+    const profile = this.config?.profiles.find((p) => p.id === id);
+    if (!profile) return;
+    profile.name = name;
+    await this.persist();
+  }
+
+  // Blocks deleting the last remaining Profile — there must always be at
+  // least one. If the deleted Profile was active, switches to whichever one
+  // is now first rather than requiring the caller to switch away first, so
+  // activeProfileId is never left pointing at a Profile that's gone.
+  async deleteProfile(id: string) {
+    if (!this.config || this.config.profiles.length <= 1) return;
+    const index = this.config.profiles.findIndex((p) => p.id === id);
+    if (index < 0) return;
+    const wasActive = this.config.activeProfileId === id;
+    this.config.profiles.splice(index, 1);
+    if (wasActive) {
+      await this.switchProfile(this.config.profiles[0].id);
+    } else {
+      await this.persist();
+    }
+  }
+
   enterFolder(button: Button) {
     if (button.content.type !== "folder") return;
     this.folderStack = [...this.folderStack, button.id];
