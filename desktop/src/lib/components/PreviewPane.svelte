@@ -164,16 +164,16 @@
   /* Wraps the grid + pager together so the pager always renders directly
      underneath the grid — the standard pager placement — in both
      orientations, rather than living in the landscape sidebar where it'd
-     eat into already-scarce horizontal space. */
+     eat into already-scarce horizontal space. flex:1 + both min-*:0 let it
+     absorb whatever space is left after preview-top, on whichever axis is
+     the container's main axis for the current orientation (height in
+     portrait's column layout, width in landscape's row layout). */
   .preview-main {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    min-width: 0;
-  }
-
-  .preview-pane.landscape .preview-main {
     flex: 1;
+    min-width: 0;
     min-height: 0;
   }
 
@@ -224,14 +224,20 @@
     cursor: pointer;
   }
 
+  /* Sized from *available height*, not width: flex:1 (within preview-main's
+     column) takes whatever vertical space is left after preview-top, and
+     width is derived from that via aspect-ratio — so the grid always fits
+     the window without an outer scrollbar, and still keeps an accurate,
+     device-proportional estimate of how many buttons actually fit on
+     screen, however tall or short the window is. */
   .phone {
     background: var(--neutral-600);
     border: 2px solid rgba(0, 0, 0, 0.3);
     border-radius: 8px;
     aspect-ratio: 375 / 812;
-    width: 100%;
-    min-width: 300px;
-    min-height: 300px;
+    flex: 1;
+    min-height: 0;
+    width: auto;
     max-width: 375px;
     margin: 0 auto;
     overflow: auto;
@@ -242,11 +248,9 @@
     aspect-ratio: 812 / 375;
     max-width: none;
     max-height: 50vh;
-    width: auto;
     height: 100%;
+    width: auto;
     margin: 0;
-    flex: 1;
-    min-width: 0;
   }
 
   .button-grid {

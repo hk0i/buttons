@@ -90,6 +90,11 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    /* No page-level scroll — this should read as a native app shell, not a
+       web page. Every pane below manages its own overflow internally
+       (.phone scrolls its simulated device screen, .editor-pane scrolls its
+       own form) rather than letting the whole window grow past its bounds. */
+    overflow: hidden;
   }
 
   .app-header {
