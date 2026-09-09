@@ -37,9 +37,9 @@
 
   // Double-click "fires" a cell: run its actions, navigate into a Folder, or
   // navigate up on Back — the same dispatch the editor's own fire affordance
-  // (Test / Show Content / Go Back) uses. Only entering a folder closes
-  // whatever editor is open — same reasoning as the editor's own Show
-  // Content, it'd otherwise be left open on a button no longer in view.
+  // (Test / Show Content / Go Back) uses. Either navigation direction closes
+  // whatever editor is open — that button lived in the context being left,
+  // so it's no longer even in view.
   async function fire(button: ButtonModel) {
     switch (button.content.type) {
       case "actions":
@@ -51,6 +51,7 @@
         break;
       case "back":
         configStore.exitFolder();
+        onNavigate();
         break;
     }
   }
