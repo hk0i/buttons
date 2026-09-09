@@ -117,30 +117,35 @@
     justAddedTimeout = setTimeout(() => (justAddedIndex = null), 1000);
   }
 
-  // EXPERIMENTAL (option a from the UX discussion): auto-commit the new-action
-  // draft the instant it becomes valid, instead of requiring an explicit Add
-  // click — mirrors the edit-in-place effect above. This is a feel test
-  // against option (b) (loud "unsaved draft" state + confirm-to-discard), not
-  // a settled decision. Known rough edge: Media Key has no empty/invalid
-  // state, so every dropdown change here adds a new action outright rather
-  // than updating a pending one.
-  $effect(() => {
-    if (editingIndex !== null) return;
+  // Option (b) from the UX discussion, chosen after (a) — auto-commit on
+  // valid — proved to have a structural problem: Media Key has no empty
+  // state, so its validity can't tell "user just switched the dropdown" from
+  // "user chose a value," and it either committed prematurely or (before that
+  // was caught) looped forever re-adding itself. Explicit Add avoids needing
+  // that distinction at all; hasPendingDraft below covers the original
+  // complaint (easy to forget to click Add) with a visible cue instead.
+  let hasPendingDraft = $derived(
+    editingIndex === null &&
+      (newActionType === "launchApp"
+        ? newPath.length > 0
+        : newActionType === "hotkey"
+          ? newKeys.length > 0
+          : true),
+  );
 
+  function submitAction() {
     if (newActionType === "launchApp") {
       if (!newPath) return;
       actions.push({ type: "launchApp", path: newPath });
-      newPath = "";
     } else if (newActionType === "hotkey") {
       if (newKeys.length === 0) return;
       actions.push({ type: "hotkey", keys: newKeys });
-      newKeys = [];
     } else {
       actions.push({ type: "mediaKey", key: newMediaKey });
     }
-
     flashJustAdded(actions.length - 1);
-  });
+    resetActionForm();
+  }
 
   function removeAction(index: number) {
     actions.splice(index, 1);
@@ -174,6 +179,9 @@
   }
 
   async function finish() {
+    if (hasPendingDraft && !confirm("You have an unsaved action that hasn't been added yet. Finish anyway and discard it?")) {
+      return;
+    }
     clearTimeout(saveTimeout);
     await persist();
     onSaved();
@@ -188,6 +196,9 @@
   }
 
   async function cancel() {
+    if (hasPendingDraft && !confirm("You have an unsaved action that hasn't been added yet. Cancel anyway and discard it?")) {
+      return;
+    }
     clearTimeout(saveTimeout);
     if (button) {
       // Revert any autosaved edits back to the last-saved values.
@@ -245,7 +256,7 @@
       </div>
     {/each}
 
-    <div class="new-action">
+    <div class="new-action" class:has-draft={hasPendingDraft}>
       <select bind:value={newActionType}>
         <option value="launchApp">Launch App</option>
         <option value="hotkey">Hotkey</option>
@@ -259,10 +270,15 @@
       {:else}
         <MediaKeyField bind:key={newMediaKey} />
       {/if}
-      {#if editingIndex !== null}
+      {#if editingIndex === null}
+        <button type="button" class="primary" onclick={submitAction}>Add</button>
+      {:else}
         <button type="button" onclick={stopEditingAction} aria-label="Done editing action">✕</button>
       {/if}
     </div>
+    {#if hasPendingDraft}
+      <p class="draft-hint">Unsaved — click Add to include this action.</p>
+    {/if}
   </div>
 
   {#if testResult}
@@ -382,11 +398,24 @@
     display: flex;
     gap: 6px;
     margin-top: 4px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px;
+  }
+
+  .new-action.has-draft {
+    border-color: var(--primary-700);
   }
 
   .new-action select {
     flex: 1;
     padding: 6px 10px;
+  }
+
+  .draft-hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--primary-700);
   }
 
   .test-result {
