@@ -9,12 +9,14 @@
 /* Begin PBXBuildFile section */
 		221A23501A89A9A828B9E3EB /* ButtonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D04EC729461F044FA826D5 /* ButtonModel.swift */; };
 		2878383CC3D7BAE9E5CC2F7F /* ButtonsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */; };
+		2930864723D0B952AEF34903 /* ButtonGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CFCD777C2F722E767A13EB /* ButtonGrid.swift */; };
 		B9735537876E8367A80D7744 /* DeckButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837BB78F51101BAAF346F8D2 /* DeckButton.swift */; };
 		DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3686FA433FAE977B75DC6256 /* MockConfig.swift */; };
 		DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C28D59F8850E9FAA3B917 /* ContentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		06CFCD777C2F722E767A13EB /* ButtonGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonGrid.swift; sourceTree = "<group>"; };
 		07A1855026025D3756DFE4E1 /* Buttons.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Buttons.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A5C28D59F8850E9FAA3B917 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3686FA433FAE977B75DC6256 /* MockConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockConfig.swift; sourceTree = "<group>"; };
@@ -35,6 +37,7 @@
 		36DC8992D4BE9318A8231118 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				06CFCD777C2F722E767A13EB /* ButtonGrid.swift */,
 				837BB78F51101BAAF346F8D2 /* DeckButton.swift */,
 			);
 			path = Views;
@@ -135,6 +138,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2930864723D0B952AEF34903 /* ButtonGrid.swift in Sources */,
 				221A23501A89A9A828B9E3EB /* ButtonModel.swift in Sources */,
 				2878383CC3D7BAE9E5CC2F7F /* ButtonsApp.swift in Sources */,
 				DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */,

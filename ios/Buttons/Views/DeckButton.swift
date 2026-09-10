@@ -1,12 +1,12 @@
 import SwiftUI
 
 /// One cell in the deck grid: a rounded tile showing the button's icon glyph
-/// over its label. Pure presentation — the grid owns tap handling and
-/// dispatches on `content`. A `.back` button with no icon/label of its own
-/// renders the ⬅ / "Back" fallback, matching desktop's `DeckButton.svelte`.
+/// over its label. Pure presentation — the grid owns tap handling (wrapping
+/// the cell in a `Button` styled with `DeckButtonStyle`) and dispatches on
+/// `content`. A `.back` button with no icon/label of its own renders the
+/// ⬅ / "Back" fallback, matching desktop's `DeckButton.svelte`.
 struct DeckButton: View {
     let button: ButtonModel
-    var isPressed = false
 
     private var isBack: Bool {
         if case .back = button.content {
@@ -39,26 +39,40 @@ struct DeckButton: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(8)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .opacity(isPressed ? 0.6 : 1)
-        .animation(.easeOut(duration: 0.1), value: isPressed)
+    }
+}
+
+/// Cell interaction feedback: dims the cell while the press is down. Kept
+/// with the cell view since it owns that look; applied by whatever wraps a
+/// `DeckButton` in a `Button` (the grid).
+struct DeckButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.6 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 
 #Preview {
     HStack {
-        DeckButton(button: ButtonModel(
-            id: "p1",
-            label: "Go Live",
-            icon: "🔴",
-            content: .actions([]),
-        ))
-        DeckButton(button: ButtonModel(
-            id: "p2",
-            label: nil,
-            icon: nil,
-            content: .back,
-        ), isPressed: true)
+        Button {} label: {
+            DeckButton(button: ButtonModel(
+                id: "p1",
+                label: "Go Live",
+                icon: "🔴",
+                content: .actions([]),
+            ))
+        }
+        Button {} label: {
+            DeckButton(button: ButtonModel(
+                id: "p2",
+                label: nil,
+                icon: nil,
+                content: .back,
+            ))
+        }
     }
+    .buttonStyle(DeckButtonStyle())
     .frame(height: 96)
     .padding()
 }
