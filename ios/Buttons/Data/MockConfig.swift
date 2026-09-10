@@ -3,15 +3,15 @@
 // Scaffolding: superseded by real config_sync data at step 7. See
 // docs/slices/05. Mobile Grid UI Static.spec.md § Type lifecycle.
 
-extension DeckButtonModel {
+extension ButtonModel {
     /// A regular action button.
     static func action(
         _ id: String,
         _ label: String,
         _ icon: String,
         _ actions: [Action] = [],
-    ) -> DeckButtonModel {
-        DeckButtonModel(id: id, label: label, icon: icon, content: .actions(actions))
+    ) -> ButtonModel {
+        ButtonModel(id: id, label: label, icon: icon, content: .actions(actions))
     }
 
     /// A folder button whose nested grid always opens with a Back cell at
@@ -21,9 +21,9 @@ extension DeckButtonModel {
         _ id: String,
         _ label: String,
         _ icon: String,
-        contents: [DeckButtonModel],
-    ) -> DeckButtonModel {
-        DeckButtonModel(
+        contents: [ButtonModel],
+    ) -> ButtonModel {
+        ButtonModel(
             id: id,
             label: label,
             icon: icon,
@@ -33,8 +33,8 @@ extension DeckButtonModel {
 
     /// The Back cell. Locked/non-editable this slice — nil label/icon, so the
     /// view falls back to ⬅ / "Back".
-    static func back(_ id: String) -> DeckButtonModel {
-        DeckButtonModel(id: id, label: nil, icon: nil, content: .back)
+    static func back(_ id: String) -> ButtonModel {
+        ButtonModel(id: id, label: nil, icon: nil, content: .back)
     }
 }
 
@@ -89,7 +89,7 @@ enum MockConfig {
         buttons: [
             .action("btn.app.obs", "OBS", "🎬", [.launchApp(path: "/Applications/OBS.app")]),
             .action("btn.app.discord", "Discord", "💬", [.launchApp(path: "/Applications/Discord.app")]),
-            DeckButtonModel(
+            ButtonModel(
                 id: "btn.app.terminal",
                 label: nil,
                 icon: "⌨️",
