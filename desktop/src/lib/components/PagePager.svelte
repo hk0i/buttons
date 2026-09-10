@@ -4,18 +4,18 @@
 
   // See ProfileSwitcher for why this is an inline input rather than
   // window.prompt() (doesn't render in Tauri's WKWebView).
-  let editing = $state(false);
+  let isEditing = $state(false);
   let draftName = $state("");
 
   function startRename() {
     const page = configStore.currentPage;
     if (!page) return;
     draftName = page.name ?? "";
-    editing = true;
+    isEditing = true;
   }
 
   function cancelEdit() {
-    editing = false;
+    isEditing = false;
     draftName = "";
   }
 
@@ -47,7 +47,7 @@
 </script>
 
 <div class="page-pager">
-  {#if editing}
+  {#if isEditing}
     <input
       type="text"
       bind:value={draftName}

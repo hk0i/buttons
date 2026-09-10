@@ -1,8 +1,8 @@
 <script lang="ts">
   let {
     keys = $bindable<string[]>([]),
-    recording = $bindable(false),
-  }: { keys?: string[]; recording?: boolean } = $props();
+    isRecording = $bindable(false),
+  }: { keys?: string[]; isRecording?: boolean } = $props();
 
   const modifierKeyNames = new Set(["Meta", "Control", "Alt", "Shift"]);
 
@@ -31,7 +31,7 @@
   // cancels rather than being recorded, matching how most hotkey recorders
   // behave.
   $effect(() => {
-    if (!recording) return;
+    if (!isRecording) return;
 
     function handleKeydown(event: KeyboardEvent) {
       event.preventDefault();
@@ -44,7 +44,7 @@
       if (event.shiftKey) modifiers.push("shift");
 
       if (event.key === "Escape" && modifiers.length === 0) {
-        recording = false;
+        isRecording = false;
         return;
       }
 
@@ -54,7 +54,7 @@
       }
 
       keys = [...modifiers, keyToToken(event.key)];
-      recording = false;
+      isRecording = false;
     }
 
     window.addEventListener("keydown", handleKeydown, true);
@@ -66,12 +66,12 @@
   }
 </script>
 
-<div class="hotkey-chips" class:recording>
+<div class="hotkey-chips" class:recording={isRecording}>
   {#each keys as key, index (index)}
     {#if index > 0}<span class="key-plus">+</span>{/if}
     <span class="key-chip">
       {key}
-      {#if !recording}
+      {#if !isRecording}
         <button
           type="button"
           class="chip-remove"
@@ -84,12 +84,12 @@
     </span>
   {:else}
     <span class="hotkey-placeholder">
-      {recording ? "Press keys…" : "No keys set"}
+      {isRecording ? "Press keys…" : "No keys set"}
     </span>
   {/each}
 </div>
-<button type="button" onclick={() => (recording = !recording)}>
-  {recording ? "Stop" : "Record"}
+<button type="button" onclick={() => (isRecording = !isRecording)}>
+  {isRecording ? "Stop" : "Record"}
 </button>
 
 <style>

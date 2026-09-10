@@ -350,7 +350,7 @@
           {#if newActionType === "launchApp"}
             <LaunchAppField bind:path={newPath} />
           {:else if newActionType === "hotkey"}
-            <HotkeyField bind:keys={newKeys} bind:recording={isRecordingHotkey} />
+            <HotkeyField bind:keys={newKeys} bind:isRecording={isRecordingHotkey} />
           {:else}
             <MediaKeyField bind:key={newMediaKey} />
           {/if}
