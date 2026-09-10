@@ -1,12 +1,13 @@
 <script lang="ts">
   import { configStore } from "$lib/stores/config.svelte";
+  import { confirm } from "$lib/stores/confirm.svelte";
 
-  // Neither window.prompt() nor window.confirm() work in Tauri's WKWebView
-  // without a native panel delegate the host wires up — prompt() renders
-  // nothing, and confirm() silently returns true (so a guarded destructive
-  // action fires with no dialog). Both the name inputs and the delete
-  // are-you-sure below are therefore inline UI, same substitute pattern.
-  let editing = $state<"create" | "rename" | "delete" | null>(null);
+  // window.prompt() doesn't render in Tauri's WKWebView (needs a native panel
+  // delegate the host isn't wiring up), so the create/rename name inputs below
+  // are inline UI rather than a blocking dialog. Delete, which is a yes/no,
+  // routes through the shared ConfirmDialog instead — see
+  // docs/slices/04a. ConfirmDialog.spec.md.
+  let editing = $state<"create" | "rename" | null>(null);
   let draftName = $state("");
 
   function startCreate() {
@@ -42,24 +43,21 @@
     node.focus();
   }
 
-  function startDelete() {
-    if (!configStore.activeProfile) return;
-    editing = "delete";
-  }
-
-  function confirmDelete() {
+  async function deleteProfile() {
     const profile = configStore.activeProfile;
-    if (profile) configStore.deleteProfile(profile.id);
-    cancelEdit();
+    if (!profile) return;
+    const ok = await confirm({
+      title: "Delete profile?",
+      body: `"${profile.name}" and all its pages will be removed. This can't be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (ok) configStore.deleteProfile(profile.id);
   }
 </script>
 
 <div class="profile-switcher">
-  {#if editing === "delete"}
-    <span class="delete-prompt">Delete "{configStore.activeProfile?.name}"?</span>
-    <button type="button" class="danger" onclick={confirmDelete} title="Confirm delete">✓</button>
-    <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
-  {:else if editing}
+  {#if editing}
     <input
       type="text"
       bind:value={draftName}
@@ -86,7 +84,7 @@
     <button
       type="button"
       class="danger"
-      onclick={startDelete}
+      onclick={deleteProfile}
       disabled={(configStore.config?.profiles.length ?? 0) <= 1}
       title="Delete profile"
     >
@@ -132,17 +130,6 @@
 
   button.danger:not(:disabled) {
     color: #ff8a75;
-  }
-
-  .delete-prompt {
-    flex: 1;
-    min-width: 0;
-    font-family: var(--font-body);
-    font-size: 12px;
-    color: var(--key-white);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   button:disabled {
