@@ -222,18 +222,21 @@
     }
   }
 
+  // Both Done and Cancel walk away from an in-progress action that was never
+  // added to the list. Returns true when it's safe to proceed — no draft, or
+  // the user chose to lose it.
+  async function okToDiscardDraft(confirmLabel: string): Promise<boolean> {
+    if (!hasPendingDraft) return true;
+    return confirm({
+      title: "Discard unsaved action?",
+      body: "You have an action that hasn't been added yet. Discard it?",
+      confirmLabel,
+      destructive: true,
+    });
+  }
+
   async function finish() {
-    if (
-      hasPendingDraft &&
-      !(await confirm({
-        title: "Discard unsaved action?",
-        body: "You have an action that hasn't been added yet. Finish anyway and discard it?",
-        confirmLabel: "Discard & finish",
-        destructive: true,
-      }))
-    ) {
-      return;
-    }
+    if (!(await okToDiscardDraft("Discard & finish"))) return;
     clearTimeout(saveTimeout);
     await persist();
     onSaved();
@@ -258,17 +261,7 @@
   }
 
   async function cancel() {
-    if (
-      hasPendingDraft &&
-      !(await confirm({
-        title: "Discard unsaved action?",
-        body: "You have an action that hasn't been added yet. Cancel anyway and discard it?",
-        confirmLabel: "Discard & close",
-        destructive: true,
-      }))
-    ) {
-      return;
-    }
+    if (!(await okToDiscardDraft("Discard & close"))) return;
     clearTimeout(saveTimeout);
     if (button) {
       // Revert any autosaved edits back to the last-saved values.
