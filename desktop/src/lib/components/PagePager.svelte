@@ -1,5 +1,6 @@
 <script lang="ts">
   import { configStore, MAX_PAGES } from "$lib/stores/config.svelte";
+  import { confirm } from "$lib/stores/confirm.svelte";
 
   // See ProfileSwitcher for why this is an inline input rather than
   // window.prompt() (doesn't render in Tauri's WKWebView).
@@ -32,9 +33,16 @@
     configStore.addPage();
   }
 
-  function removePage() {
+  async function removePage() {
     const page = configStore.currentPage;
-    if (page) configStore.removePage(page.id);
+    if (!page) return;
+    const ok = await confirm({
+      title: "Delete page?",
+      body: `"${configStore.currentPageLabel}" and all its buttons will be removed. This can't be undone.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (ok) configStore.removePage(page.id);
   }
 </script>
 
