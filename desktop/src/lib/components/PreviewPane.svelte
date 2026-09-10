@@ -2,7 +2,6 @@
   import { invoke } from "@tauri-apps/api/core";
   import { configStore } from "$lib/stores/config.svelte";
   import DeckButton from "./DeckButton.svelte";
-  import ProfileSwitcher from "./ProfileSwitcher.svelte";
   import PagePager from "./PagePager.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
 
@@ -75,7 +74,6 @@
       </div>
     </div>
 
-    <ProfileSwitcher />
     <span class="page-label">{configStore.currentPageLabel}</span>
   </div>
 

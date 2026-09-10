@@ -4,6 +4,7 @@
   import { configStore } from "$lib/stores/config.svelte";
   import ButtonEditor from "$lib/components/ButtonEditor.svelte";
   import PreviewPane from "$lib/components/PreviewPane.svelte";
+  import ProfileSwitcher from "$lib/components/ProfileSwitcher.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
 
   let selected = $state<ButtonModel | "new" | undefined>(undefined);
@@ -37,6 +38,9 @@
 <div class="app">
   <header class="app-header">
     <h1>Buttons</h1>
+    <div class="header-profile">
+      <ProfileSwitcher />
+    </div>
   </header>
 
   <div class="app-body" class:landscape={orientation === "landscape"}>
@@ -101,6 +105,10 @@
     background: var(--neutral-700);
     padding: 10px 16px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
   }
 
   .app-header h1 {
@@ -109,6 +117,25 @@
     font-size: 24px;
     margin: 0;
     color: var(--key-white);
+  }
+
+  /* Cap the switcher's width so it sits as a control beside the title rather
+     than stretching the whole window (its <select> is flex:1 internally).
+     min-width:0 lets it shrink below content width at narrow windows so the
+     header never overflows. */
+  .header-profile {
+    flex: 0 1 320px;
+    min-width: 0;
+  }
+
+  /* ProfileSwitcher's controls carry a --neutral-700 border — the exact
+     colour of this header's background, so it would vanish. Lift it to a
+     visible edge only where the switcher sits here; the component's own
+     styles (tuned for the darker preview pane) stay untouched. */
+  .header-profile :global(select),
+  .header-profile :global(input),
+  .header-profile :global(button) {
+    border-color: var(--neutral-500);
   }
 
   .app-body {
@@ -167,9 +194,10 @@
     }
 
     .editor-pane.active {
-      position: fixed;
+      /* Fills .app-body (its position:relative ancestor) — which already
+         starts below the header — so no header-height magic number. */
+      position: absolute;
       inset: 0;
-      top: 46px;
       background: var(--neutral-600);
       z-index: 10;
     }
