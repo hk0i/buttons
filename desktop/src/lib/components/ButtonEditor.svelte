@@ -2,6 +2,8 @@
   import { invoke } from "@tauri-apps/api/core";
   import type { Action, Button as ButtonModel, ButtonContent, MediaKeyKind } from "$lib/types/button";
   import { configStore } from "$lib/stores/config.svelte";
+  // Shadows window.confirm(), which silently returns true in Tauri's WKWebView.
+  import { confirm } from "$lib/stores/confirm.svelte";
   import DeckButton from "./DeckButton.svelte";
   import LaunchAppField from "./LaunchAppField.svelte";
   import HotkeyField from "./HotkeyField.svelte";
@@ -221,7 +223,15 @@
   }
 
   async function finish() {
-    if (hasPendingDraft && !confirm("You have an unsaved action that hasn't been added yet. Finish anyway and discard it?")) {
+    if (
+      hasPendingDraft &&
+      !(await confirm({
+        title: "Discard unsaved action?",
+        body: "You have an action that hasn't been added yet. Finish anyway and discard it?",
+        confirmLabel: "Discard & finish",
+        destructive: true,
+      }))
+    ) {
       return;
     }
     clearTimeout(saveTimeout);
@@ -230,6 +240,16 @@
   }
 
   async function remove() {
+    const name = button?.label?.trim();
+    const ok = await confirm({
+      title: "Delete button?",
+      body: name
+        ? `"${name}" will be removed. This can't be undone.`
+        : "This button will be removed. This can't be undone.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     clearTimeout(saveTimeout);
     if (button) {
       await configStore.removeButtonAt(homePageId, homeFolderPath, button.id);
@@ -238,7 +258,15 @@
   }
 
   async function cancel() {
-    if (hasPendingDraft && !confirm("You have an unsaved action that hasn't been added yet. Cancel anyway and discard it?")) {
+    if (
+      hasPendingDraft &&
+      !(await confirm({
+        title: "Discard unsaved action?",
+        body: "You have an action that hasn't been added yet. Cancel anyway and discard it?",
+        confirmLabel: "Discard & close",
+        destructive: true,
+      }))
+    ) {
       return;
     }
     clearTimeout(saveTimeout);
