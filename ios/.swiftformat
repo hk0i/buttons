@@ -1,0 +1,37 @@
+# SwiftFormat config for /ios — brew-installed `swiftformat` (0.63.x).
+#
+# Run from /ios, pointing explicitly at this file so a developer's global
+# ~/.swiftformat is not merged in (keeps formatting hermetic to the repo):
+#
+#   swiftformat --config .swiftformat .            # format
+#   swiftformat --lint --config .swiftformat .     # check only, no writes
+#
+# Rationale lives in /CLAUDE.md § Framework Conventions → Swift formatting.
+# The load-bearing choices: fixed one-indent continuation (never align to an
+# open paren), and one-parameter-per-line ONLY when a signature is too wide.
+
+--swiftversion 6.2
+
+--indent 4
+--tabwidth 4
+--maxwidth 100
+
+# Wrap after "(" with each item on its own line and ")" on its own line —
+# but only when the declaration/call exceeds --maxwidth. Short signatures
+# stay on one line.
+--wrapparameters before-first
+--wraparguments before-first
+--wrapcollections before-first
+--closingparen balanced
+
+# Kills Xcode's align-continuation-to-the-open-paren behavior. This is
+# SwiftFormat's default; pinned here so the convention is explicit.
+--xcodeindentation disabled
+
+# With before-first wrapping, a trailing comma makes adding an argument a
+# one-line diff. Argument-list trailing commas require Swift 6.1+ (we're 6.2).
+--trailingcommas always
+
+# Authoring choice, not formatting: don't rewrite regular `//` comments into
+# `///` doc comments.
+--disable docComments
