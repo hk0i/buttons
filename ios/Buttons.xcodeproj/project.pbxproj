@@ -7,17 +7,37 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		221A23501A89A9A828B9E3EB /* ButtonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D04EC729461F044FA826D5 /* ButtonModel.swift */; };
 		2878383CC3D7BAE9E5CC2F7F /* ButtonsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */; };
+		DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3686FA433FAE977B75DC6256 /* MockConfig.swift */; };
 		DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C28D59F8850E9FAA3B917 /* ContentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		07A1855026025D3756DFE4E1 /* Buttons.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Buttons.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A5C28D59F8850E9FAA3B917 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3686FA433FAE977B75DC6256 /* MockConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockConfig.swift; sourceTree = "<group>"; };
 		53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonsApp.swift; sourceTree = "<group>"; };
+		C9D04EC729461F044FA826D5 /* ButtonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		094EC9A9A197F83EFBCC3004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				C9D04EC729461F044FA826D5 /* ButtonModel.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		62E2248C3CB453BD757644CA /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				3686FA433FAE977B75DC6256 /* MockConfig.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
 		6432DABB2588754B89104AA4 = {
 			isa = PBXGroup;
 			children = (
@@ -31,6 +51,8 @@
 			children = (
 				53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */,
 				0A5C28D59F8850E9FAA3B917 /* ContentView.swift */,
+				62E2248C3CB453BD757644CA /* Data */,
+				094EC9A9A197F83EFBCC3004 /* Models */,
 			);
 			path = Buttons;
 			sourceTree = "<group>";
@@ -102,8 +124,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				221A23501A89A9A828B9E3EB /* ButtonModel.swift in Sources */,
 				2878383CC3D7BAE9E5CC2F7F /* ButtonsApp.swift in Sources */,
 				DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */,
+				DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
