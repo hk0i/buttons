@@ -72,6 +72,7 @@
     <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
   {:else}
     <select
+      aria-label="Active profile"
       value={configStore.activeProfile?.id}
       onchange={(e) => configStore.switchProfile(e.currentTarget.value)}
     >
