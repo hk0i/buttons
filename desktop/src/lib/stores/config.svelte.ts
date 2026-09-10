@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { Button, Config, Page, Profile } from "$lib/types/button";
+import { getLastPageId, setLastPageId } from "$lib/stores/navState";
 
 // Matches the original Stream Deck's own Page cap — kept simple rather than
 // building a navigation UI that scales past what's actually usable to swipe
@@ -9,9 +10,11 @@ export const MAX_PAGES = 10;
 class ConfigStore {
   config = $state<Config | null>(null);
 
-  // UI-local navigation state — never persisted. currentPageId selects among
-  // the active Profile's Pages; folderStack holds the ids of Folder buttons
-  // drilled into so far, deepest last.
+  // UI-local navigation state. currentPageId selects among the active
+  // Profile's Pages and is remembered device-local per Profile (see
+  // navState.ts) — restored on launch / Profile switch, never on the wire.
+  // folderStack holds the ids of Folder buttons drilled into so far, deepest
+  // last, and is deliberately not persisted.
   currentPageId = $state<string | null>(null);
   folderStack = $state<string[]>([]);
 
@@ -61,15 +64,27 @@ class ConfigStore {
     return this.buttonsAt(this.currentPageId, this.folderStack);
   }
 
+  // The fallback chain for restoring a Profile's view: its device-local
+  // stored page if that page still exists, else its first Page. Read-only —
+  // restoring is not a user choice, so it never writes back (only an
+  // explicit selectPage() records one).
+  private pageIdFor(profile: Profile | null): string | null {
+    if (!profile) return null;
+    const stored = getLastPageId(profile.id);
+    if (stored && profile.pages.some((p) => p.id === stored)) return stored;
+    return profile.pages[0]?.id ?? null;
+  }
+
   async load() {
     this.config = await invoke<Config>("get_config");
-    this.currentPageId = this.activeProfile?.pages[0]?.id ?? null;
+    this.currentPageId = this.pageIdFor(this.activeProfile);
     this.folderStack = [];
   }
 
   selectPage(pageId: string) {
     this.currentPageId = pageId;
     this.folderStack = [];
+    if (this.config) setLastPageId(this.config.activeProfileId, pageId);
   }
 
   // Switching Profile is a lateral move, same as switching Page — it resets
@@ -77,7 +92,7 @@ class ConfigStore {
   async switchProfile(id: string) {
     if (!this.config) return;
     this.config.activeProfileId = id;
-    this.currentPageId = this.activeProfile?.pages[0]?.id ?? null;
+    this.currentPageId = this.pageIdFor(this.activeProfile);
     this.folderStack = [];
     await this.persist();
   }
