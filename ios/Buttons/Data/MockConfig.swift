@@ -32,7 +32,7 @@ extension ButtonModel {
     }
 
     /// The Back cell. Locked/non-editable this slice — nil label/icon, so the
-    /// view falls back to ⬅ / "Back".
+    /// view falls back to ⬅️ / "Back".
     static func back(_ id: String) -> ButtonModel {
         ButtonModel(id: id, label: nil, icon: nil, content: .back)
     }

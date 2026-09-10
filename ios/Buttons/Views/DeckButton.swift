@@ -4,7 +4,7 @@ import SwiftUI
 /// over its label. Pure presentation — the grid owns tap handling (wrapping
 /// the cell in a `Button` styled with `DeckButtonStyle`) and dispatches on
 /// `content`. A `.back` button with no icon/label of its own renders the
-/// ⬅ / "Back" fallback, matching desktop's `DeckButton.svelte`.
+/// ⬅️ / "Back" fallback, matching desktop's `DeckButton.svelte`.
 struct DeckButton: View {
     let button: ButtonModel
 
@@ -16,7 +16,7 @@ struct DeckButton: View {
     }
 
     private var glyph: String? {
-        button.icon ?? (isBack ? "⬅" : nil)
+        button.icon ?? (isBack ? "⬅️" : nil)
     }
 
     private var caption: String? {
