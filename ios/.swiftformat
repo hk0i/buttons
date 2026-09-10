@@ -7,18 +7,23 @@
 #   swiftformat --lint --config .swiftformat .     # check only, no writes
 #
 # Rationale lives in /CLAUDE.md § Framework Conventions → Swift formatting.
-# The load-bearing choices: fixed one-indent continuation (never align to an
-# open paren), and one-parameter-per-line ONLY when a signature is too wide.
+# The load-bearing choices:
+#   1. Fixed one-indent continuation — never align to an open paren.
+#   2. The AUTHOR decides whether a parameter/argument list is one-line or
+#      one-item-per-line; SwiftFormat only normalizes the shape you chose
+#      (indent, trailing comma, ")" placement) and force-wraps a line that
+#      exceeds --maxwidth. It never collapses a multi-line list back to one
+#      line. So: write it on one line if it should be one line; break it
+#      after "(" with one item per line if each deserves its own line.
 
 --swiftversion 6.2
 
 --indent 4
 --tabwidth 4
---maxwidth 100
+--maxwidth 120
 
-# Wrap after "(" with each item on its own line and ")" on its own line —
-# but only when the declaration/call exceeds --maxwidth. Short signatures
-# stay on one line.
+# When a list is wrapped (by the author, or by exceeding --maxwidth): break
+# after "(", one item per line, ")" on its own line.
 --wrapparameters before-first
 --wraparguments before-first
 --wrapcollections before-first

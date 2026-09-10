@@ -24,15 +24,15 @@ struct Page: Identifiable {
 
 struct Button: Identifiable {
     let id: String
-    var label: String?          // nil-vs-empty is load-bearing: the .back
-    var icon: String?           // fallback (⬅ / "Back") fires on nil
+    var label: String? // nil-vs-empty is load-bearing: the .back
+    var icon: String? // fallback (⬅ / "Back") fires on nil
     var content: ButtonContent
 }
 
 enum ButtonContent {
     case actions([Action])
-    case folder([Button])       // buttons[0] is always .back
-    case back                   // no payload; pops one nav level
+    case folder([Button]) // buttons[0] is always .back
+    case back // no payload; pops one nav level
 }
 
 enum Action {
