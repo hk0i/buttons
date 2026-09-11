@@ -64,11 +64,11 @@ descriptions. Most likely section to need a diagram — prefer a Mermaid
 
 ## Functional Requirements
 
-**[Component A]**
+### [Component A]
 1. [One behavior per line. Testable — a reader should be able to check it
    off.]
 
-**[Component B]**
+### [Component B]
 1. [Same.]
 
 ## Assumptions & Constraints *(rename to fit — e.g. "Network Assumptions")*

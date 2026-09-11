@@ -124,3 +124,11 @@ nothing in this repo cites one of these items by its number.
 Decision: the random-access-pointer benefit outweighs both costs. Numbered
 lists are the standard going forward, full stop — including new lists in
 existing docs, not just new docs.
+
+**Bold vs. heading.** A standalone line that labels the block of content
+beneath it is a heading (`#`, one level below its parent) — not bold text.
+Bold is for a label/value lead-in inline with its value (`**Verification:**`
+followed by the content) or emphasis inside running prose. A bold-only line
+introducing its own sub-section (e.g. a tier, a component, a Goals/
+Non-Goals split) belongs in the document's outline/TOC, which only a real
+heading gives it.

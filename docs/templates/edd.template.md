@@ -33,10 +33,10 @@ the PRD's, focused on *how*, not *why*.]
 
 ## 2. Goals & Non-Goals
 
-**Goals** *(technical, derived from the PRD)*
+### Goals *(technical, derived from the PRD)*
 1. [...]
 
-**Non-Goals**
+### Non-Goals
 1. [...]
 
 ## 3. Background & Motivation *(delete if there's no real history to record)*
