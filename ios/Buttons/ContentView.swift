@@ -36,6 +36,10 @@ struct ContentView: View {
             }
         }
         .tabViewStyle(.page)
+        // Default page-indicator dots are unselected-gray on a transparent
+        // background — invisible against this screen's white ground.
+        // `.always` forces the system's translucent backdrop behind them.
+        .indexViewStyle(.page(backgroundDisplayMode: .always))
     }
 }
 
