@@ -1,8 +1,23 @@
 # protocol
 
-Empty placeholder. The real protobuf schema lands here at roadmap step 6
-(Protobuf codegen prototype), informed by the UI work in steps 2-5. See
-`docs/01. Architecture Overview.edd.md`.
+`buttons.proto` is the data-model schema (`Config`/`Profile`/`Page`/`Button`/
+`Action`) — the single source of truth, translating the shape
+`desktop/src/lib/types/button.ts` and `ios/Buttons/Models/ButtonModel.swift`
+validated in slices 2-5. See
+`docs/slices/06. Protobuf Codegen Prototype.spec.md` for the full design
+rationale and the deliberate findings this schema produced, and
+`docs/01. Architecture Overview.edd.md` for the wider architecture.
+
+`verify-rust/`, `verify-swift/`, `verify-kotlin/` are standalone codegen +
+round-trip prototype packages (`prost`, `swift-protobuf`, `com.squareup.wire`
+respectively) — they prove the schema generates and compiles in all three
+target languages before anything in `/desktop`, `/ios`, or `/android`
+depends on it (that's roadmap step 7, and step 12 for Android). Run
+`cargo test` / `swift test` / `gradle test` in each to verify.
+
+**Wire envelope messages** (`pair_request`, `config_sync`, `button_press`,
+etc.) aren't in `buttons.proto` yet — those get designed at step 7 alongside
+the real connection code, not guessed at here.
 
 This directory is also the home for the **normative wire-protocol
 specification** — the message catalog, field shapes, and pairing sequence.

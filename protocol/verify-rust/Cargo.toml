@@ -1,0 +1,14 @@
+[package]
+name = "verify-rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "buttons_proto"
+path = "src/lib.rs"
+
+[dependencies]
+prost = "0.14"
+
+[build-dependencies]
+prost-build = "0.14"

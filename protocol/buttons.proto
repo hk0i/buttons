@@ -1,0 +1,61 @@
+// protocol/buttons.proto — the Buttons data-model schema (Config/Profile/
+// Page/Button/Action). Single source of truth for generated Rust (prost),
+// Swift (swift-protobuf), and Kotlin (wire, provisional — see
+// docs/01. Architecture Overview.edd.md Open Questions) types.
+//
+// Does NOT include the wire envelope (pair_request/config_sync/button_press/
+// etc.) — that's designed at roadmap step 7, alongside the real connection
+// code. See docs/slices/06. Protobuf Codegen Prototype.spec.md for the full
+// design rationale and the deliberate findings this schema produced.
+
+syntax = "proto3";
+package buttons;
+
+message Config {
+  repeated Profile profiles = 1;
+  string active_profile_id = 2;
+}
+
+message Profile {
+  string id = 1;
+  string name = 2;
+  repeated Page pages = 3;
+}
+
+message Page {
+  string id = 1;
+  optional string name = 2;
+  repeated Button buttons = 3;
+}
+
+message Button {
+  string id = 1;
+  optional string label = 2;
+  optional string icon = 3; // emoji/text glyph, per slice 2's convention
+  oneof content {           // flat numbering space with id/label/icon above —
+    ActionList actions = 4; // don't restart the oneof at 1, it'd collide
+    FolderContent folder = 5;
+    Back back = 6;
+  }
+}
+message ActionList { repeated Action actions = 1; } // doubled key on purpose — see spec finding 6
+message FolderContent { repeated Button buttons = 1; } // buttons[0] is always Back
+message Back {} // no payload; pops one nav level
+
+message Action {
+  oneof action {
+    LaunchApp launch_app = 1;
+    Hotkey hotkey = 2;
+    MediaKeyKind media_key = 3;
+  }
+}
+message LaunchApp { string path = 1; }
+message Hotkey { repeated string keys = 1; } // e.g. ["cmd","shift","s"]; F13-F24 by name
+
+enum MediaKeyKind {
+  MEDIA_KEY_KIND_UNSPECIFIED = 0;
+  MEDIA_KEY_KIND_PLAY_PAUSE = 1;
+  MEDIA_KEY_KIND_MUTE = 2;
+  MEDIA_KEY_KIND_NEXT_TRACK = 3;
+  MEDIA_KEY_KIND_PREVIOUS_TRACK = 4;
+}
