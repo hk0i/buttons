@@ -1,10 +1,7 @@
 import SwiftUI
 
 /// App root: a horizontally paged container over the active Profile's Pages
-/// (mock data — `MockConfig`, no networking/pairing this slice). Swiping
-/// between Pages is locked while any Page's folder is open, per the spec's
-/// Navigation diagram — `isFolderOpen` is written by whichever `PageGrid`
-/// is currently visible.
+/// (mock data — `MockConfig`, no networking/pairing this slice).
 struct ContentView: View {
     private let profile = MockConfig.config.profiles[0]
 
@@ -15,20 +12,25 @@ struct ContentView: View {
         _currentPageId = State(initialValue: MockConfig.config.profiles[0].pages.first?.id ?? "")
     }
 
-    var body: some View {
-        if isFolderOpen {
-            // Swallow drags past a small threshold so a folder-open swipe
-            // can't also page the TabView, while leaving plain taps (near-
-            // zero movement) free to reach the grid's buttons underneath.
-            pager.highPriorityGesture(DragGesture(minimumDistance: 20))
-        } else {
-            pager
+    /// Swiping between Pages is locked while any Page's folder is open, per
+    /// the spec's Navigation diagram. Feeding `TabView` only the current
+    /// Page — rather than gesture suppression — is the fix: a SwiftUI
+    /// `.gesture`/`.highPriorityGesture` cannot reliably out-prioritize
+    /// `TabView(.page)`'s own internal (UIKit) swipe recognizer, so a short
+    /// swipe still paged through even at `minimumDistance: 20`. With one
+    /// element, the pager has nowhere else to go — no gesture race at all.
+    private var visiblePages: [Page] {
+        guard isFolderOpen,
+              let current = profile.pages.first(where: { $0.id == currentPageId })
+        else {
+            return profile.pages
         }
+        return [current]
     }
 
-    private var pager: some View {
+    var body: some View {
         TabView(selection: $currentPageId) {
-            ForEach(profile.pages) { page in
+            ForEach(visiblePages) { page in
                 PageGrid(page: page, isFolderOpen: $isFolderOpen)
                     .tag(page.id)
             }
