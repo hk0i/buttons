@@ -2,11 +2,18 @@
 //! `docs/slices/06. Protobuf Codegen Prototype.spec.md`. Not depended on by
 //! `/desktop` or `/ios`.
 
-include!(concat!(env!("OUT_DIR"), "/buttons.rs"));
+// Wrapped in a real module, not included flat at crate root — mirrors the
+// namespacing Kotlin/`wire` gets for free from JVM packages (`package
+// buttons`), and is why Rust doesn't need Swift's `Buttons_` prefix. Also
+// keeps this crate's `buttons::Config` distinguishable from
+// `desktop/src-tauri`'s own `config::Config` once step 7's repoint happens.
+pub mod buttons {
+    include!(concat!(env!("OUT_DIR"), "/buttons.rs"));
+}
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::buttons::*;
     use prost::Message;
 
     fn sample_config() -> Config {
