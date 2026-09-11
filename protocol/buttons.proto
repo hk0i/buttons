@@ -4,9 +4,11 @@
 // docs/01. Architecture Overview.edd.md Open Questions) types.
 //
 // Does NOT include the wire envelope (pair_request/config_sync/button_press/
-// etc.) — that's designed at roadmap step 7, alongside the real connection
-// code. See docs/slices/06. Protobuf Codegen Prototype.spec.md for the full
-// design rationale and the deliberate findings this schema produced.
+// etc.) — that's in wire.proto, designed at roadmap step 7 alongside the
+// real connection code. See
+// docs/slices/07. Discovery, Pairing & Config Sync.spec.md for the wire
+// design rationale, and docs/slices/06. Protobuf Codegen Prototype.spec.md
+// for this schema's own design rationale and deliberate findings.
 
 syntax = "proto3";
 package buttons;
