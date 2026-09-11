@@ -18,6 +18,8 @@ the PRD's TL;DR. Point to the PRD for product rationale.]
 > fact, or constraint. Write for a human skimming and an agent executing:
 > concrete nouns, exact names, exact commands, not vague gestures at intent.
 > Use a Mermaid diagram instead of prose for any topology, sequence, or flow.
+> Use numbered lists (`1.`, `2.`, ...), not `-` bullets — see CONTRIBUTING.md
+> § Documentation style.
 
 ---
 
@@ -32,10 +34,10 @@ the PRD's, focused on *how*, not *why*.]
 ## 2. Goals & Non-Goals
 
 **Goals** *(technical, derived from the PRD)*
-- [...]
+1. [...]
 
 **Non-Goals**
-- [...]
+1. [...]
 
 ## 3. Background & Motivation *(delete if there's no real history to record)*
 
@@ -82,7 +84,7 @@ number with no reasoning attached.]
 
 ## 6. Alternatives Considered
 
-- **[Option]:** rejected/deferred — [one line why].
+1. **[Option]:** rejected/deferred — [one line why].
 
 ## 7. Cross-Cutting Concerns
 
@@ -100,7 +102,7 @@ it.]
 
 ## Open Questions
 
-- [Same rule as the PRD: only real unresolved items.]
+1. [Same rule as the PRD: only real unresolved items.]
 
 ## Sources
 

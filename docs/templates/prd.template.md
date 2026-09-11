@@ -18,6 +18,8 @@ able to read only this line and know what's being built.]
 > fact, or constraint. Write for a human skimming and an agent executing:
 > concrete nouns, exact names, exact commands, not vague gestures at intent.
 > Use a Mermaid diagram instead of prose for any topology, sequence, or flow.
+> Use numbered lists (`1.`, `2.`, ...), not `-` bullets — see CONTRIBUTING.md
+> § Documentation style.
 
 ---
 
@@ -28,12 +30,12 @@ background essay — if context is needed, one line, not a story.]
 
 ## Goals
 
-- [What "done" looks like, as outcomes — not features. One line each.]
+1. [What "done" looks like, as outcomes — not features. One line each.]
 
 ## Non-Goals
 
-- [Explicitly out of scope. This section prevents scope creep more than any
-  other — be specific, not just "everything else."]
+1. [Explicitly out of scope. This section prevents scope creep more than any
+   other — be specific, not just "everything else."]
 
 ## Competitive Positioning *(delete if not applicable)*
 
@@ -46,7 +48,7 @@ Skip entirely for internal/non-competitive work.]
 
 ## Target Users
 
-- **[Persona]:** [what they need from this, one line]
+1. **[Persona]:** [what they need from this, one line]
 
 ## Use Cases
 
@@ -77,7 +79,7 @@ yet.]
 
 ## Success Metrics
 
-- [Measurable or falsifiable. "Feels fast" is not a metric; "under 50ms" is.]
+1. [Measurable or falsifiable. "Feels fast" is not a metric; "under 50ms" is.]
 
 ## Decisions
 
@@ -86,8 +88,8 @@ yet.]
 
 ## Open Questions
 
-- [Only genuinely unresolved items. Give each an owner or a trigger for when
-  it gets resolved, not a permanent "TBD."]
+1. [Only genuinely unresolved items. Give each an owner or a trigger for when
+   it gets resolved, not a permanent "TBD."]
 
 ## Future Vision *(delete if not applicable)*
 
@@ -96,7 +98,7 @@ doesn't foreclose it later. Short — a pointer, not a spec.]
 
 ## Sources
 
-- [Links for any external research this PRD relies on.]
+1. [Links for any external research this PRD relies on.]
 
 ## Next Step
 

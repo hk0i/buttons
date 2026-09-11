@@ -90,8 +90,29 @@ discussion.
 
 ## Pull requests
 
-- Keep changes small and focused — one logical change per PR.
-- Match the surrounding code's style and conventions.
-- If a change touches behavior, say how you verified it.
-- Design-level changes: open an issue or discussion first, and expect the
-  relevant `docs/` file to be updated as part of the PR.
+1. Keep changes small and focused — one logical change per PR.
+2. Match the surrounding code's style and conventions.
+3. If a change touches behavior, say how you verified it.
+4. Design-level changes: open an issue or discussion first, and expect the
+   relevant `docs/` file to be updated as part of the PR.
+
+## Documentation style
+
+Numbered lists (`1.`, `2.`, ...) are the default list style in all docs in
+this repo — `docs/`, this file, `protocol/`, `spikes/` READMEs — not `-`
+bullets. Decided 2026-09-11.
+
+**Why:** a number is a stable pointer into an otherwise-unordered list of
+points — "see point 4" instead of restating the point's content to refer to
+it. That property holds in conversation, in review comments, and across a
+diff.
+
+**Known costs, accepted anyway:**
+
+1. Inserting or removing an item renumbers everything after it, touching
+   lines that didn't otherwise change.
+2. That renumbering adds diff noise beyond the actual edit.
+
+Decision: the random-access-pointer benefit outweighs both costs. Numbered
+lists are the standard going forward, full stop — including new lists in
+existing docs, not just new docs.

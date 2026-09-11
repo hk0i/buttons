@@ -19,12 +19,14 @@ lasting reference. -->
 > fact, or constraint. Write for a human skimming and an agent executing:
 > concrete nouns, exact names, exact commands, not vague gestures at intent.
 > Use a Mermaid diagram instead of prose for any multi-step exchange.
+> Use numbered lists (`1.`, `2.`, ...), not `-` bullets — see CONTRIBUTING.md
+> § Documentation style.
 
 ---
 
 ## Scope
 
-**In:** [Exactly what this slice does. Bullet list, no ambiguity.]
+**In:** [Exactly what this slice does. Numbered list, no ambiguity.]
 
 **Out:** [Explicitly excluded — especially anything adjacent that would be
 tempting to also do while in here. This is the scope fence.]
@@ -35,7 +37,7 @@ tempting to also do while in here. This is the scope fence.]
 
 ## Files to Touch
 
-- `path/to/file` — [create/modify] — [one line: what changes]
+1. `path/to/file` — [create/modify] — [one line: what changes]
 
 > **Rule for agent:** don't touch files outside this list without flagging
 > it first.
@@ -54,7 +56,7 @@ it.]
 
 ## Definition of Done
 
-- [ ] [Observable behavior — what you can see/do once this works.]
+1. [ ] [Observable behavior — what you can see/do once this works.]
 
 **Verification:**
 ```

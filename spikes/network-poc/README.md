@@ -41,9 +41,9 @@ the protobuf bytes and pipe them in as a **binary** frame:
 printf '\x0a\x05hello' | websocat -b --one-message ws://<desktop-ip>:8765
 ```
 
-- `\x0a` — protobuf tag byte for field 1 (`text`), wire type 2 (length-delimited)
-- `\x05` — length of the string that follows, as a single-byte varint
-- `hello` — the UTF-8 text; update the length byte to match if you change it
+1. `\x0a` — protobuf tag byte for field 1 (`text`), wire type 2 (length-delimited)
+2. `\x05` — length of the string that follows, as a single-byte varint
+3. `hello` — the UTF-8 text; update the length byte to match if you change it
 
 `-b` sends the input as one binary WebSocket frame instead of line-buffered
 text — this matters because the tag byte `0x0a` is also an ASCII newline, so
