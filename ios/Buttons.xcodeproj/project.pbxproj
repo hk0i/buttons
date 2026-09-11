@@ -13,6 +13,7 @@
 		B9735537876E8367A80D7744 /* DeckButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837BB78F51101BAAF346F8D2 /* DeckButton.swift */; };
 		DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3686FA433FAE977B75DC6256 /* MockConfig.swift */; };
 		DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C28D59F8850E9FAA3B917 /* ContentView.swift */; };
+		EC0A3040A35010EFA593DD6C /* PageGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648E4D92C87862C1BAAF00C6 /* PageGrid.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,6 +22,7 @@
 		0A5C28D59F8850E9FAA3B917 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3686FA433FAE977B75DC6256 /* MockConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockConfig.swift; sourceTree = "<group>"; };
 		53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonsApp.swift; sourceTree = "<group>"; };
+		648E4D92C87862C1BAAF00C6 /* PageGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageGrid.swift; sourceTree = "<group>"; };
 		837BB78F51101BAAF346F8D2 /* DeckButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckButton.swift; sourceTree = "<group>"; };
 		C9D04EC729461F044FA826D5 /* ButtonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -39,6 +41,7 @@
 			children = (
 				06CFCD777C2F722E767A13EB /* ButtonGrid.swift */,
 				837BB78F51101BAAF346F8D2 /* DeckButton.swift */,
+				648E4D92C87862C1BAAF00C6 /* PageGrid.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -144,6 +147,7 @@
 				DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */,
 				B9735537876E8367A80D7744 /* DeckButton.swift in Sources */,
 				DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */,
+				EC0A3040A35010EFA593DD6C /* PageGrid.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
