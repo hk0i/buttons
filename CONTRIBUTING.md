@@ -107,6 +107,14 @@ points — "see point 4" instead of restating the point's content to refer to
 it. That property holds in conversation, in review comments, and across a
 diff.
 
+**Rule: every list restarts at `1.`.** A `**Bold Label**` or `###` heading
+that introduces a new sub-group of items starts a new list — never continue
+a global count across it (`1,2,3` then, under the next label, `4,5` instead
+of restarting at `1,2`). Some renderers fail to render an ordered list at
+all when its first item's number is greater than 1, and a restarting-per-
+group list carries no less information than a globally-numbered one, since
+nothing in this repo cites one of these items by its number.
+
 **Known costs, accepted anyway:**
 
 1. Inserting or removing an item renumbers everything after it, touching
