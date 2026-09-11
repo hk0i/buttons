@@ -1,0 +1,40 @@
+// protocol/wire.proto — the wire envelope schema (pair_request/pair_response/
+// config_sync) for the desktop↔mobile WebSocket connection. Designed at
+// roadmap step 7, alongside the real connection code — see
+// docs/slices/07. Discovery, Pairing & Config Sync.spec.md for the full
+// design rationale, the pairing sequence, and the deliberate findings this
+// schema produced.
+//
+// button_press/action_result/state_push/profile_switch (roadmap steps 8-10)
+// are not here yet — the Envelope oneof adding a case later for these is
+// non-breaking.
+
+syntax = "proto3";
+package buttons;
+
+import "buttons.proto";
+
+message Envelope {
+  string protocol_version = 1; // "1" for this slice; bumped on breaking change
+  oneof message {
+    PairRequest pair_request = 2;
+    PairResponse pair_response = 3;
+    ConfigSync config_sync = 4;
+  }
+}
+
+message PairRequest {
+  string token = 1; // the QR's one-time token, OR a stored persistent auth_token
+}
+
+message PairResponse {
+  bool ok = 1;
+  optional string auth_token = 2; // present iff ok — same value on every
+                                   // successful reconnect, no rotation (v1)
+  optional string error = 3;      // present iff !ok
+}
+
+message ConfigSync {
+  Config config = 1; // buttons.Config from buttons.proto — the whole thing,
+                      // every Profile, per EDD §5.2's decision
+}
