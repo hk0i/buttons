@@ -32,11 +32,11 @@ private struct RootView: View {
         Group {
             if connection.isConnected {
                 // TODO(slice 07, Files to Touch #19): bind real
-                // `connection.configSync` once ContentView/PageGrid/
+                // `connection.configSync` once DeckView/PageGrid/
                 // ButtonGrid/DeckButton accept `Buttons_Config` instead of
                 // `MockConfig` — not done yet, so this still renders mock
                 // data even once actually paired.
-                ContentView()
+                DeckView()
             } else {
                 PairingView(session: session)
             }

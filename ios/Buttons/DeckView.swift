@@ -2,7 +2,7 @@ import SwiftUI
 
 /// App root: a horizontally paged container over the active Profile's Pages
 /// (mock data — `MockConfig`, no networking/pairing this slice).
-struct ContentView: View {
+struct DeckView: View {
     private let profile = MockConfig.config.profiles[0]
 
     @State private var currentPageId: String
@@ -44,5 +44,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    DeckView()
 }
