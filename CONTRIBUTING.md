@@ -160,6 +160,17 @@ comments, which this doesn't constrain.
    retroactively rather than stranding the reasoning in a code comment.
 5. Link symbol names with backticks (`` `TypeName` ``) — Swift-DocC and
    rustdoc both turn these into jump-links once docs are actually built.
+6. If the summary line explains the function better than its name does,
+   rename the function and shorten (or delete) the summary. A summary that
+   merely restates the identifier is dead weight; a summary that's *more
+   precise* than the identifier means the identifier is underspecified —
+   move the precision into the name. Applies to the summary line only:
+   preconditions, nil/empty semantics, side effects, and thread
+   requirements often can't live in a name and stay in `- Parameter:` /
+   `- Returns:` / `- Note:`. Stopping condition: if the name would need
+   more than a few words to carry the meaning, the meaning belongs in the
+   comment — prefer argument labels (`endpoint(forDeviceId:)`) over a
+   longer base name.
 
 **Not done yet:** a repo-wide pass bringing existing comments to this style
 — planned as a follow-up, not blocking work in progress. New and
