@@ -99,13 +99,15 @@ final class DesktopConnection: NSObject {
         isConnected = false
     }
 
-    /// Fails the in-flight pairing attempt if nothing has resolved it within 10s.
+    /// Fails the in-flight pairing attempt if nothing has resolved it within `seconds`.
+    ///
+    /// - Parameter seconds: How long to wait before giving up. Defaults to 10.
     // A blocked Local Network permission doesn't fail the socket open —
     // it just delivers nothing (Implementation Notes #10.2: no pre-check
     // API, denial makes traffic vanish silently) — so this is the only
     // thing that ends a hung attempt. A real success/failure always
     // cancels this first, so it can never override one.
-    private func scheduleTimeout() {
+    private func scheduleTimeout(after seconds: TimeInterval = 10) {
         pairTimeout?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
@@ -116,7 +118,7 @@ final class DesktopConnection: NSObject {
             self.disconnect()
         }
         pairTimeout = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
     }
 
     private func connectWebSocket(to url: URL) {

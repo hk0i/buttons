@@ -132,3 +132,35 @@ followed by the content) or emphasis inside running prose. A bold-only line
 introducing its own sub-section (e.g. a tier, a component, a Goals/
 Non-Goals split) belongs in the document's outline/TOC, which only a real
 heading gives it.
+
+## Doc comments (code)
+
+Decided 2026-09-12, per slice 07 review. Applies to `///` (Swift, Rust) /
+`/** */` (Kotlin, TypeScript) doc comments — not `//`/`/* */` implementation
+comments, which this doesn't constrain.
+
+1. Summary is one sentence: third-person verb, ends with a period. Don't
+   restate what the signature already says.
+2. Use the language's structured fields instead of a prose paragraph —
+   Swift: `- Parameter:`, `- Returns:`, `- Throws:`, `- Note:`, `- Important:`.
+   Rust: `# Arguments`, `# Returns`, `# Panics`. Tooling (Xcode Quick Help
+   and Swift-DocC, `cargo doc`) renders these distinctly; an undifferentiated
+   paragraph just becomes a wall of text.
+3. Rationale belongs in a `//` comment, not the doc comment — why an
+   alternative was rejected, a bug this fixes, a cross-reference to a slice
+   spec section. The doc comment is the contract for a caller; `//` is the
+   argument for whoever reads the diff next. A slice-spec reference (`Files
+   to Touch #N`, `Scope → Out item N`) especially belongs in `//` — it rots
+   the moment that slice ships, and isn't useful to a caller either way.
+4. Naming rationale — why this name and not an obviously-confusable one —
+   belongs in the slice spec / EDD, not in code, unless the name is
+   genuinely likely to be misused by someone unfamiliar with the codebase.
+   Decide names during doc planning; when a better name surfaces mid-
+   implementation instead, change it in code and update the spec/EDD
+   retroactively rather than stranding the reasoning in a code comment.
+5. Link symbol names with backticks (`` `TypeName` ``) — Swift-DocC and
+   rustdoc both turn these into jump-links once docs are actually built.
+
+**Not done yet:** a repo-wide pass bringing existing comments to this style
+— planned as a follow-up, not blocking work in progress. New and
+touched-in-passing comments follow this style starting now.
