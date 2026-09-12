@@ -18,6 +18,14 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_buttons._tcp</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Buttons needs your camera to scan the desktop's pairing code.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Buttons uses your local network to find and connect to the desktop app.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>
