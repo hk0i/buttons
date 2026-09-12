@@ -116,8 +116,8 @@ final class PairingCoordinator {
             return
         }
         lastError = nil
-        connection.connect(host: payload.host, port: payload.port, token: payload.token) { [weak self] (outcome: PairOutcome) in
-            switch outcome {
+        connection.connect(host: payload.host, port: payload.port, token: payload.token) { [weak self] (result: PairResult) in
+            switch result {
             case .success(let authToken):
                 PairingStore.save(StoredPairing(deviceId: payload.deviceId, authToken: authToken))
             case .failure(let message):
@@ -132,8 +132,8 @@ final class PairingCoordinator {
     /// nothing new needs writing to Keychain here.
     func reconnect(stored: StoredPairing, endpoint: NWEndpoint) {
         lastError = nil
-        connection.connect(toBonjourEndpoint: endpoint, token: stored.authToken) { [weak self] (outcome: PairOutcome) in
-            if case .failure(let message) = outcome {
+        connection.connect(toBonjourEndpoint: endpoint, token: stored.authToken) { [weak self] (result: PairResult) in
+            if case .failure(let message) = result {
                 self?.lastError = message
             }
         }

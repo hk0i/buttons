@@ -5,7 +5,7 @@ import Network
 /// a human-readable reason on failure. Not `Result<String, String>` —
 /// `String` doesn't conform to `Error`, and defining a throwaway `Error`
 /// wrapper just to satisfy that is more ceremony than this needs.
-enum PairOutcome {
+enum PairResult {
     case success(String)
     case failure(String)
 }
@@ -35,7 +35,7 @@ final class DesktopConnection: NSObject {
     /// `Pairing.swift` uses this (not polling `isConnected`/`pairError`) to
     /// know precisely when it's safe to write Keychain: only a resolved
     /// `PairResponse` means a real `auth_token` exists to store.
-    private var pairCompletion: ((PairOutcome) -> Void)?
+    private var pairCompletion: ((PairResult) -> Void)?
 
     /// Reconnect path: a Bonjour endpoint already resolved by
     /// `DesktopDiscovery` (matched by stored `device_id`). Resolution goes
@@ -45,7 +45,7 @@ final class DesktopConnection: NSObject {
     func connect(
         toBonjourEndpoint endpoint: NWEndpoint,
         token: String,
-        onPairResult: ((PairOutcome) -> Void)? = nil
+        onPairResult: ((PairResult) -> Void)? = nil
     ) {
         guard case let .service(name, type, domain, _) = endpoint else {
             pairError = "not a Bonjour service endpoint"
@@ -68,7 +68,7 @@ final class DesktopConnection: NSObject {
         host: String,
         port: UInt16,
         token: String,
-        onPairResult: ((PairOutcome) -> Void)? = nil
+        onPairResult: ((PairResult) -> Void)? = nil
     ) {
         pendingToken = token
         pairCompletion = onPairResult
@@ -151,13 +151,21 @@ final class DesktopConnection: NSObject {
     private func handle(_ envelope: Buttons_Envelope) {
         switch envelope.message {
         case .pairResponse(let response):
-            if response.ok {
+            // wire.proto: auth_token is "present iff ok" — checked, not
+            // trusted, same reasoning as protocol_version (Implementation
+            // Notes #2). A desktop bug/protocol drift sending ok:true with
+            // no auth_token must not write an empty-string token to
+            // Keychain — that bricks every future reconnect with no
+            // recovery short of deleting the app.
+            if response.ok, response.hasAuthToken {
                 isConnected = true
                 pairError = nil
                 pairCompletion?(.success(response.authToken))
             } else {
                 isConnected = false
-                let message = response.hasError ? response.error : "pairing failed"
+                let message = response.hasError
+                    ? response.error
+                    : (response.ok ? "server reported success with no auth token" : "pairing failed")
                 pairError = message
                 pairCompletion?(.failure(message))
             }
