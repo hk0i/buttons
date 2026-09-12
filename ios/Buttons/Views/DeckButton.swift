@@ -1,5 +1,19 @@
 import SwiftUI
 
+/// `optional` scalar fields in proto3 don't map to Swift `Optional` — see
+/// the EDD's Mobile subsection for why (cross-language codegen
+/// consistency + proto3's own presence history). Reading `.icon`/`.label`
+/// directly is a silent footgun: absent reads back as `""`, not nil, so a
+/// forgotten `hasIcon`/`hasLabel` check doesn't crash, it just renders
+/// wrong (an empty glyph instead of the `.back` fallback). These give the
+/// safe form a name to reach for instead of re-deriving the ternary at
+/// every call site — named after the existing `String.nilIfEmpty`-style
+/// convention, not invented here.
+extension Buttons_Button {
+    var iconOrNil: String? { hasIcon ? icon : nil }
+    var labelOrNil: String? { hasLabel ? label : nil }
+}
+
 /// One cell in the deck grid: a rounded tile showing the button's icon glyph
 /// over its label. Pure presentation — the grid owns tap handling (wrapping
 /// the cell in a `Button` styled with `DeckButtonStyle`) and dispatches on
@@ -16,11 +30,11 @@ struct DeckButton: View {
     }
 
     private var glyph: String? {
-        button.hasIcon ? button.icon : (isBack ? "⬅️" : nil)
+        button.iconOrNil ?? (isBack ? "⬅️" : nil)
     }
 
     private var caption: String? {
-        button.hasLabel ? button.label : (isBack ? "Back" : nil)
+        button.labelOrNil ?? (isBack ? "Back" : nil)
     }
 
     var body: some View {
