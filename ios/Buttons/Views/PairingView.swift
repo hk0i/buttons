@@ -57,7 +57,7 @@ struct PairingView: View {
         case .cameraPreAsk:
             preAskView
         case .cameraDenied:
-            openSettingsView
+            cameraDeniedView
         case .scanning:
             scannerView
         case .connecting:
@@ -71,11 +71,22 @@ struct PairingView: View {
     ///
     /// The silent reconnect (`statusText`, below) is a background
     /// convenience layered on top — never a gate on the manual path.
+    // `.notFound` also offers Open Settings alongside the scan action:
+    // mDNS browsing produces no error at all when Local Network access is
+    // denied (NWBrowser just never calls back with results), so this case
+    // can't be attributed to permission-vs-desktop-actually-off the way a
+    // WebSocket connect failure can (see Connection.swift's
+    // pairingFailureMessage). Naming both possible causes and offering
+    // both actions is what actually closes the gap, not a guess.
     private var landingView: some View {
         VStack(spacing: 20) {
             statusText
             Button("Scan QR Code") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
+            if session.autoReconnectState == .notFound {
+                Button("Open Settings", action: openSystemSettings)
+                    .buttonStyle(.bordered)
+            }
         }
     }
 
@@ -92,7 +103,7 @@ struct PairingView: View {
                     .multilineTextAlignment(.center)
             }
         case .notFound:
-            Text("Couldn't find your paired desktop automatically — scan its QR code to reconnect.")
+            Text("Couldn't find your paired desktop automatically. It may be off, or this app's Local Network access may be off — scan its QR code, or check Settings.")
                 .multilineTextAlignment(.center)
         }
     }
@@ -159,7 +170,7 @@ struct PairingView: View {
         }
     }
 
-    private var openSettingsView: some View {
+    private var cameraDeniedView: some View {
         VStack(spacing: 16) {
             Text("Buttons can't scan without camera access.")
                 .multilineTextAlignment(.center)

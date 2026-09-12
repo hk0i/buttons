@@ -142,9 +142,21 @@ final class DesktopConnection: NSObject {
     private func send(_ envelope: Buttons_Envelope) {
         do {
             let json = try envelope.jsonString()
-            webSocketTask?.send(.string(json)) { error in
-                if let error {
-                    print("DesktopConnection: failed to send Envelope: \(error)")
+            webSocketTask?.send(.string(json)) { [weak self] error in
+                guard let self, let error else { return }
+                print("DesktopConnection: failed to send Envelope: \(error)")
+                DispatchQueue.main.async {
+                    // Same in-flight-attempt guard as receiveLoop()'s
+                    // failure branch — whichever of the two callbacks
+                    // fires first resolves pairCompletion; the other is a
+                    // no-op via the guard.
+                    guard self.pairCompletion != nil else { return }
+                    self.pairTimeout?.cancel()
+                    self.pairTimeout = nil
+                    let message = Self.pairingFailureMessage(for: error)
+                    self.pairError = message
+                    self.pairCompletion?(.failure(message))
+                    self.pairCompletion = nil
                 }
             }
         } catch {
@@ -170,7 +182,7 @@ final class DesktopConnection: NSObject {
                     guard self.pairCompletion != nil else { return }
                     self.pairTimeout?.cancel()
                     self.pairTimeout = nil
-                    let message = error.localizedDescription
+                    let message = Self.pairingFailureMessage(for: error)
                     self.pairError = message
                     self.pairCompletion?(.failure(message))
                     self.pairCompletion = nil
@@ -222,6 +234,29 @@ final class DesktopConnection: NSObject {
             configSync = sync.config
         case .pairRequest, .none:
             break // desktop never sends these to mobile
+        }
+    }
+
+    /// Turns a connect-time `URLError` into copy that names the likely cause.
+    ///
+    /// - Parameter error: The error `receiveLoop()` got from a failed connect.
+    // `NSURLErrorNotConnectedToInternet` (-1009) is what URLSession returns
+    // *immediately*, not after a timeout, when the Local Network permission
+    // is denied for a private-range host — distinct from a genuinely absent
+    // desktop, which times out or returns `NSURLErrorCannotConnectToHost`
+    // (-1004). Confirmed on-device: a QR-connect attempt with the
+    // permission off surfaces "The internet connection appears to be
+    // offline" through exactly this path.
+    private static func pairingFailureMessage(for error: Error) -> String {
+        let nsError = error as NSError
+        guard nsError.domain == NSURLErrorDomain else { return error.localizedDescription }
+        switch nsError.code {
+        case NSURLErrorNotConnectedToInternet:
+            return "Couldn't reach the desktop — Local Network access may be off for this app. Check Settings."
+        case NSURLErrorCannotConnectToHost, NSURLErrorTimedOut:
+            return "Couldn't reach the desktop — check it's on and on the same network."
+        default:
+            return error.localizedDescription
         }
     }
 
