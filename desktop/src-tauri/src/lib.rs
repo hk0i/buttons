@@ -1,5 +1,6 @@
 mod actions;
 mod config;
+mod pairing;
 mod proto;
 
 use config::{Action, Config};
