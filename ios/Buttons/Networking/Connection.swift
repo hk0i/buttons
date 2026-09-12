@@ -252,9 +252,9 @@ final class DesktopConnection: NSObject {
         guard nsError.domain == NSURLErrorDomain else { return error.localizedDescription }
         switch nsError.code {
         case NSURLErrorNotConnectedToInternet:
-            return "Couldn't reach the desktop — Local Network access may be off for this app. Check Settings."
+            return "Couldn't reach the desktop — Local Network access may be disabled for this app. Check Settings."
         case NSURLErrorCannotConnectToHost, NSURLErrorTimedOut:
-            return "Couldn't reach the desktop — check it's on and on the same network."
+            return "Couldn't reach the desktop — check that it's running and on the same network."
         default:
             return error.localizedDescription
         }

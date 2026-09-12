@@ -103,7 +103,7 @@ struct PairingView: View {
                     .multilineTextAlignment(.center)
             }
         case .notFound:
-            Text("Couldn't find your paired desktop automatically. It may be off, or this app's Local Network access may be off — scan its QR code, or check Settings.")
+            Text("Couldn't find Buttons desktop automatically. It may not be running, or this app's Local Network access may be blocked — scan the desktop QR code, or check Settings.")
                 .multilineTextAlignment(.center)
         }
     }
