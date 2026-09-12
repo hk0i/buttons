@@ -26,7 +26,11 @@ final class DesktopDiscovery {
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
 
-        let browser = NWBrowser(for: .bonjour(type: "_buttons._tcp", domain: nil), using: parameters)
+        // .bonjour(type:domain:) never resolves the TXT record — metadata
+        // stays .none, so device_id matching below always fails silently.
+        // .bonjourWithTXTRecord is the descriptor that actually populates
+        // result.metadata with .bonjour(txt).
+        let browser = NWBrowser(for: .bonjourWithTXTRecord(type: "_buttons._tcp", domain: nil), using: parameters)
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             let devices = results.compactMap(Self.discoveredDesktop(from:))
             DispatchQueue.main.async {
