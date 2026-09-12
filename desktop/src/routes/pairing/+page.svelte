@@ -56,7 +56,7 @@
       <p class="status">This code expired.</p>
       <button onclick={requestNewCode}>Generate new code</button>
     {:else}
-      <p class="status">Scan with the Buttons iOS app — expires in ~90s.</p>
+      <p class="status">Scan with the Buttons mobile app — expires in ~90s.</p>
       <p class="status">Waiting for connection…</p>
     {/if}
   {/if}
