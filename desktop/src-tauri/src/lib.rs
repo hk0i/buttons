@@ -1,5 +1,6 @@
 mod actions;
 mod config;
+mod proto;
 
 use config::{Action, Config};
 use std::fs;
