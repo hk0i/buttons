@@ -96,6 +96,18 @@ enum PairingStore {
     }
 }
 
+/// The silent mDNS reconnect's own status — deliberately separate from
+/// `lastError` (QR-scan-specific). Before this existed, the reconnect
+/// attempt ran with no visible state at all: the pairing screen just sat
+/// there showing QR-flavored copy while it searched in the background,
+/// indistinguishable from "nothing is happening." `PairingView`'s landing
+/// state reads this to show its own status line.
+enum AutoReconnectPhase: Equatable {
+    case idle
+    case searching
+    case notFound
+}
+
 /// Glues a scanned QR string to a connection attempt and the Keychain
 /// write on success — the fresh-pair path (Files to Touch #15/#16). QR
 /// scanning itself (`DataScannerViewController`) lives in
@@ -110,6 +122,7 @@ enum PairingStore {
 @Observable
 final class PairingSession {
     private(set) var lastError: String?
+    private(set) var autoReconnectPhase: AutoReconnectPhase = .idle
 
     private let connection: DesktopConnection
 
@@ -143,6 +156,34 @@ final class PairingSession {
             if case .failure(let message) = result {
                 self?.lastError = message
             }
+        }
+    }
+
+    /// Owns the whole silent-reconnect attempt, `autoReconnectPhase`
+    /// tracking it end to end — moved here from a bare `Task` in
+    /// `ButtonsApp.swift` so the screen has something to observe instead
+    /// of the attempt running invisibly. No-op if nothing is stored
+    /// (fresh install): `autoReconnectPhase` stays `.idle`, landing shows
+    /// plain "scan to pair" copy with no false "searching" state.
+    func attemptAutoReconnect(discovery: DesktopDiscovery) {
+        guard let stored = PairingStore.load() else { return }
+        autoReconnectPhase = .searching
+        discovery.start()
+        Task {
+            // ~5s of polling at 250ms — generous for LAN mDNS, not a
+            // network round trip to wait indefinitely on.
+            for _ in 0..<20 {
+                if let endpoint = discovery.endpoint(forDeviceId: stored.deviceId) {
+                    autoReconnectPhase = .idle
+                    reconnect(stored: stored, endpoint: endpoint)
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            // Not found within the window — landing state shows this and
+            // still offers "Scan QR Code" as the recovery path (Scope →
+            // Out item 7: mDNS-only reconnect, QR rescan is the fallback).
+            autoReconnectPhase = .notFound
         }
     }
 }

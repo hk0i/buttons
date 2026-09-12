@@ -2,19 +2,23 @@ import SwiftUI
 import AVFoundation
 import VisionKit
 
-/// "Scan to Pair" / connecting / failed states, plus the three
-/// camera-permission states. Per Implementation Notes #10.1: camera is
-/// queryable and soft-askable (unlike Local Network, #10.2) —
-/// `.notDetermined` gets an explanatory screen before the native prompt
-/// ever fires, `.denied` routes to "open Settings" instead of a dead
-/// scanner.
+/// Landing / "Scan to Pair" / connecting / failed states, plus the three
+/// camera-permission states. The QR scanner is never shown automatically —
+/// only `landing`'s explicit "Scan QR Code" tap enters the camera-check
+/// flow (Implementation Notes #10.1: camera is queryable and soft-askable,
+/// unlike Local Network #10.2 — `.notDetermined` gets an explanatory
+/// screen before the native prompt ever fires, `.denied` routes to "open
+/// Settings" instead of a dead scanner). Landing itself is driven by
+/// `session.autoReconnectPhase`, not the camera — the silent mDNS
+/// reconnect (Files to Touch #17) runs independently of whether the user
+/// ever opens the scanner.
 struct PairingView: View {
     let session: PairingSession
 
-    @State private var phase: Phase = .checkingCamera
+    @State private var phase: Phase = .landing
 
     private enum Phase: Equatable {
-        case checkingCamera
+        case landing
         case cameraPreAsk
         case cameraDenied
         case scanning
@@ -25,7 +29,6 @@ struct PairingView: View {
     var body: some View {
         content
             .padding()
-            .onAppear(perform: refreshCameraStatus)
             // Returning from Settings (the "Open Settings" affordance
             // below) re-activates the app but doesn't trigger onAppear —
             // without this, granting camera access there leaves the user
@@ -35,7 +38,7 @@ struct PairingView: View {
             // unrelated foreground event (e.g. Control Center).
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 if phase == .cameraDenied {
-                    refreshCameraStatus()
+                    checkCameraAndAdvance()
                 }
             }
             .onChange(of: session.lastError) { _, newError in
@@ -48,8 +51,8 @@ struct PairingView: View {
     @ViewBuilder
     private var content: some View {
         switch phase {
-        case .checkingCamera:
-            ProgressView()
+        case .landing:
+            landingView
         case .cameraPreAsk:
             preAskView
         case .cameraDenied:
@@ -63,7 +66,40 @@ struct PairingView: View {
         }
     }
 
-    private func refreshCameraStatus() {
+    /// Always shows "Scan QR Code" as an action, regardless of
+    /// `autoReconnectPhase` — the silent reconnect is a background
+    /// convenience, never a gate on the manual path. `statusText` is the
+    /// only thing that changes with the reconnect's progress.
+    private var landingView: some View {
+        VStack(spacing: 20) {
+            statusText
+            Button("Scan QR Code") { checkCameraAndAdvance() }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
+    @ViewBuilder
+    private var statusText: some View {
+        switch session.autoReconnectPhase {
+        case .idle:
+            Text("Scan your desktop's QR code to pair.")
+                .multilineTextAlignment(.center)
+        case .searching:
+            VStack(spacing: 8) {
+                ProgressView()
+                Text("Looking for your paired desktop on this network…")
+                    .multilineTextAlignment(.center)
+            }
+        case .notFound:
+            Text("Couldn't find your paired desktop automatically — scan its QR code to reconnect.")
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    /// Entry point into the camera-permission flow — only reached by an
+    /// explicit tap (the landing button, or the foreground-return check
+    /// below), never on appear.
+    private func checkCameraAndAdvance() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             phase = .scanning
@@ -108,7 +144,7 @@ struct PairingView: View {
             Text(message)
                 .foregroundStyle(.red)
                 .multilineTextAlignment(.center)
-            Button("Scan again") { phase = .scanning }
+            Button("Scan again") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
         }
     }

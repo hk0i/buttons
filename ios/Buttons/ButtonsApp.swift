@@ -50,27 +50,12 @@ private struct RootView: View {
     }
 
     /// Keychain has a stored pair → mDNS browse, match by `device_id`,
-    /// connect — no QR, no camera permission prompt. Falls through to
-    /// `PairingView`'s QR-rescan path (the only recovery, Scope → Out
-    /// item 7) if mDNS never finds that `device_id`.
+    /// connect — no QR, no camera permission prompt. `PairingSession` owns
+    /// the attempt itself (`autoReconnectPhase`) so `PairingView` has
+    /// something to show while it runs, not just silence.
     private func attemptReconnectIfPaired() {
-        guard !hasAttemptedReconnect, let stored = PairingStore.load() else { return }
+        guard !hasAttemptedReconnect else { return }
         hasAttemptedReconnect = true
-        discovery.start()
-
-        Task {
-            // ~5s of polling at 250ms — generous for LAN mDNS, not a
-            // network round trip to wait indefinitely on.
-            for _ in 0..<20 {
-                if let endpoint = discovery.endpoint(forDeviceId: stored.deviceId) {
-                    session.reconnect(stored: stored, endpoint: endpoint)
-                    return
-                }
-                try? await Task.sleep(for: .milliseconds(250))
-            }
-            // Not found within the window — PairingView is already
-            // showing (connection.isConnected is still false), ready for
-            // a rescan.
-        }
+        session.attemptAutoReconnect(discovery: discovery)
     }
 }
