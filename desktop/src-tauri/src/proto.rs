@@ -14,6 +14,9 @@ use crate::config;
 // alongside Envelope/PairRequest/PairResponse/ConfigSync.
 pub mod buttons {
     include!(concat!(env!("OUT_DIR"), "/buttons.rs"));
+    // pbjson_build's canonical-proto3-JSON Serialize/Deserialize impls
+    // reference these types unqualified — must land in the same module.
+    include!(concat!(env!("OUT_DIR"), "/buttons.serde.rs"));
 }
 
 impl From<&config::Config> for buttons::Config {

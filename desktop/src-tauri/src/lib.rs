@@ -2,6 +2,7 @@ mod actions;
 mod config;
 mod pairing;
 mod proto;
+mod server;
 
 use config::{Action, Config};
 use std::fs;
