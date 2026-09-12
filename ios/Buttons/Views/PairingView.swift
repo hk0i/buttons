@@ -9,7 +9,7 @@ import VisionKit
 /// ever fires, `.denied` routes to "open Settings" instead of a dead
 /// scanner.
 struct PairingView: View {
-    let coordinator: PairingCoordinator
+    let session: PairingSession
 
     @State private var phase: Phase = .checkingCamera
 
@@ -26,7 +26,19 @@ struct PairingView: View {
         content
             .padding()
             .onAppear(perform: refreshCameraStatus)
-            .onChange(of: coordinator.lastError) { _, newError in
+            // Returning from Settings (the "Open Settings" affordance
+            // below) re-activates the app but doesn't trigger onAppear —
+            // without this, granting camera access there leaves the user
+            // stuck on the denied screen with no way back to the scanner.
+            // Only escapes `.cameraDenied` specifically — an active
+            // `.scanning`/`.connecting`/`.failed` attempt must survive an
+            // unrelated foreground event (e.g. Control Center).
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                if phase == .cameraDenied {
+                    refreshCameraStatus()
+                }
+            }
+            .onChange(of: session.lastError) { _, newError in
                 if let newError {
                     phase = .failed(newError)
                 }
@@ -86,7 +98,7 @@ struct PairingView: View {
     private var scannerView: some View {
         QRScannerRepresentable { payload in
             phase = .connecting
-            coordinator.pair(scannedQR: payload)
+            session.pair(scannedQR: payload)
         }
         .ignoresSafeArea()
     }
@@ -165,5 +177,5 @@ private struct QRScannerRepresentable: UIViewControllerRepresentable {
 }
 
 #Preview {
-    PairingView(coordinator: PairingCoordinator(connection: DesktopConnection()))
+    PairingView(session: PairingSession(connection: DesktopConnection()))
 }

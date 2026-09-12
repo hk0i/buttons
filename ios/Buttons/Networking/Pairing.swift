@@ -100,8 +100,15 @@ enum PairingStore {
 /// write on success — the fresh-pair path (Files to Touch #15/#16). QR
 /// scanning itself (`DataScannerViewController`) lives in
 /// `Views/PairingView.swift`; this only takes the decoded string.
+///
+/// Named `Session`, not `Coordinator` — "Coordinator" is a specific iOS
+/// pattern (navigation-flow ownership) this isn't, and
+/// `QRScannerRepresentable.Coordinator` in `PairingView.swift` is already
+/// that pattern's real coordinator; reusing the word here would collide.
+/// This is instance state for one pairing attempt (`lastError`) across an
+/// async round trip — `Session` says that.
 @Observable
-final class PairingCoordinator {
+final class PairingSession {
     private(set) var lastError: String?
 
     private let connection: DesktopConnection
