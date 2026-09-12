@@ -2,6 +2,7 @@
   import "$lib/styles/tokens.css";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { resolve } from "$app/paths";
 
   // Mirrors pairing.rs's ONE_TIME_TOKEN_TTL — client-side timer only, not
   // polled from the backend. "expires in ~90s" is enough per the spec;
@@ -36,7 +37,12 @@
 </script>
 
 <div class="pairing">
-  <h1>Pair a device</h1>
+  <div class="pairing-header">
+    <h1>Pair a device</h1>
+    <!-- The only way back — mouse/trackpad "back" gesture is browser
+         behavior this app shouldn't rely on as the sole exit. -->
+    <a class="close-link" href={resolve("/")} aria-label="Close">✕</a>
+  </div>
 
   {#if error}
     <p class="status error">{error}</p>
@@ -70,11 +76,37 @@
     font-family: var(--font-body);
   }
 
+  .pairing-header {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
   h1 {
     font-family: var(--font-heading);
     font-weight: 700;
     font-size: 24px;
     margin: 0;
+  }
+
+  .close-link {
+    position: absolute;
+    right: 0;
+    color: var(--key-white);
+    text-decoration: none;
+    opacity: 0.7;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .close-link:hover {
+    opacity: 1;
+    background: var(--neutral-500);
   }
 
   .qr {
