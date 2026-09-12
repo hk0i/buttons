@@ -147,11 +147,33 @@ comments, which this doesn't constrain.
    and Swift-DocC, `cargo doc`) renders these distinctly; an undifferentiated
    paragraph just becomes a wall of text.
 3. Rationale belongs in a `//` comment, not the doc comment — why an
-   alternative was rejected, a bug this fixes, a cross-reference to a slice
-   spec section. The doc comment is the contract for a caller; `//` is the
-   argument for whoever reads the diff next. A slice-spec reference (`Files
-   to Touch #N`, `Scope → Out item N`) especially belongs in `//` — it rots
-   the moment that slice ships, and isn't useful to a caller either way.
+   alternative was rejected, a bug this fixes, the reasoning behind a
+   non-obvious choice. The doc comment is the contract for a caller; `//`
+   is the argument for whoever reads the diff next, and for stopping a
+   future "fix" of something that isn't broken.
+
+   **State the invariant; cite an immutable artifact, never a position in a
+   living document.** `// Implementation Notes #10.2` breaks the moment
+   anyone inserts a note above it — same failure this file's own
+   Documentation-style rule (numbered lists restart per group *because*
+   nothing should cite an item by ordinal) already rejects for prose; a `//`
+   comment isn't exempt. In preference order:
+   1. State the reason inline, cite nothing (`// Local Network permission
+      has no pre-check API — denial makes traffic vanish silently.`). Holds
+      up even if the spec is rewritten or archived; usually all a comment
+      needs.
+   2. Reason inline, plus a pointer only when the full argument is long
+      enough to genuinely live elsewhere — cite the spec section **by
+      heading text**, not ordinal (`docs/slices/07…, § Implementation
+      Notes, "Two permissions, two different shapes"`). Section headings
+      (`## Implementation Notes`) are template-fixed and stable; item
+      numbers inside them aren't.
+   3. A commit SHA, for "this line is load-bearing, here's the change that
+      proved it" (`// Fixed in 5bef681 — …`). Immutable by construction.
+
+   A spec/issue *link* is still exactly right in a PR description — a
+   reviewer needs it during review. A maintainer six months later needs the
+   reason, not a click-through, which is why the two don't share a home.
 4. Naming rationale — why this name and not an obviously-confusable one —
    belongs in the slice spec / EDD, not in code, unless the name is
    genuinely likely to be misused by someone unfamiliar with the codebase.
