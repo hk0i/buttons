@@ -1,6 +1,7 @@
 <script lang="ts">
   import "$lib/styles/tokens.css";
   import { onMount } from "svelte";
+  import { resolve } from "$app/paths";
   import { configStore } from "$lib/stores/config.svelte";
   import ButtonEditor from "$lib/components/ButtonEditor.svelte";
   import PreviewPane from "$lib/components/PreviewPane.svelte";
@@ -38,8 +39,14 @@
 <div class="app">
   <header class="app-header">
     <h1>Buttons</h1>
-    <div class="header-profile">
-      <ProfileSwitcher />
+    <div class="header-actions">
+      <div class="header-profile">
+        <ProfileSwitcher />
+      </div>
+      <!-- Behind a click, not shown by default anywhere else — the QR is
+           only generated while this view is deliberately open, which is
+           what lets its token stay short-lived. See Scope -> In item 7. -->
+      <a class="pair-device-link" href={resolve("/pairing")}>Pair device…</a>
     </div>
   </header>
 
@@ -119,6 +126,16 @@
     color: var(--key-white);
   }
 
+  /* Groups the profile switcher and the pairing entry point on the header's
+     trailing edge, so adding the pairing link doesn't push ProfileSwitcher
+     toward the center under justify-content: space-between. */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+  }
+
   /* Cap the switcher's width so it sits as a control beside the title rather
      than stretching the whole window (its <select> is flex:1 internally).
      min-width:0 lets it shrink below content width at narrow windows so the
@@ -136,6 +153,24 @@
   .header-profile :global(input),
   .header-profile :global(button) {
     border-color: var(--neutral-500);
+  }
+
+  .pair-device-link {
+    flex-shrink: 0;
+    color: var(--key-white);
+    font-size: 14px;
+    text-decoration: none;
+    border: 1px solid var(--neutral-500);
+    border-radius: 4px;
+    padding: 4px 12px;
+    height: 32px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .pair-device-link:hover {
+    background: var(--neutral-500);
   }
 
   .app-body {
