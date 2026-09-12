@@ -17,6 +17,10 @@ wire {
     sourcePath {
         srcDir("..")
         include("buttons.proto")
+        // wire.proto added at slice 07 — the schema-lock's "all three
+        // languages" hook (see Files to Touch #22 in
+        // docs/slices/07. Discovery, Pairing & Config Sync.spec.md).
+        include("wire.proto")
     }
     kotlin {}
 }
