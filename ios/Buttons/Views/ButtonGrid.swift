@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// A `Buttons_Button` has no `Identifiable` conformance from protobuf
+/// codegen on its own — its `id: String` already satisfies the
+/// requirement, so this is a declaration, not new logic.
+extension Buttons_Button: Identifiable {}
+
 /// A scrollable grid of `DeckButton` cells for one navigation context's
 /// buttons (a Page's top level, or a folder's contents). Fixed column
 /// count — 4 in portrait, 8 in landscape — mirroring the desktop preview
@@ -7,8 +12,8 @@ import SwiftUI
 /// Tapping a cell calls `onTap` with its model; the caller dispatches on
 /// `content` (run actions / enter folder / go back).
 struct ButtonGrid: View {
-    let buttons: [ButtonModel]
-    var onTap: (ButtonModel) -> Void
+    let buttons: [Buttons_Button]
+    var onTap: (Buttons_Button) -> Void
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -41,12 +46,7 @@ struct ButtonGrid: View {
 
 #Preview {
     ButtonGrid(
-        buttons: [
-            ButtonModel(id: "1", label: "Go Live", icon: "🔴", content: .actions([])),
-            ButtonModel(id: "2", label: "Scenes", icon: "🎬", content: .folder([])),
-            ButtonModel(id: "3", label: nil, icon: nil, content: .back),
-            ButtonModel(id: "4", label: "Mute", icon: "🔇", content: .actions([])),
-        ],
-        onTap: { print("tapped \($0.id)") },
+        buttons: PreviewFixtures.config.profiles[0].pages[0].buttons,
+        onTap: { print("tapped \($0.id)") }
     )
 }

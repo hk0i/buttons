@@ -1,15 +1,22 @@
 import SwiftUI
 
-/// App root: a horizontally paged container over the active Profile's Pages
-/// (mock data — `MockConfig`, no networking/pairing this slice).
+/// A `Buttons_Page` has no `Identifiable` conformance from protobuf codegen
+/// on its own — its `id: String` already satisfies the requirement, so
+/// this is a declaration, not new logic.
+extension Buttons_Page: Identifiable {}
+
+/// App root once paired: a horizontally paged container over the active
+/// Profile's Pages. Takes real data (`Buttons_Profile`, from `ConfigSync`)
+/// as of slice 07 — no more `MockConfig`/`ButtonModel`.
 struct DeckView: View {
-    private let profile = MockConfig.config.profiles[0]
+    let profile: Buttons_Profile
 
     @State private var currentPageId: String
     @State private var isFolderOpen = false
 
-    init() {
-        _currentPageId = State(initialValue: MockConfig.config.profiles[0].pages.first?.id ?? "")
+    init(profile: Buttons_Profile) {
+        self.profile = profile
+        _currentPageId = State(initialValue: profile.pages.first?.id ?? "")
     }
 
     /// Swiping between Pages is locked while any Page's folder is open, per
@@ -19,7 +26,7 @@ struct DeckView: View {
     /// `TabView(.page)`'s own internal (UIKit) swipe recognizer, so a short
     /// swipe still paged through even at `minimumDistance: 20`. With one
     /// element, the pager has nowhere else to go — no gesture race at all.
-    private var visiblePages: [Page] {
+    private var visiblePages: [Buttons_Page] {
         guard isFolderOpen,
               let current = profile.pages.first(where: { $0.id == currentPageId })
         else {
@@ -44,5 +51,5 @@ struct DeckView: View {
 }
 
 #Preview {
-    DeckView()
+    DeckView(profile: PreviewFixtures.config.profiles[0])
 }

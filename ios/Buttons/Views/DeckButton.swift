@@ -6,21 +6,21 @@ import SwiftUI
 /// `content`. A `.back` button with no icon/label of its own renders the
 /// ⬅️ / "Back" fallback, matching desktop's `DeckButton.svelte`.
 struct DeckButton: View {
-    let button: ButtonModel
+    let button: Buttons_Button
 
     private var isBack: Bool {
-        if case .back = button.content {
+        if case .back? = button.content {
             return true
         }
         return false
     }
 
     private var glyph: String? {
-        button.icon ?? (isBack ? "⬅️" : nil)
+        button.hasIcon ? button.icon : (isBack ? "⬅️" : nil)
     }
 
     private var caption: String? {
-        button.label ?? (isBack ? "Back" : nil)
+        button.hasLabel ? button.label : (isBack ? "Back" : nil)
     }
 
     var body: some View {
@@ -56,20 +56,10 @@ struct DeckButtonStyle: ButtonStyle {
 #Preview {
     HStack {
         Button {} label: {
-            DeckButton(button: ButtonModel(
-                id: "p1",
-                label: "Go Live",
-                icon: "🔴",
-                content: .actions([]),
-            ))
+            DeckButton(button: .action("p1", "Go Live", "🔴"))
         }
         Button {} label: {
-            DeckButton(button: ButtonModel(
-                id: "p2",
-                label: nil,
-                icon: nil,
-                content: .back,
-            ))
+            DeckButton(button: .back("p2"))
         }
     }
     .buttonStyle(DeckButtonStyle())

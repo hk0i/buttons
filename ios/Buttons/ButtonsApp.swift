@@ -30,18 +30,23 @@ private struct RootView: View {
 
     var body: some View {
         Group {
-            if connection.isConnected {
-                // TODO(slice 07, Files to Touch #19): bind real
-                // `connection.configSync` once DeckView/PageGrid/
-                // ButtonGrid/DeckButton accept `Buttons_Config` instead of
-                // `MockConfig` — not done yet, so this still renders mock
-                // data even once actually paired.
-                DeckView()
+            if let activeProfile {
+                DeckView(profile: activeProfile)
+            } else if connection.isConnected {
+                // Paired, but `ConfigSync` hasn't arrived yet — a brief
+                // gap between `PairResponse` and the next message, not a
+                // failure state.
+                ProgressView("Loading…")
             } else {
                 PairingView(session: session)
             }
         }
         .onAppear(perform: attemptReconnectIfPaired)
+    }
+
+    private var activeProfile: Buttons_Profile? {
+        guard let config = connection.configSync else { return nil }
+        return config.profiles.first(where: { $0.id == config.activeProfileID }) ?? config.profiles.first
     }
 
     /// Keychain has a stored pair → mDNS browse, match by `device_id`,
