@@ -110,9 +110,6 @@ enum AutoReconnectState: Equatable {
 ///
 /// QR scanning itself (`DataScannerViewController`) lives in
 /// `Views/PairingView.swift`; this only takes the decoded string.
-// Named `Session`, not `Coordinator` — `QRScannerRepresentable.Coordinator`
-// in `PairingView.swift` already owns that word for its own (unrelated)
-// pattern; this is just instance state for one pairing attempt.
 @Observable
 final class PairingSession {
     private(set) var lastError: String?
