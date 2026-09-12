@@ -3,15 +3,16 @@ import AVFoundation
 import VisionKit
 
 /// Landing / "Scan to Pair" / connecting / failed states, plus the three
-/// camera-permission states. The QR scanner is never shown automatically —
-/// only `landing`'s explicit "Scan QR Code" tap enters the camera-check
-/// flow (Implementation Notes #10.1: camera is queryable and soft-askable,
-/// unlike Local Network #10.2 — `.notDetermined` gets an explanatory
-/// screen before the native prompt ever fires, `.denied` routes to "open
-/// Settings" instead of a dead scanner). Landing itself is driven by
-/// `session.autoReconnectPhase`, not the camera — the silent mDNS
-/// reconnect (Files to Touch #17) runs independently of whether the user
-/// ever opens the scanner.
+/// camera-permission states.
+///
+/// The QR scanner is never shown automatically — only an explicit "Scan QR
+/// Code" tap enters the camera-check flow. Landing itself is driven by
+/// `session.autoReconnectState`, not the camera: the silent mDNS reconnect
+/// runs independently of whether the user ever opens the scanner.
+// Implementation Notes #10.1: camera is queryable and soft-askable, unlike
+// Local Network (#10.2) — `.notDetermined` gets an explanatory screen
+// before the native prompt ever fires, `.denied` routes to "Open Settings"
+// instead of a dead scanner.
 struct PairingView: View {
     let session: PairingSession
 
@@ -66,10 +67,10 @@ struct PairingView: View {
         }
     }
 
-    /// Always shows "Scan QR Code" as an action, regardless of
-    /// `autoReconnectPhase` — the silent reconnect is a background
-    /// convenience, never a gate on the manual path. `statusText` is the
-    /// only thing that changes with the reconnect's progress.
+    /// Always shows "Scan QR Code" as an action.
+    ///
+    /// The silent reconnect (`statusText`, below) is a background
+    /// convenience layered on top — never a gate on the manual path.
     private var landingView: some View {
         VStack(spacing: 20) {
             statusText
@@ -80,7 +81,7 @@ struct PairingView: View {
 
     @ViewBuilder
     private var statusText: some View {
-        switch session.autoReconnectPhase {
+        switch session.autoReconnectState {
         case .idle:
             Text("Scan your desktop's QR code to pair.")
                 .multilineTextAlignment(.center)
@@ -139,6 +140,13 @@ struct PairingView: View {
         .ignoresSafeArea()
     }
 
+    /// Also offers "Open Settings" alongside the primary retry.
+    ///
+    /// A pairing failure here can't always be attributed to one cause —
+    /// stale token and a blocked Local Network permission both surface as
+    /// generic connect failures (Implementation Notes #10.2: Local Network
+    /// has no pre-check API, so this can't be resolved to a definite
+    /// permission error). Offering both actions instead of guessing wrong.
     private func failedView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Text(message)
@@ -146,6 +154,8 @@ struct PairingView: View {
                 .multilineTextAlignment(.center)
             Button("Scan again") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
+            Button("Open Settings", action: openSystemSettings)
+                .buttonStyle(.bordered)
         }
     }
 
@@ -153,13 +163,14 @@ struct PairingView: View {
         VStack(spacing: 16) {
             Text("Buttons can't scan without camera access.")
                 .multilineTextAlignment(.center)
-            Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            .buttonStyle(.borderedProminent)
+            Button("Open Settings", action: openSystemSettings)
+                .buttonStyle(.borderedProminent)
         }
+    }
+
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 }
 

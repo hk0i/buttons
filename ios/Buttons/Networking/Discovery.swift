@@ -46,10 +46,12 @@ final class DesktopDiscovery {
         browser = nil
     }
 
-    /// Looks up a specific desktop by its stored `device_id` — the
-    /// reconnect path (Files to Touch #13/#17): Keychain has a pair, mDNS
-    /// browse, match by `device_id`, connect. Returns nil until mDNS
-    /// actually finds a matching advertisement.
+    /// Returns the endpoint advertising the given `device_id`, if mDNS has found it.
+    ///
+    /// - Parameter deviceId: The `device_id` stored in the Keychain at pairing time.
+    /// - Returns: `nil` until a matching advertisement arrives — callers poll.
+    // `device_id` is stable for the desktop's lifetime (Implementation
+    // Notes #3), which is what makes this matching scheme work at all.
     func endpoint(forDeviceId deviceId: String) -> NWEndpoint? {
         discovered.first(where: { $0.deviceId == deviceId })?.endpoint
     }

@@ -99,13 +99,12 @@ final class DesktopConnection: NSObject {
         isConnected = false
     }
 
-    /// Fires only if nothing has resolved `pairCompletion` yet — a real
-    /// success/failure always cancels this first, so it can never override
-    /// one. Names Local Network permission as the likely cause: it's the
-    /// one failure mode in this flow that's silent by construction
-    /// (Implementation Notes #10.2 — no pre-check API, denial just makes
-    /// traffic vanish) as opposed to camera denial, which already has its
-    /// own explicit UI state.
+    /// Fails the in-flight pairing attempt if nothing has resolved it within 10s.
+    // A blocked Local Network permission doesn't fail the socket open —
+    // it just delivers nothing (Implementation Notes #10.2: no pre-check
+    // API, denial makes traffic vanish silently) — so this is the only
+    // thing that ends a hung attempt. A real success/failure always
+    // cancels this first, so it can never override one.
     private func scheduleTimeout() {
         pairTimeout?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -162,6 +161,17 @@ final class DesktopConnection: NSObject {
                 print("DesktopConnection: receive error: \(error)")
                 DispatchQueue.main.async {
                     self.isConnected = false
+                    // A pairing attempt still in flight (pairCompletion
+                    // non-nil) means this is a connect-time failure, not a
+                    // later drop of an already-paired session — surface it
+                    // now instead of waiting out the full pairTimeout.
+                    guard self.pairCompletion != nil else { return }
+                    self.pairTimeout?.cancel()
+                    self.pairTimeout = nil
+                    let message = error.localizedDescription
+                    self.pairError = message
+                    self.pairCompletion?(.failure(message))
+                    self.pairCompletion = nil
                 }
             }
         }

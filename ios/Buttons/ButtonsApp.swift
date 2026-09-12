@@ -49,10 +49,7 @@ private struct RootView: View {
         return config.profiles.first(where: { $0.id == config.activeProfileID }) ?? config.profiles.first
     }
 
-    /// Keychain has a stored pair → mDNS browse, match by `device_id`,
-    /// connect — no QR, no camera permission prompt. `PairingSession` owns
-    /// the attempt itself (`autoReconnectPhase`) so `PairingView` has
-    /// something to show while it runs, not just silence.
+    /// Starts `PairingSession`'s silent mDNS reconnect, once per launch.
     private func attemptReconnectIfPaired() {
         guard !hasAttemptedReconnect else { return }
         hasAttemptedReconnect = true

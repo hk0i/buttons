@@ -96,33 +96,27 @@ enum PairingStore {
     }
 }
 
-/// The silent mDNS reconnect's own status — deliberately separate from
-/// `lastError` (QR-scan-specific). Before this existed, the reconnect
-/// attempt ran with no visible state at all: the pairing screen just sat
-/// there showing QR-flavored copy while it searched in the background,
-/// indistinguishable from "nothing is happening." `PairingView`'s landing
-/// state reads this to show its own status line.
-enum AutoReconnectPhase: Equatable {
+/// The state of a silent mDNS reconnect attempt.
+///
+/// Kept separate from `PairingSession.lastError`, which is QR-scan-specific.
+enum AutoReconnectState: Equatable {
     case idle
     case searching
     case notFound
 }
 
-/// Glues a scanned QR string to a connection attempt and the Keychain
-/// write on success — the fresh-pair path (Files to Touch #15/#16). QR
-/// scanning itself (`DataScannerViewController`) lives in
-/// `Views/PairingView.swift`; this only takes the decoded string.
+/// Drives a pairing attempt — either a scanned QR or a silent mDNS
+/// reconnect — and the Keychain write on success.
 ///
-/// Named `Session`, not `Coordinator` — "Coordinator" is a specific iOS
-/// pattern (navigation-flow ownership) this isn't, and
-/// `QRScannerRepresentable.Coordinator` in `PairingView.swift` is already
-/// that pattern's real coordinator; reusing the word here would collide.
-/// This is instance state for one pairing attempt (`lastError`) across an
-/// async round trip — `Session` says that.
+/// QR scanning itself (`DataScannerViewController`) lives in
+/// `Views/PairingView.swift`; this only takes the decoded string.
+// Named `Session`, not `Coordinator` — `QRScannerRepresentable.Coordinator`
+// in `PairingView.swift` already owns that word for its own (unrelated)
+// pattern; this is just instance state for one pairing attempt.
 @Observable
 final class PairingSession {
     private(set) var lastError: String?
-    private(set) var autoReconnectPhase: AutoReconnectPhase = .idle
+    private(set) var autoReconnectState: AutoReconnectState = .idle
 
     private let connection: DesktopConnection
 
@@ -146,10 +140,13 @@ final class PairingSession {
         }
     }
 
-    /// The reconnect path (Files to Touch #17): a stored pair plus mDNS
-    /// finding that `device_id` on the LAN, no QR involved. `auth_token`
-    /// doesn't change on a successful reconnect (no rotation, v1), so
-    /// nothing new needs writing to Keychain here.
+    /// Pairs using a `device_id` already resolved by `DesktopDiscovery`, with no QR.
+    ///
+    /// - Parameters:
+    ///   - stored: The Keychain-backed credential to reconnect with.
+    ///   - endpoint: The desktop's resolved Bonjour endpoint.
+    // `auth_token` doesn't rotate on reconnect (v1), so nothing new needs
+    // writing to Keychain here.
     func reconnect(stored: StoredPairing, endpoint: NWEndpoint) {
         lastError = nil
         connection.connect(toBonjourEndpoint: endpoint, token: stored.authToken) { [weak self] (result: PairResult) in
@@ -159,22 +156,23 @@ final class PairingSession {
         }
     }
 
-    /// Owns the whole silent-reconnect attempt, `autoReconnectPhase`
-    /// tracking it end to end — moved here from a bare `Task` in
-    /// `ButtonsApp.swift` so the screen has something to observe instead
-    /// of the attempt running invisibly. No-op if nothing is stored
-    /// (fresh install): `autoReconnectPhase` stays `.idle`, landing shows
-    /// plain "scan to pair" copy with no false "searching" state.
+    /// Starts a silent mDNS reconnect using the stored pairing, if there is one.
+    ///
+    /// Does nothing when the Keychain holds no pairing; `autoReconnectState`
+    /// stays `.idle` so the landing screen shows first-pair copy rather
+    /// than a false "searching" state.
+    ///
+    /// - Parameter discovery: Browser to start and poll; left running on return.
     func attemptAutoReconnect(discovery: DesktopDiscovery) {
         guard let stored = PairingStore.load() else { return }
-        autoReconnectPhase = .searching
+        autoReconnectState = .searching
         discovery.start()
         Task {
             // ~5s of polling at 250ms — generous for LAN mDNS, not a
             // network round trip to wait indefinitely on.
             for _ in 0..<20 {
                 if let endpoint = discovery.endpoint(forDeviceId: stored.deviceId) {
-                    autoReconnectPhase = .idle
+                    autoReconnectState = .idle
                     reconnect(stored: stored, endpoint: endpoint)
                     return
                 }
@@ -183,7 +181,7 @@ final class PairingSession {
             // Not found within the window — landing state shows this and
             // still offers "Scan QR Code" as the recovery path (Scope →
             // Out item 7: mDNS-only reconnect, QR rescan is the fallback).
-            autoReconnectPhase = .notFound
+            autoReconnectState = .notFound
         }
     }
 }
