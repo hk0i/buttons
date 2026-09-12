@@ -7,10 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1DDCED855B9AF798C8BECC11 /* wire.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1078AA9050BF9993F58C2D /* wire.pb.swift */; };
 		221A23501A89A9A828B9E3EB /* ButtonModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D04EC729461F044FA826D5 /* ButtonModel.swift */; };
 		2878383CC3D7BAE9E5CC2F7F /* ButtonsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */; };
 		2930864723D0B952AEF34903 /* ButtonGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CFCD777C2F722E767A13EB /* ButtonGrid.swift */; };
+		56C07AC6BEEE9A606CFE9FD2 /* buttons.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39FD11F1CC06D809AA13E306 /* buttons.pb.swift */; };
+		69DFF701F6288CC3FB70B2A1 /* Connection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25FFB6620D32ADD48DAB3167 /* Connection.swift */; };
 		B9735537876E8367A80D7744 /* DeckButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837BB78F51101BAAF346F8D2 /* DeckButton.swift */; };
+		BAAC61285D48302D17293BD5 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E5950233A0AF2021367194 /* Discovery.swift */; };
+		CC883E9181767737343DC9D6 /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F9D4B63899320FF149A60B86 /* SwiftProtobuf */; };
 		DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3686FA433FAE977B75DC6256 /* MockConfig.swift */; };
 		DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C28D59F8850E9FAA3B917 /* ContentView.swift */; };
 		EC0A3040A35010EFA593DD6C /* PageGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648E4D92C87862C1BAAF00C6 /* PageGrid.swift */; };
@@ -20,12 +25,27 @@
 		06CFCD777C2F722E767A13EB /* ButtonGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonGrid.swift; sourceTree = "<group>"; };
 		07A1855026025D3756DFE4E1 /* Buttons.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Buttons.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A5C28D59F8850E9FAA3B917 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		25FFB6620D32ADD48DAB3167 /* Connection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connection.swift; sourceTree = "<group>"; };
 		3686FA433FAE977B75DC6256 /* MockConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockConfig.swift; sourceTree = "<group>"; };
+		39FD11F1CC06D809AA13E306 /* buttons.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = buttons.pb.swift; sourceTree = "<group>"; };
 		53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonsApp.swift; sourceTree = "<group>"; };
+		5E1078AA9050BF9993F58C2D /* wire.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = wire.pb.swift; sourceTree = "<group>"; };
+		61E5950233A0AF2021367194 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
 		648E4D92C87862C1BAAF00C6 /* PageGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageGrid.swift; sourceTree = "<group>"; };
 		837BB78F51101BAAF346F8D2 /* DeckButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckButton.swift; sourceTree = "<group>"; };
 		C9D04EC729461F044FA826D5 /* ButtonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5FC29A0458FFD6DE2AA847B2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CC883E9181767737343DC9D6 /* SwiftProtobuf in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		094EC9A9A197F83EFBCC3004 /* Models */ = {
@@ -44,6 +64,15 @@
 				648E4D92C87862C1BAAF00C6 /* PageGrid.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		4C62F83F44185F9FA2D33DC8 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				25FFB6620D32ADD48DAB3167 /* Connection.swift */,
+				61E5950233A0AF2021367194 /* Discovery.swift */,
+			);
+			path = Networking;
 			sourceTree = "<group>";
 		};
 		62E2248C3CB453BD757644CA /* Data */ = {
@@ -68,7 +97,9 @@
 				53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */,
 				0A5C28D59F8850E9FAA3B917 /* ContentView.swift */,
 				62E2248C3CB453BD757644CA /* Data */,
+				D6138DA813F51886161835EA /* Generated */,
 				094EC9A9A197F83EFBCC3004 /* Models */,
+				4C62F83F44185F9FA2D33DC8 /* Networking */,
 				36DC8992D4BE9318A8231118 /* Views */,
 			);
 			path = Buttons;
@@ -82,6 +113,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		D6138DA813F51886161835EA /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				39FD11F1CC06D809AA13E306 /* buttons.pb.swift */,
+				5E1078AA9050BF9993F58C2D /* wire.pb.swift */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -90,6 +130,7 @@
 			buildConfigurationList = 264252CF4ED98E4A09C8143E /* Build configuration list for PBXNativeTarget "Buttons" */;
 			buildPhases = (
 				FF534E6F41BC80B903A3873F /* Sources */,
+				5FC29A0458FFD6DE2AA847B2 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -97,6 +138,7 @@
 			);
 			name = Buttons;
 			packageProductDependencies = (
+				F9D4B63899320FF149A60B86 /* SwiftProtobuf */,
 			);
 			productName = Buttons;
 			productReference = 07A1855026025D3756DFE4E1 /* Buttons.app */;
@@ -126,6 +168,9 @@
 			);
 			mainGroup = 6432DABB2588754B89104AA4;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8936894FB7FB22CD86D4D085 /* XCRemoteSwiftPackageReference "swift-protobuf" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C3690152C7F4109B446CB3E5 /* Products */;
 			projectDirPath = "";
@@ -144,10 +189,14 @@
 				2930864723D0B952AEF34903 /* ButtonGrid.swift in Sources */,
 				221A23501A89A9A828B9E3EB /* ButtonModel.swift in Sources */,
 				2878383CC3D7BAE9E5CC2F7F /* ButtonsApp.swift in Sources */,
+				69DFF701F6288CC3FB70B2A1 /* Connection.swift in Sources */,
 				DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */,
 				B9735537876E8367A80D7744 /* DeckButton.swift in Sources */,
+				BAAC61285D48302D17293BD5 /* Discovery.swift in Sources */,
 				DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */,
 				EC0A3040A35010EFA593DD6C /* PageGrid.swift in Sources */,
+				56C07AC6BEEE9A606CFE9FD2 /* buttons.pb.swift in Sources */,
+				1DDCED855B9AF798C8BECC11 /* wire.pb.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -331,6 +380,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8936894FB7FB22CD86D4D085 /* XCRemoteSwiftPackageReference "swift-protobuf" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-protobuf.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.38.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		F9D4B63899320FF149A60B86 /* SwiftProtobuf */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8936894FB7FB22CD86D4D085 /* XCRemoteSwiftPackageReference "swift-protobuf" */;
+			productName = SwiftProtobuf;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BA532BEF62501CFDE4E3B7E1 /* Project object */;
 }
