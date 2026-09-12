@@ -113,3 +113,49 @@ impl From<&config::MediaKeyKind> for buttons::MediaKeyKind {
         }
     }
 }
+
+/// `server.rs` assumes `serde_json::from_str::<Envelope>` parses what
+/// swift-protobuf's `jsonString()` emits on the other end of the wire —
+/// never actually exercised end-to-end before a real iPhone is in the
+/// loop. These pin the two places canonical proto3 JSON has real rules:
+/// `optional` presence (an absent field is omitted, not `null`) and
+/// `oneof` representation (one key per case, not a tag + payload).
+#[cfg(test)]
+mod wire_json_tests {
+    use super::buttons;
+
+    #[test]
+    fn envelope_pair_response_round_trips_through_json() {
+        let original = buttons::Envelope {
+            protocol_version: "1".to_string(),
+            message: Some(buttons::envelope::Message::PairResponse(
+                buttons::PairResponse {
+                    ok: true,
+                    auth_token: Some("secret".to_string()),
+                    error: None,
+                },
+            )),
+        };
+
+        let json = serde_json::to_string(&original).expect("serialize");
+        assert!(json.contains("authToken"), "expected lowerCamelCase field name: {json}");
+        assert!(!json.contains("\"error\""), "absent optional must be omitted, not null: {json}");
+
+        let decoded: buttons::Envelope = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn envelope_deserializes_snake_case_field_names_too() {
+        // Confirms this side isn't accidentally relying on swift-protobuf
+        // emitting exactly the same casing pbjson does — both directions
+        // of the proto3 JSON mapping are accepted on read.
+        let json = r#"{ "protocol_version": "1", "pair_request": { "token": "abc" } }"#;
+        let decoded: buttons::Envelope = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(decoded.protocol_version, "1");
+        assert!(matches!(
+            decoded.message,
+            Some(buttons::envelope::Message::PairRequest(ref pr)) if pr.token == "abc"
+        ));
+    }
+}

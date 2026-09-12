@@ -59,14 +59,13 @@ fn get_pairing_qr(pairing: tauri::State<Arc<Pairing>>) -> Result<PairingQr, Stri
     let token = pairing.issue_pairing_token();
     // "<device_id> <lan_ip> <port> <pairing_token>" — see wire.proto's
     // Interface section for why this is 4 space-delimited fields, not
-    // ip:port colon-joined.
-    let payload = format!(
-        "{} {} {} {}",
-        pairing.device_id(),
-        server::local_ip(),
-        server::PORT,
-        token
-    );
+    // ip:port colon-joined. Named holes, not positional `{}` — field order
+    // here must match iOS's split-by-space parse; a reorder is silent
+    // with positional args, not with named ones.
+    let device_id = pairing.device_id();
+    let ip = server::local_ip();
+    let port = server::PORT;
+    let payload = format!("{device_id} {ip} {port} {token}");
     let code = qrcode::QrCode::new(payload.as_bytes()).map_err(|e| e.to_string())?;
     let svg = code.render::<qrcode::render::svg::Color>().build();
     Ok(PairingQr { svg, payload })
