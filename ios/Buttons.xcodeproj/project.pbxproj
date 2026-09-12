@@ -13,12 +13,14 @@
 		2930864723D0B952AEF34903 /* ButtonGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06CFCD777C2F722E767A13EB /* ButtonGrid.swift */; };
 		56C07AC6BEEE9A606CFE9FD2 /* buttons.pb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39FD11F1CC06D809AA13E306 /* buttons.pb.swift */; };
 		69DFF701F6288CC3FB70B2A1 /* Connection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25FFB6620D32ADD48DAB3167 /* Connection.swift */; };
+		8AA258A7B337257EB93A2742 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D27FA16BBBA5ACB9FCF01F0B /* PairingView.swift */; };
 		B9735537876E8367A80D7744 /* DeckButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837BB78F51101BAAF346F8D2 /* DeckButton.swift */; };
 		BAAC61285D48302D17293BD5 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E5950233A0AF2021367194 /* Discovery.swift */; };
 		CC883E9181767737343DC9D6 /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F9D4B63899320FF149A60B86 /* SwiftProtobuf */; };
 		DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3686FA433FAE977B75DC6256 /* MockConfig.swift */; };
 		DDEEA3C4D08CF98A637E3159 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5C28D59F8850E9FAA3B917 /* ContentView.swift */; };
 		EC0A3040A35010EFA593DD6C /* PageGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648E4D92C87862C1BAAF00C6 /* PageGrid.swift */; };
+		F4A322D336051B904DA34261 /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D7AABE6ACF186EBB03068F /* Pairing.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,8 +34,10 @@
 		5E1078AA9050BF9993F58C2D /* wire.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = wire.pb.swift; sourceTree = "<group>"; };
 		61E5950233A0AF2021367194 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
 		648E4D92C87862C1BAAF00C6 /* PageGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageGrid.swift; sourceTree = "<group>"; };
+		79D7AABE6ACF186EBB03068F /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		837BB78F51101BAAF346F8D2 /* DeckButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckButton.swift; sourceTree = "<group>"; };
 		C9D04EC729461F044FA826D5 /* ButtonModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonModel.swift; sourceTree = "<group>"; };
+		D27FA16BBBA5ACB9FCF01F0B /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +66,7 @@
 				06CFCD777C2F722E767A13EB /* ButtonGrid.swift */,
 				837BB78F51101BAAF346F8D2 /* DeckButton.swift */,
 				648E4D92C87862C1BAAF00C6 /* PageGrid.swift */,
+				D27FA16BBBA5ACB9FCF01F0B /* PairingView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -71,6 +76,7 @@
 			children = (
 				25FFB6620D32ADD48DAB3167 /* Connection.swift */,
 				61E5950233A0AF2021367194 /* Discovery.swift */,
+				79D7AABE6ACF186EBB03068F /* Pairing.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -195,6 +201,8 @@
 				BAAC61285D48302D17293BD5 /* Discovery.swift in Sources */,
 				DDE129A5A082EACDAD399ED2 /* MockConfig.swift in Sources */,
 				EC0A3040A35010EFA593DD6C /* PageGrid.swift in Sources */,
+				F4A322D336051B904DA34261 /* Pairing.swift in Sources */,
+				8AA258A7B337257EB93A2742 /* PairingView.swift in Sources */,
 				56C07AC6BEEE9A606CFE9FD2 /* buttons.pb.swift in Sources */,
 				1DDCED855B9AF798C8BECC11 /* wire.pb.swift in Sources */,
 			);
