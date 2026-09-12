@@ -30,6 +30,15 @@ final class DesktopConnection: NSObject {
     private var pendingToken: String?
     private let session = URLSession(configuration: .default)
 
+    /// A blocked Local Network permission doesn't fail the socket open —
+    /// it just never delivers anything, so `receiveLoop()`'s `.failure`
+    /// case never fires and `pairCompletion` never runs. Without this, a
+    /// QR scan attempted with the permission off leaves `PairingView`
+    /// stuck on "Connecting…" forever (DoD 4's gap, concretely). 10s is
+    /// generous for a real LAN round trip and short enough that a blocked
+    /// permission surfaces before the user assumes the app is frozen.
+    private var pairTimeout: DispatchWorkItem?
+
     /// Fires once, exactly when a `PairResponse` arrives — success carries
     /// the `auth_token` to persist, failure the server's `error` string.
     /// `Pairing.swift` uses this (not polling `isConnected`/`pairError`) to
@@ -54,6 +63,7 @@ final class DesktopConnection: NSObject {
         }
         pendingToken = token
         pairCompletion = onPairResult
+        scheduleTimeout()
         let fullType = type.hasSuffix(".") ? type : "\(type)."
         let service = NetService(domain: domain, type: fullType, name: name)
         service.delegate = self
@@ -77,13 +87,37 @@ final class DesktopConnection: NSObject {
             onPairResult?(.failure("invalid host/port in QR payload"))
             return
         }
+        scheduleTimeout()
         connectWebSocket(to: url)
     }
 
     func disconnect() {
+        pairTimeout?.cancel()
+        pairTimeout = nil
         netService?.stop()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         isConnected = false
+    }
+
+    /// Fires only if nothing has resolved `pairCompletion` yet — a real
+    /// success/failure always cancels this first, so it can never override
+    /// one. Names Local Network permission as the likely cause: it's the
+    /// one failure mode in this flow that's silent by construction
+    /// (Implementation Notes #10.2 — no pre-check API, denial just makes
+    /// traffic vanish) as opposed to camera denial, which already has its
+    /// own explicit UI state.
+    private func scheduleTimeout() {
+        pairTimeout?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            let message = "couldn't reach the desktop — check it's on the same Wi-Fi, and that Local Network access is allowed for this app in Settings"
+            self.pairError = message
+            self.pairCompletion?(.failure(message))
+            self.pairCompletion = nil
+            self.disconnect()
+        }
+        pairTimeout = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: work)
     }
 
     private func connectWebSocket(to url: URL) {
@@ -151,6 +185,8 @@ final class DesktopConnection: NSObject {
     private func handle(_ envelope: Buttons_Envelope) {
         switch envelope.message {
         case .pairResponse(let response):
+            pairTimeout?.cancel()
+            pairTimeout = nil
             // wire.proto: auth_token is "present iff ok" — checked, not
             // trusted, same reasoning as protocol_version (Implementation
             // Notes #2). A desktop bug/protocol drift sending ok:true with
@@ -208,6 +244,8 @@ extension DesktopConnection: NetServiceDelegate {
         // Prefer IPv4, matching the desktop's own IPv4 pairing/QR payload.
         guard let resolved = parsed.first(where: { $0.isIPv4 }) ?? parsed.first else {
             let message = "resolved service has no usable addresses"
+            pairTimeout?.cancel()
+            pairTimeout = nil
             pairError = message
             pairCompletion?(.failure(message))
             pairCompletion = nil
@@ -215,6 +253,8 @@ extension DesktopConnection: NetServiceDelegate {
         }
         guard let url = URL(string: "ws://\(resolved.host):\(resolved.port)") else {
             let message = "invalid resolved address"
+            pairTimeout?.cancel()
+            pairTimeout = nil
             pairError = message
             pairCompletion?(.failure(message))
             pairCompletion = nil
@@ -225,6 +265,8 @@ extension DesktopConnection: NetServiceDelegate {
 
     func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
         let message = "failed to resolve desktop: \(errorDict)"
+        pairTimeout?.cancel()
+        pairTimeout = nil
         pairError = message
         pairCompletion?(.failure(message))
         pairCompletion = nil
