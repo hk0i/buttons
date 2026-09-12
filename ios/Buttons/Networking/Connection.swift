@@ -110,7 +110,7 @@ final class DesktopConnection: NSObject {
         pairTimeout?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            let message = "couldn't reach the desktop — check it's on the same Wi-Fi, and that Local Network access is allowed for this app in Settings"
+            let message = "Couldn't reach Buttons desktop — check it's on the same network, and that Local Network access is allowed for this app in Settings"
             self.pairError = message
             self.pairCompletion?(.failure(message))
             self.pairCompletion = nil
