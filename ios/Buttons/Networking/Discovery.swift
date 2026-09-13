@@ -43,6 +43,15 @@ final class DesktopDiscovery {
                 self?.discovered = devices
             }
         }
+        // TEMP — checking whether a denied Local Network permission
+        // surfaces here as `.waiting(NWError)`, or stays as silent as
+        // browseResultsChangedHandler (slice 07 spec, § Implementation
+        // Notes, "Local Network (mDNS/`NWBrowser`)": no pre-check API,
+        // denial "doesn't surface as an error"). Remove once verified
+        // on-device either way.
+        browser.stateUpdateHandler = { state in
+            print("DesktopDiscovery: NWBrowser state = \(state)")
+        }
         browser.start(queue: .main)
         self.browser = browser
     }
@@ -56,8 +65,8 @@ final class DesktopDiscovery {
     ///
     /// - Parameter deviceId: The `device_id` stored in the Keychain at pairing time.
     /// - Returns: `nil` until a matching advertisement arrives — callers poll.
-    // `device_id` is stable for the desktop's lifetime (Implementation
-    // Notes #3), which is what makes this matching scheme work at all.
+    // `device_id` is stable for the desktop's lifetime, which is what
+    // makes this matching scheme work at all.
     func endpoint(forDeviceId deviceId: String) -> NWEndpoint? {
         discovered.first(where: { $0.deviceId == deviceId })?.endpoint
     }
