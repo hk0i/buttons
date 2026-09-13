@@ -44,8 +44,11 @@ private struct RootView: View {
         .onAppear(perform: attemptReconnectIfPaired)
     }
 
+    // `configSync` is never cleared once set (Connection.swift) — checking
+    // `isConnected` too is what makes a dropped connection actually fall
+    // back to `PairingView` instead of showing stale `DeckView` forever.
     private var activeProfile: Buttons_Profile? {
-        guard let config = connection.configSync else { return nil }
+        guard connection.isConnected, let config = connection.configSync else { return nil }
         return config.profiles.first(where: { $0.id == config.activeProfileID }) ?? config.profiles.first
     }
 
