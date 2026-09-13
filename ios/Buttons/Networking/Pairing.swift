@@ -153,17 +153,21 @@ final class PairingSession {
         }
     }
 
-    /// Starts a silent mDNS reconnect using the stored pairing, if there is one.
+    /// Starts the mDNS browse, and — if the Keychain holds a stored
+    /// pairing — polls it for a silent reconnect.
     ///
-    /// Does nothing when the Keychain holds no pairing; `autoReconnectState`
-    /// stays `.idle` so the landing screen shows first-pair copy rather
-    /// than a false "searching" state.
+    /// The browse always starts, even with no stored pairing: it's what
+    /// lets a fresh install detect a denied Local Network permission
+    /// (`discovery.isLocalNetworkDenied`) before the user ever taps
+    /// "Scan QR Code," not just on reconnect. With no stored pairing,
+    /// `autoReconnectState` itself still stays `.idle` — the landing
+    /// screen shows first-pair copy, not a false "searching" state.
     ///
     /// - Parameter discovery: Browser to start and poll; left running on return.
     func attemptAutoReconnect(discovery: DesktopDiscovery) {
+        discovery.start()
         guard let stored = PairingStore.load() else { return }
         autoReconnectState = .searching
-        discovery.start()
         Task {
             // ~5s of polling at 250ms — generous for LAN mDNS, not a
             // network round trip to wait indefinitely on.
