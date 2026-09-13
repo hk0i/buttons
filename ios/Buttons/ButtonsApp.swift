@@ -42,6 +42,16 @@ private struct RootView: View {
             }
         }
         .onAppear(perform: attemptReconnectIfPaired)
+        // A live connection can die mid-session — phone locks, iOS
+        // suspends the socket, the OS eventually delivers a reset — with
+        // no user action to hang a retry off of. Re-running the same
+        // silent mDNS reconnect used at launch is what actually recovers
+        // without requiring a force-quit.
+        .onChange(of: connection.isConnected) { wasConnected, isConnected in
+            if wasConnected, !isConnected {
+                session.attemptAutoReconnect(discovery: discovery)
+            }
+        }
     }
 
     // `configSync` is never cleared once set (Connection.swift) — checking

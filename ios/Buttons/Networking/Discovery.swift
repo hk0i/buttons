@@ -22,7 +22,12 @@ final class DesktopDiscovery {
 
     private var browser: NWBrowser?
 
+    /// Starts (or restarts) the mDNS browse.
+    // Cancels any existing browser first — this is now called on every
+    // reconnect attempt, not just once at launch, so a caller starting it
+    // twice must not leak the previous `NWBrowser`.
     func start() {
+        stop()
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
 
