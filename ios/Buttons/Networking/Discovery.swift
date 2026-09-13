@@ -21,6 +21,17 @@ struct DiscoveredDesktop: Identifiable, Equatable {
 final class DesktopDiscovery {
     private(set) var discovered: [DiscoveredDesktop] = []
 
+    /// Whether the last browse attempt hit a denied Local Network
+    /// permission specifically, distinct from any other reason no desktop
+    /// has been found yet.
+    // Reset at the top of `start()`, not just set on denial — a fresh
+    // attempt after permission is re-granted should stop reporting the
+    // stale denial. Untested as of the 2026-09-13 amendment below: whether
+    // this flag updates promptly if permission is revoked mid-session
+    // while the browser is already running, since `start()` isn't
+    // currently re-invoked on app-foreground.
+    private(set) var isLocalNetworkDenied = false
+
     private var browser: NWBrowser?
 
     /// Starts (or restarts) the mDNS browse.
@@ -29,6 +40,7 @@ final class DesktopDiscovery {
     // twice must not leak the previous `NWBrowser`.
     func start() {
         stop()
+        isLocalNetworkDenied = false
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
 
@@ -43,14 +55,16 @@ final class DesktopDiscovery {
                 self?.discovered = devices
             }
         }
-        // TEMP — checking whether a denied Local Network permission
-        // surfaces here as `.waiting(NWError)`, or stays as silent as
-        // browseResultsChangedHandler (slice 07 spec, § Implementation
-        // Notes, "Local Network (mDNS/`NWBrowser`)": no pre-check API,
-        // denial "doesn't surface as an error"). Remove once verified
-        // on-device either way.
-        browser.stateUpdateHandler = { state in
-            print("DesktopDiscovery: NWBrowser state = \(state)")
+        // -65570 is DNS-SD's PolicyDenied — Local Network access revoked
+        // for this app. `.waiting` alone isn't permission-exclusive (no
+        // Wi-Fi hits it too), so gate on the specific code. See slice 07
+        // spec, § Implementation Notes, "Local Network (mDNS/`NWBrowser`),"
+        // amended 2026-09-13.
+        browser.stateUpdateHandler = { [weak self] state in
+            guard case .waiting(let error) = state, error.errorCode == -65570 else { return }
+            DispatchQueue.main.async {
+                self?.isLocalNetworkDenied = true
+            }
         }
         browser.start(queue: .main)
         self.browser = browser

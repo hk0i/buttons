@@ -16,6 +16,7 @@ import VisionKit
 // dead scanner.
 struct PairingView: View {
     let session: PairingSession
+    let discovery: DesktopDiscovery
 
     @State private var state: PairingState = .landing
 
@@ -72,19 +73,16 @@ struct PairingView: View {
     ///
     /// The silent reconnect (`statusText`, below) is a background
     /// convenience layered on top — never a gate on the manual path.
-    // `.notFound` also offers Open Settings alongside the scan action:
-    // mDNS browsing produces no error at all when Local Network access is
-    // denied (NWBrowser just never calls back with results), so this case
-    // can't be attributed to permission-vs-desktop-actually-off the way a
-    // WebSocket connect failure can (see Connection.swift's
-    // pairingFailureMessage). Naming both possible causes and offering
-    // both actions is what actually closes the gap, not a guess.
+    // `.notFound` also offers Open Settings whenever Local Network access
+    // is the confirmed cause (`discovery.isLocalNetworkDenied`) — see
+    // Discovery.swift and slice 07 spec, § Implementation Notes, "Local
+    // Network (mDNS/`NWBrowser`)," amended 2026-09-13.
     private var landingView: some View {
         VStack(spacing: 20) {
             statusText
             Button("Scan QR Code") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
-            if session.autoReconnectState == .notFound {
+            if session.autoReconnectState == .notFound, discovery.isLocalNetworkDenied {
                 Button("Open Settings", action: openSystemSettings)
                     .buttonStyle(.bordered)
             }
@@ -103,8 +101,11 @@ struct PairingView: View {
                 Text("Looking for your paired desktop on this network…")
                     .multilineTextAlignment(.center)
             }
+        case .notFound where discovery.isLocalNetworkDenied:
+            Text("Buttons can't search your network — Local Network access is off. Turn it on in Settings, or scan the desktop's QR code instead.")
+                .multilineTextAlignment(.center)
         case .notFound:
-            Text("Couldn't find Buttons desktop automatically. It may not be running, or this app's Local Network access may be blocked — scan the desktop QR code, or check Settings.")
+            Text("Couldn't find Buttons desktop automatically. Make sure it's running on this network, or scan its QR code.")
                 .multilineTextAlignment(.center)
         }
     }
@@ -236,5 +237,5 @@ private struct QRScannerRepresentable: UIViewControllerRepresentable {
 }
 
 #Preview {
-    PairingView(session: PairingSession(connection: DesktopConnection()))
+    PairingView(session: PairingSession(connection: DesktopConnection()), discovery: DesktopDiscovery())
 }

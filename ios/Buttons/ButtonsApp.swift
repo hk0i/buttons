@@ -38,7 +38,7 @@ private struct RootView: View {
                 // failure state.
                 ProgressView("Loading…")
             } else {
-                PairingView(session: session)
+                PairingView(session: session, discovery: discovery)
             }
         }
         .onAppear(perform: attemptReconnectIfPaired)
