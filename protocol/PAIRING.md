@@ -83,9 +83,19 @@ server response.
 All four fail inside `authenticate()`, which runs before a connection ever
 touches the single-connection slot — none of them should evict or disrupt
 an already-paired session running elsewhere. Confirm by pairing a real
-client first, running one of the above, and checking the paired client
-stays live throughout (Definition of Done #11, slice 07). None of these
-produce a `server: WebSocket error from …` log line either — that message
-comes only from the post-authentication loop, so seeing it during one of
-these attempts would mean the payload authenticated when it shouldn't
-have.
+client first, then running one of the above and checking both of these
+hold:
+
+1. **Desktop console never prints `server: evicting previous connection
+   to authenticate …`.** That line only appears at the one point in
+   `server.rs` where the slot is actually replaced — its absence, not any
+   positive signal, is the proof nothing was disrupted.
+2. **The paired client stays on its normal screen** (iOS: `DeckView`
+   doesn't drop back to `PairingView` — that only happens once
+   `DesktopConnection.isConnected` flips false, which a real eviction or
+   dropped connection would trigger).
+
+None of the four attempts above should produce `server: WebSocket error
+from …` either — that line comes only from the post-authentication loop,
+so seeing it during one of these attempts would mean the payload
+authenticated when it shouldn't have.

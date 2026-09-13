@@ -148,9 +148,16 @@ async fn handle_connection(
     {
         let mut guard = slot.lock().await;
         if let Some(old) = guard.take() {
+            // The only slot-occupancy log line that exists — deliberately
+            // placed here, not at the top of handle_connection, so its
+            // absence during a failed authenticate() attempt is itself the
+            // evidence DoD 11 checks for (see PAIRING.md's websocat
+            // procedure).
+            eprintln!("server: evicting previous connection to authenticate {addr}");
             let _ = old.evict_tx.send(());
         }
         *guard = Some(ConnectionHandle { evict_tx });
+        println!("server: {addr} authenticated, holding the connection slot");
     }
 
     let config = match config::load_config(&config_path) {
