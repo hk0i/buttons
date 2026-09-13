@@ -43,3 +43,49 @@ docs already on the messages themselves.
 
 Full design rationale, TTL/eviction reasoning, and threat-model notes:
 `docs/slices/07. Discovery, Pairing & Config Sync.spec.md`.
+
+## Manually testing the handshake with `websocat`
+
+`websocat` (`brew install websocat`) is a generic WebSocket CLI client —
+useful for poking at the real desktop server without a mobile client, and
+for the specific case a mobile client can't easily produce on demand: a
+malformed or unauthenticated connection attempt. From the same machine as
+the desktop, connect to loopback (the server binds `0.0.0.0`, so it
+answers on `127.0.0.1` too, no LAN IP needed):
+
+```
+websocat ws://127.0.0.1:47821
+```
+
+Envelopes on the wire are canonical proto3 JSON (EDD §5.2) — the `oneof`
+case name is a top-level key, **not** nested under a `message` wrapper:
+
+```
+{"protocolVersion":"1","pairRequest":{"token":"<value>"}}
+```
+
+The server closes the connection after one rejected attempt — it's a
+single-shot handshake, not a retry loop (`authenticate()` runs once per
+connection). **Run a fresh `websocat` invocation for each payload below**,
+not multiple lines in one session; a second line into an already-rejected
+connection just gets `websocat`'s own I/O-failure error, not a second
+server response.
+
+1. **Garbage token** — `{"protocolVersion":"1","pairRequest":{"token":"nonsense"}}`
+   — passes shape/version checks, fails `Pairing::validate`.
+2. **Malformed JSON** — `garbage` — fails to parse as an `Envelope` at all.
+3. **Wrong shape** — `{"protocolVersion":"1"}` (no `pairRequest`/etc.) — parses,
+   but has no recognized oneof case.
+4. **Nothing at all** — open the connection and leave it idle. `authenticate()`
+   blocks on the first frame; closing `websocat` (Ctrl-C) delivers a reset,
+   not a `PairRequest`.
+
+All four fail inside `authenticate()`, which runs before a connection ever
+touches the single-connection slot — none of them should evict or disrupt
+an already-paired session running elsewhere. Confirm by pairing a real
+client first, running one of the above, and checking the paired client
+stays live throughout (Definition of Done #11, slice 07). None of these
+produce a `server: WebSocket error from …` log line either — that message
+comes only from the post-authentication loop, so seeing it during one of
+these attempts would mean the payload authenticated when it shouldn't
+have.
