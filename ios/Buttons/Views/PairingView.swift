@@ -128,7 +128,7 @@ struct PairingView: View {
         VStack(spacing: 16) {
             Text("Buttons needs your camera to scan the desktop's pairing code.")
                 .multilineTextAlignment(.center)
-            Button("Scan") { requestCameraAccess() }
+            Button("Scan QR Code") { requestCameraAccess() }
                 .buttonStyle(.borderedProminent)
         }
     }
@@ -163,7 +163,7 @@ struct PairingView: View {
             Text(message)
                 .foregroundStyle(.red)
                 .multilineTextAlignment(.center)
-            Button("Scan again") { checkCameraAndAdvance() }
+            Button("Scan QR Again") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
             Button("Open Settings", action: openSystemSettings)
                 .buttonStyle(.bordered)
