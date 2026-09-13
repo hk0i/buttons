@@ -12,7 +12,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 /// Bumped on any breaking wire change. Checked before the token validator
-/// runs — see Implementation Notes #2.
+/// runs — see slice 07 spec, § Implementation Notes, "`protocol_version`
+/// is checked, not just carried."
 pub const PROTOCOL_VERSION: &str = "1";
 
 /// From the moment the QR is (re)rendered, not from server start.
@@ -47,8 +48,8 @@ impl Pairing {
     /// Loads `device.json`, generating a new `device_id` (and writing the
     /// file) on first launch that finds none. `device_id` never changes
     /// once generated — mobile's reconnect matching depends on that
-    /// stability (Implementation Notes #3). Lives beside `buttons.json`,
-    /// same directory (Implementation Notes #4) — caller passes that path.
+    /// stability. Lives beside `buttons.json`, same directory — caller
+    /// passes that path.
     pub fn load_or_create(device_path: PathBuf) -> Result<Self, String> {
         let device = if device_path.exists() {
             let data = fs::read_to_string(&device_path).map_err(|e| e.to_string())?;
@@ -98,8 +99,8 @@ impl Pairing {
     /// same code path either way, the caller doesn't need to know which
     /// case it is. Returns the `auth_token` to send back in `PairResponse`
     /// on success. A fresh one-time-token pair mints and persists a new
-    /// `auth_token`; a reconnect returns the existing one unchanged (no
-    /// rotation, v1 — Scope → Out item 4).
+    /// `auth_token`; a reconnect returns the existing one unchanged — no
+    /// rotation, v1 (slice 07 spec, § Scope → Out, "Token rotation").
     pub fn validate(&self, token: &str) -> Option<String> {
         {
             let mut guard = self.one_time.lock().unwrap();

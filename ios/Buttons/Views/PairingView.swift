@@ -9,10 +9,11 @@ import VisionKit
 /// Code" tap enters the camera-check flow. Landing itself is driven by
 /// `session.autoReconnectState`, not the camera: the silent mDNS reconnect
 /// runs independently of whether the user ever opens the scanner.
-// Implementation Notes #10.1: camera is queryable and soft-askable, unlike
-// Local Network (#10.2) — `.notDetermined` gets an explanatory screen
-// before the native prompt ever fires, `.denied` routes to "Open Settings"
-// instead of a dead scanner.
+// Camera is queryable and soft-askable, unlike Local Network — see slice
+// 07 spec, § Implementation Notes, "Two permissions, two different
+// shapes." `.notDetermined` gets an explanatory screen before the native
+// prompt ever fires, `.denied` routes to "Open Settings" instead of a
+// dead scanner.
 struct PairingView: View {
     let session: PairingSession
 
@@ -155,9 +156,9 @@ struct PairingView: View {
     ///
     /// A pairing failure here can't always be attributed to one cause —
     /// stale token and a blocked Local Network permission both surface as
-    /// generic connect failures (Implementation Notes #10.2: Local Network
-    /// has no pre-check API, so this can't be resolved to a definite
-    /// permission error). Offering both actions instead of guessing wrong.
+    /// generic connect failures — Local Network has no pre-check API, so
+    /// this can't be resolved to a definite permission error. Offering
+    /// both actions instead of guessing wrong.
     private func failedView(_ message: String) -> some View {
         VStack(spacing: 16) {
             Text(message)
@@ -187,7 +188,7 @@ struct PairingView: View {
 
 /// Wraps `DataScannerViewController` (VisionKit, iOS 16+) for a single QR
 /// payload. Requires a real device or a Simulator with a virtual camera
-/// feed — see Implementation Notes #11.
+/// feed.
 private struct QRScannerRepresentable: UIViewControllerRepresentable {
     let onScan: (String) -> Void
 

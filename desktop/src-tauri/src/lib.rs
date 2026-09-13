@@ -21,7 +21,7 @@ fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Beside `buttons.json`, same directory — genuine device-local settings
-/// per EDD §5.3, not `localStorage` (Implementation Notes #4).
+/// per EDD §5.3, not `localStorage`.
 fn device_path(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
@@ -51,9 +51,9 @@ struct PairingQr {
 }
 
 /// Issues a fresh one-time pairing token and renders it as an SVG QR —
-/// server-side (`qrcode` crate), no client-side QR library (Scope → In
-/// item 7). Called each time the pairing view (re)opens; the previous
-/// token stops working the moment this runs (Implementation Notes #1).
+/// server-side (`qrcode` crate), no client-side QR library. Called each
+/// time the pairing view (re)opens; the previous token is invalidated the
+/// moment this runs, not left valid until its TTL expires.
 #[tauri::command]
 fn get_pairing_qr(pairing: tauri::State<Arc<Pairing>>) -> Result<PairingQr, String> {
     let token = pairing.issue_pairing_token();

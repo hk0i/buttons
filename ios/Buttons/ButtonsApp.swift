@@ -19,8 +19,8 @@ struct ButtonsApp: App {
     }
 }
 
-/// Launch sequence (Files to Touch #17): Keychain check → reconnect
-/// attempt → `PairingView` fallback → `ContentView` once paired.
+/// Launch sequence: Keychain check → reconnect attempt → `PairingView`
+/// fallback → `ContentView` once paired.
 private struct RootView: View {
     let connection: DesktopConnection
     let discovery: DesktopDiscovery

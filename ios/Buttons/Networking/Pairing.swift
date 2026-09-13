@@ -25,8 +25,8 @@ struct PairingPayload: Equatable {
 }
 
 /// The persisted pairing credential — `device_id` + `auth_token` — read on
-/// launch to attempt a silent reconnect (Files to Touch #17), written once
-/// a fresh pair's `PairResponse` confirms it.
+/// launch to attempt a silent reconnect, written once a fresh pair's
+/// `PairResponse` confirms it.
 struct StoredPairing: Equatable {
     let deviceId: String
     let authToken: String
@@ -176,8 +176,9 @@ final class PairingSession {
                 try? await Task.sleep(for: .milliseconds(250))
             }
             // Not found within the window — landing state shows this and
-            // still offers "Scan QR Code" as the recovery path (Scope →
-            // Out item 7: mDNS-only reconnect, QR rescan is the fallback).
+            // still offers "Scan QR Code" as the recovery path (slice 07
+            // spec, § Scope → Out, "Manual IP entry / QR
+            // redisplay-for-reconnect fallback").
             autoReconnectState = .notFound
         }
     }

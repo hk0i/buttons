@@ -7,8 +7,8 @@ packages:
   # Pinned to exactly what `protoc-gen-swift --version` reports at
   # generation time (protocol/verify-swift's own rule) — the committed
   # ios/Buttons/Generated/*.pb.swift files were produced by that version;
-  # don't bump without regenerating them to match. See slice 07 spec,
-  # Implementation Notes #13.
+  # don't bump without regenerating them to match. See slice 07 spec, §
+  # Implementation Notes, "iOS needs its own Swift codegen wiring."
   SwiftProtobuf:
     url: https://github.com/apple/swift-protobuf.git
     exactVersion: 1.38.1
@@ -31,12 +31,13 @@ targets:
       properties:
         UILaunchScreen: {}
         # Camera: queryable/soft-askable, PairingView.swift pre-asks before
-        # the native prompt fires — this text is that prompt's copy
-        # (Implementation Notes #10.1).
+        # the native prompt fires — this text is that prompt's copy. See
+        # slice 07 spec, § Implementation Notes, "Two permissions, two
+        # different shapes."
         NSCameraUsageDescription: "Buttons needs your camera to scan the desktop's pairing code."
         # Local Network: not soft-askable, fires automatically on first
-        # Bonjour use (Implementation Notes #10.2) — both keys required or
-        # discovery silently finds nothing with no explaining error.
+        # Bonjour use — both keys required or discovery silently finds
+        # nothing with no explaining error. Same citation as above.
         NSLocalNetworkUsageDescription: "Buttons uses your local network to find and connect to the desktop app."
         NSBonjourServices:
           - _buttons._tcp

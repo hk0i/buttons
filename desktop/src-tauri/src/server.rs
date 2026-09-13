@@ -1,7 +1,8 @@
 //! mDNS advertise + WebSocket accept loop + per-connection pairing
 //! handshake + single-active-connection guard. See
-//! docs/slices/07. Discovery, Pairing & Config Sync.spec.md, Scope → In
-//! items 4-5, 8, Implementation Notes #9.
+//! docs/slices/07. Discovery, Pairing & Config Sync.spec.md, § Scope, and
+//! § Implementation Notes, "Single-connection slot is
+//! `Mutex<Option<ConnectionHandle>>`."
 
 use crate::config;
 use crate::pairing::{self, Pairing};
@@ -142,8 +143,11 @@ async fn handle_connection(
 
     // Evict whatever the slot currently holds only *after* this connection
     // authenticated — an unauthenticated attempt never reaches this point,
-    // so it can never knock the real device off (Implementation Notes #9,
-    // DoD 11).
+    // so it can never knock the real device off. See slice 07 spec, §
+    // Implementation Notes, "Single-connection slot is
+    // `Mutex<Option<ConnectionHandle>>`," and § Definition of Done, "An
+    // unauthenticated connection attempt ... does not disrupt that
+    // session" (verified via `websocat`, protocol/PAIRING.md).
     let (evict_tx, mut evict_rx) = oneshot::channel();
     {
         let mut guard = slot.lock().await;
@@ -206,7 +210,9 @@ async fn handle_connection(
 
 /// Reads exactly one `Envelope` off the socket, checks `protocol_version`,
 /// and runs it through `Pairing::validate` — the single code path for both
-/// first-pair and reconnect (Implementation Notes #1-2).
+/// first-pair and reconnect. See slice 07 spec, § Implementation Notes,
+/// "One validator, two acceptable tokens" and "`protocol_version` is
+/// checked, not just carried."
 async fn authenticate(
     ws: &mut WebSocketStream<TcpStream>,
     pairing: &Pairing,

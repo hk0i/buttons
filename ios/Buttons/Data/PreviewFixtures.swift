@@ -4,7 +4,7 @@
 // Renamed + rewritten from `MockConfig.swift` (slice 05) at slice 07 —
 // same fixture shape (2-level folders, every action kind, the nil-label/
 // nil-name edge cases), rebuilt against `Buttons_Config`/`Buttons_Button`
-// instead of the now-deleted `ButtonModel`. See Files to Touch #21.
+// instead of the now-deleted `ButtonModel`.
 
 extension Buttons_Profile {
     init(id: String, name: String, pages: [Buttons_Page]) {
@@ -16,9 +16,9 @@ extension Buttons_Profile {
 }
 
 extension Buttons_Page {
-    /// `name: nil` leaves the field unset (`hasName == false`) — the
-    /// nil-name edge case DoD item 5 checks survives the real wire, not
-    /// just this preview data.
+    /// `name: nil` leaves the field unset (`hasName == false`) — real
+    /// devices must render the fallback ("Back" / icon-only), not an
+    /// empty string, when this field is absent on the wire.
     init(id: String, name: String?, buttons: [Buttons_Button]) {
         self.init()
         self.id = id

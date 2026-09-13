@@ -103,10 +103,10 @@ final class DesktopConnection: NSObject {
     ///
     /// - Parameter seconds: How long to wait before giving up. Defaults to 10.
     // A blocked Local Network permission doesn't fail the socket open —
-    // it just delivers nothing (Implementation Notes #10.2: no pre-check
-    // API, denial makes traffic vanish silently) — so this is the only
-    // thing that ends a hung attempt. A real success/failure always
-    // cancels this first, so it can never override one.
+    // it just delivers nothing (no pre-check API for this permission;
+    // denial makes traffic vanish silently) — so this is the only thing
+    // that ends a hung attempt. A real success/failure always cancels
+    // this first, so it can never override one.
     private func scheduleTimeout(after seconds: TimeInterval = 10) {
         pairTimeout?.cancel()
         let work = DispatchWorkItem { [weak self] in

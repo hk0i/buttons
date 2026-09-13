@@ -2,17 +2,18 @@ import Network
 import Foundation
 
 /// One desktop found on the LAN — its connection endpoint and the
-/// `device_id` from its mDNS TXT record. `device_id` is what makes
-/// reconnect matching possible (Implementation Notes #3: it's generated
-/// once on the desktop and never changes).
+/// `device_id` from its mDNS TXT record. `device_id` is generated once on
+/// the desktop and never changes, which is what makes reconnect matching
+/// possible.
 struct DiscoveredDesktop: Identifiable, Equatable {
     var id: String { deviceId }
     let deviceId: String
     let endpoint: NWEndpoint
 }
 
-/// Browses for `_buttons._tcp` on the LAN. No manual IP entry this slice
-/// (Scope → Out item 7) — mDNS is the only discovery path. `@Observable`
+/// Browses for `_buttons._tcp` on the LAN. No manual IP entry this slice —
+/// mDNS is the only discovery path (slice 07 spec, § Scope → Out, "Manual
+/// IP entry / QR redisplay-for-reconnect fallback"). `@Observable`
 /// from the start, not extracted later: this owns a live `NWBrowser`
 /// subscription shared across the pairing and reconnect flows — see
 /// CLAUDE.md's "layer that owns a live connection" rule.

@@ -1,17 +1,17 @@
 //! Bridge between `config.rs`'s hand-written local-persistence types and
-//! the generated wire types. Per slice 07 spec Implementation Notes #6:
-//! `buttons::Config` (wire) and `config::Config` (local) stay two distinct
-//! types this slice — this file is the only place they touch, one
-//! direction (local -> wire, for `ConfigSync`). No reverse mapping needed
-//! yet (that's `button_press`/`profile_switch`, steps 8-10).
+//! the generated wire types. `buttons::Config` (wire) and `config::Config`
+//! (local) stay two distinct types this slice — this file is the only
+//! place they touch, one direction (local -> wire, for `ConfigSync`). No
+//! reverse mapping needed yet (that's `button_press`/`profile_switch`,
+//! steps 8-10).
 
 use crate::config;
 
 // buttons.proto and wire.proto share proto package `buttons`, so
 // prost_build/pbjson_build emit one generated file for both — see
-// build.rs and docs/slices/07. Discovery, Pairing & Config Sync.spec.md
-// Scope → In item 2. Config/Profile/Page/Button/Action live here right
-// alongside Envelope/PairRequest/PairResponse/ConfigSync.
+// build.rs and slice 07 spec, § Scope → In, "Desktop: real prost codegen
+// wired into `desktop/src-tauri`." Config/Profile/Page/Button/Action live
+// here right alongside Envelope/PairRequest/PairResponse/ConfigSync.
 pub mod buttons {
     include!(concat!(env!("OUT_DIR"), "/buttons.rs"));
     // pbjson_build's canonical-proto3-JSON Serialize/Deserialize impls
