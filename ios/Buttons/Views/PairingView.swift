@@ -16,9 +16,9 @@ import VisionKit
 struct PairingView: View {
     let session: PairingSession
 
-    @State private var phase: Phase = .landing
+    @State private var state: PairingState = .landing
 
-    private enum Phase: Equatable {
+    private enum PairingState: Equatable {
         case landing
         case cameraPreAsk
         case cameraDenied
@@ -38,20 +38,20 @@ struct PairingView: View {
             // `.scanning`/`.connecting`/`.failed` attempt must survive an
             // unrelated foreground event (e.g. Control Center).
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                if phase == .cameraDenied {
+                if state == .cameraDenied {
                     checkCameraAndAdvance()
                 }
             }
             .onChange(of: session.lastError) { _, newError in
                 if let newError {
-                    phase = .failed(newError)
+                    state = .failed(newError)
                 }
             }
     }
 
     @ViewBuilder
     private var content: some View {
-        switch phase {
+        switch state {
         case .landing:
             landingView
         case .cameraPreAsk:
@@ -114,13 +114,13 @@ struct PairingView: View {
     private func checkCameraAndAdvance() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            phase = .scanning
+            state = .scanning
         case .notDetermined:
-            phase = .cameraPreAsk
+            state = .cameraPreAsk
         case .denied, .restricted:
-            phase = .cameraDenied
+            state = .cameraDenied
         @unknown default:
-            phase = .cameraDenied
+            state = .cameraDenied
         }
     }
 
@@ -138,14 +138,14 @@ struct PairingView: View {
         // explanatory pre-ask screen above is what makes this a soft ask.
         AVCaptureDevice.requestAccess(for: .video) { granted in
             DispatchQueue.main.async {
-                phase = granted ? .scanning : .cameraDenied
+                state = granted ? .scanning : .cameraDenied
             }
         }
     }
 
     private var scannerView: some View {
         QRScannerRepresentable { payload in
-            phase = .connecting
+            state = .connecting
             session.pair(scannedQR: payload)
         }
         .ignoresSafeArea()
