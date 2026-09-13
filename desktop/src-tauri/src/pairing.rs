@@ -24,6 +24,8 @@ pub struct PairedSlot {
     pub paired_at: String,
 }
 
+/// On-disk shape of `device.json` — this desktop's identity plus its
+/// current pairing credential, if any.
 #[derive(Serialize, Deserialize)]
 struct DeviceFile {
     device_id: String,
