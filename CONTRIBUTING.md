@@ -135,6 +135,47 @@ introducing its own sub-section (e.g. a tier, a component, a Goals/
 Non-Goals split) belongs in the document's outline/TOC, which only a real
 heading gives it.
 
+**Annotating a code snippet that changes existing code.** Decided
+2026-09-14. When a snippet shows a change to something that already
+exists — a new field, a new method, a modified signature — mark each
+change point with a short numbered `//` comment directly in the snippet,
+then follow the snippet with a numbered list (restarts at `1.`, same rule
+as above) that elaborates each point in a sentence or two. Makes new code
+visually distinct from the unchanged code around it, and keeps the
+"what changed and why" next to the snippet instead of buried in prose
+above it.
+
+```swift
+@Observable
+final class PairingSession {
+    private(set) var autoReconnectState: AutoReconnectState = .idle
+
+    // 1. new — in-flight guard
+    var isReconnectInFlight: Bool { autoReconnectState == .searching }
+
+    // 2. becomes async, gains the guard
+    func attemptAutoReconnect(discovery: DesktopDiscovery) async {
+        guard !isReconnectInFlight else { return }
+        // ...
+    }
+}
+```
+
+1. `isReconnectInFlight` — derives from existing state instead of a
+   separate flag, so there's one source of truth for both call sites that
+   need it.
+2. `attemptAutoReconnect` — goes `async`; the new guard at its top makes a
+   repeat call a no-op while one is already running.
+
+**Scope: this numbering is local to the snippet and its own list,
+immediately adjacent in the same section** — not a cross-file or
+cross-section reference. § Doc comments (code)'s ban on citing a living
+document by ordinal (item 3 below) still holds for that case; it isn't
+in tension with this rule, which never crosses a section boundary. A
+snippet showing a shape with nothing pre-existing to distinguish (a fresh
+type, a `.proto` fragment with no prior version) doesn't need this —
+it's for changes, not every snippet.
+
 ## Doc comments (code)
 
 Decided 2026-09-12, per slice 07 review. Applies to `///` (Swift, Rust) /
@@ -176,6 +217,12 @@ comments, which this doesn't constrain.
    A spec/issue *link* is still exactly right in a PR description — a
    reviewer needs it during review. A maintainer six months later needs the
    reason, not a click-through, which is why the two don't share a home.
+
+   **This ban is scoped to cross-file/cross-section references** — a
+   snippet's own inline `// 1.` markers, paired with an elaboration list
+   immediately below it in the same section, are a different, accepted
+   pattern; see § Documentation style, "Annotating a code snippet that
+   changes existing code."
 4. Naming rationale — why this name and not an obviously-confusable one —
    belongs in the slice spec / EDD, not in code, unless the name is
    genuinely likely to be misused by someone unfamiliar with the codebase.

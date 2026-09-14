@@ -48,6 +48,13 @@ tempting to also do while in here. This is the scope fence.]
 schema fragments. Copy the relevant fragment from the EDD rather than
 re-deriving it; keep them in sync if it changes here.]
 
+> **A snippet that changes existing code:** mark each change point with a
+> numbered `// 1.` comment in the snippet, then elaborate each in a
+> numbered list right after it — see CONTRIBUTING.md § Documentation
+> style, "Annotating a code snippet that changes existing code." Skip this
+> for a snippet with nothing pre-existing to distinguish (a fresh type, a
+> `.proto` fragment with no prior version).
+
 ## Implementation Notes *(delete if there's nothing non-obvious to say)*
 
 [Terse, load-bearing notes only — the thing that isn't obvious from the
