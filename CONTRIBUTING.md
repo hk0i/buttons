@@ -167,6 +167,20 @@ final class PairingSession {
 2. `attemptAutoReconnect` — goes `async`; the new guard at its top makes a
    repeat call a no-op while one is already running.
 
+**Elide unchanged code the annotations don't need.** Keep an unchanged
+line only as an anchor — the declaration a new member sits next to, the
+`guard` a new line follows. A method body shown in full with zero changes
+in it (and nothing in the numbered list pointing inside it) is exactly
+the noise this whole convention exists to cut — mark it `// ...` and move
+on. Two forms, by position, not by preference: `// ...` at statement/
+member level (a skipped loop body, a skipped property); `/* ... */` only
+where a comment has to sit inside an expression or a single-line brace
+pair (`Group { /* ... */ }` — `// ...` there comments out the closing
+brace along with everything else). Don't over-elide, either: the snippet
+still has to compile as a plausible shape — keep the type/function
+declarations, the attributes that changed, and every line an annotation
+actually references; elide the rest.
+
 **Scope: this numbering is local to the snippet and its own list,
 immediately adjacent in the same section** — not a cross-file or
 cross-section reference. § Doc comments (code)'s ban on citing a living
