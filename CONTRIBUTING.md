@@ -140,9 +140,13 @@ heading gives it.
 that already exists — a new field, a new method, a modified signature —
 mark each change point with a short numbered `//` comment **on its own
 line directly above** the line it refers to, never trailing on the same
-line. A trailing comment competes with the code for the eye at exactly
-the point a reader most needs to slow down; a comment-only line reads as
-a clear "look here" marker before the code it annotates. Then follow the
+line — and never the bare number alone (`// 1.`): pair it with a few
+words of context (`// 1. new — in-flight guard`), so the snippet itself
+says what changed without making the reader jump to the elaboration list
+below just to find out. A trailing comment competes with the code for
+the eye at exactly the point a reader most needs to slow down; a
+comment-only line reads as a clear "look here" marker before the code it
+annotates. Then follow the
 snippet with a numbered list (restarts at `1.`, same rule as above) that
 elaborates each point in a sentence or two. Makes new code visually
 distinct from the unchanged code around it, and keeps the "what changed
