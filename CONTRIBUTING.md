@@ -296,6 +296,42 @@ Applied to this repo's current enums: `PairingState`
 walk; `AutoReconnectState` because it re-enters from `.idle` and retries
 from `.notFound` (rule 4's tell). No rename from this decision.
 
+## Naming: `match`/closure error bindings
+
+Decided 2026-09-14, found in slice 08's `server.rs`. Applies across
+languages (Rust `match`/`?`, Swift `catch`/`case .failure`, TypeScript
+`catch`) — this is an identifier-naming rule, not a language-specific one.
+
+**The rule: a binding's name should be as long as its distance to its use,
+and as specific as the number of other bindings in scope it could be
+confused with.** A one-line passthrough has zero distance and zero
+competitors — keep it short:
+
+```rust
+match serde_json::from_str(text) {
+    Ok(envelope) => envelope,
+    Err(parse_error) => {
+        eprintln!("server: malformed Envelope: {parse_error}");
+        return None;
+    }
+}
+```
+
+`Ok(envelope) => envelope` could just as well be `Ok(e) => e` — the
+success binding carries no information, it's a rename. `Err(parse_error)`
+is different: it's *used*, three lines away, in a log line whose whole
+point is saying what failed. A bare `Err(e)` there is fine in isolation,
+but becomes a real hazard the moment a second, differently-typed error
+value is in play nearby (a caught error re-wrapped into a reply payload,
+say) — two `e`s of different types and different scopes read as
+interchangeable even though they aren't. Name it for what it is
+(`parse_error`, `load_error`, `join_error`), not for its type or its
+match arm position.
+
+Same reasoning for a closure parameter that survives past the line it's
+declared on (`.unwrap_or_else(|e| ...)` spanning a real body) — name it
+for what failed (`|join_error|`), not `|e|`.
+
 ## Code formatting (Swift)
 
 Decided 2026-09-13. `ios/` uses [apple/swift-format](https://github.com/apple/swift-format)

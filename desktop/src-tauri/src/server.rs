@@ -223,9 +223,9 @@ async fn handle_connection(
 /// type above. See slice 08 spec, § Implementation Notes.
 async fn handle_button_press(text: &str, config_path: &Path) -> Option<buttons::Envelope> {
     let envelope: buttons::Envelope = match serde_json::from_str(text) {
-        Ok(e) => e,
-        Err(e) => {
-            eprintln!("server: malformed Envelope: {e}");
+        Ok(envelope) => envelope,
+        Err(parse_error) => {
+            eprintln!("server: malformed Envelope: {parse_error}");
             return None;
         }
     };
@@ -237,10 +237,10 @@ async fn handle_button_press(text: &str, config_path: &Path) -> Option<buttons::
     // in `handle_connection` — an edit made on desktop must be visible to
     // the very next press, not just the next reconnect.
     let config = match config::load_config(config_path) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("server: failed to load config for ButtonPress: {e}");
-            return Some(action_result(&press.button_id, Err(e)));
+        Ok(config) => config,
+        Err(load_error) => {
+            eprintln!("server: failed to load config for ButtonPress: {load_error}");
+            return Some(action_result(&press.button_id, Err(load_error)));
         }
     };
 
@@ -258,7 +258,7 @@ async fn handle_button_press(text: &str, config_path: &Path) -> Option<buttons::
     // inline on this async task, per §5.4's sub-50ms round-trip target.
     let result = tokio::task::spawn_blocking(move || actions::run(&button_actions))
         .await
-        .unwrap_or_else(|e| Err(format!("action task panicked: {e}")));
+        .unwrap_or_else(|join_error| Err(format!("action task panicked: {join_error}")));
 
     Some(action_result(&press.button_id, result))
 }
