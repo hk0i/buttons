@@ -10,6 +10,17 @@ enum PairResult {
     case failure(String)
 }
 
+/// Wraps an incoming `ActionResult` with a `sequence` that always
+/// advances, even when two consecutive results are otherwise identical
+/// (same button, same outcome) — `Buttons_ActionResult` is `Equatable`,
+/// and a bare `Buttons_ActionResult?` would fail to notify observers
+/// (`.onChange(of:)`) on a repeat, since a value-identical result isn't
+/// a change. See slice 08 spec, § Interface / Data Contract.
+struct ActionResultEvent: Equatable {
+    let result: Buttons_ActionResult
+    let sequence: Int
+}
+
 /// One WebSocket connection to a paired desktop — sends/receives
 /// `Buttons_Envelope` as JSON text frames, not the spike's binary frames
 /// (wire-format decision, EDD §5.2). Adapted from
@@ -24,11 +35,13 @@ final class DesktopConnection: NSObject {
     private(set) var isConnected = false
     private(set) var configSync: Buttons_Config?
     private(set) var pairError: String?
+    private(set) var lastActionResult: ActionResultEvent?
 
     private var netService: NetService?
     private var webSocketTask: URLSessionWebSocketTask?
     private var pendingToken: String?
     private let session = URLSession(configuration: .default)
+    private var actionResultSequence = 0
 
     /// A blocked Local Network permission doesn't fail the socket open —
     /// it just never delivers anything, so `receiveLoop()`'s `.failure`
@@ -162,6 +175,18 @@ final class DesktopConnection: NSObject {
         send(envelope)
     }
 
+    /// Sends a `ButtonPress` for the tapped button's id. Fire-and-forget —
+    /// the result arrives asynchronously via `lastActionResult`, matched
+    /// by `button_id` on the caller's side (`PageGrid`).
+    func pressButton(_ buttonId: String) {
+        var envelope = Buttons_Envelope()
+        envelope.protocolVersion = "1"
+        var buttonPress = Buttons_ButtonPress()
+        buttonPress.buttonID = buttonId
+        envelope.message = .buttonPress(buttonPress)
+        send(envelope)
+    }
+
     private func send(_ envelope: Buttons_Envelope) {
         do {
             let json = try envelope.jsonString()
@@ -257,7 +282,10 @@ final class DesktopConnection: NSObject {
             pairCompletion = nil
         case .configSync(let sync):
             configSync = sync.config
-        case .pairRequest, .none:
+        case .actionResult(let result):
+            actionResultSequence += 1
+            lastActionResult = ActionResultEvent(result: result, sequence: actionResultSequence)
+        case .pairRequest, .buttonPress, .none:
             break  // desktop never sends these to mobile
         }
     }
