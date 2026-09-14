@@ -99,6 +99,28 @@ final class DesktopConnection: NSObject {
         isConnected = false
     }
 
+    /// Actively confirms the socket is still alive.
+    ///
+    /// - Returns: `true` if a ping round-trips; `false` if there's nothing
+    ///   to ping, or the ping fails.
+    // `isConnected` alone can be stale after the app was backgrounded —
+    // iOS may suspend the task without ever delivering a receive failure.
+    // No timeout here: NSURLSession.h documents `sendPingWithPongReceiveHandler:`
+    // as invoking its handler with an error on a lost connection, not just
+    // on a pong, so a dead socket is expected to resolve this on its own.
+    // If the on-device foreground test (07d spec, DoD item 2) shows that
+    // doesn't hold for an iOS-suspended socket specifically, add a timeout
+    // then — see 07d spec, § Implementation Notes, for why one isn't
+    // included preemptively.
+    func isConnectionAlive() async -> Bool {
+        guard isConnected, let task = webSocketTask else { return false }
+        let isAlive = await withCheckedContinuation { continuation in
+            task.sendPing { error in continuation.resume(returning: error == nil) }
+        }
+        if !isAlive { isConnected = false }
+        return isAlive
+    }
+
     /// Fails the in-flight pairing attempt if nothing has resolved it within `seconds`.
     ///
     /// - Parameter seconds: How long to wait before giving up. Defaults to 10.
