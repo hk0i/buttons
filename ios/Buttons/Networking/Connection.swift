@@ -240,21 +240,22 @@ final class DesktopConnection: NSObject {
     /// Turns a connect-time `URLError` into copy that names the likely cause.
     ///
     /// - Parameter error: The error `receiveLoop()` got from a failed connect.
-    // `NSURLErrorNotConnectedToInternet` (-1009) is what URLSession returns
-    // *immediately*, not after a timeout, when the Local Network permission
-    // is denied for a private-range host — distinct from a genuinely absent
-    // desktop, which times out or returns `NSURLErrorCannotConnectToHost`
-    // (-1004). Confirmed on-device: a QR-connect attempt with the
-    // permission off surfaces "The internet connection appears to be
-    // offline" through exactly this path.
+    // `NSURLErrorNotConnectedToInternet` (-1009) fires for a denied Local
+    // Network permission, but also for desktop-off, wrong subnet, or
+    // Wi-Fi dropping mid-handshake — `URLSession` collapses all of these
+    // into one code, unlike `NWBrowser`'s `.waiting(PolicyDenied)`
+    // (`Discovery.swift`'s `isLocalNetworkDenied`, the actual diagnostic
+    // signal). Treated the same as -1004/-1001 here, not singled out — a
+    // caller wanting the definite permission case consults
+    // `isLocalNetworkDenied` directly instead. See slice 07 spec, §
+    // Implementation Notes, "Local Network (mDNS/`NWBrowser`)," amended
+    // 2026-09-13.
     private static func pairingFailureMessage(for error: Error) -> String {
         let nsError = error as NSError
         guard nsError.domain == NSURLErrorDomain else { return error.localizedDescription }
         switch nsError.code {
-        case NSURLErrorNotConnectedToInternet:
-            return "Couldn't reach the desktop — Local Network access may be disabled for this app. Check Settings."
-        case NSURLErrorCannotConnectToHost, NSURLErrorTimedOut:
-            return "Couldn't reach the desktop — check that it's running and on the same network."
+        case NSURLErrorNotConnectedToInternet, NSURLErrorCannotConnectToHost, NSURLErrorTimedOut:
+            return "Couldn't reach the desktop — check that it's running, on the same network, and that Local Network access is allowed for this app in Settings."
         default:
             return error.localizedDescription
         }

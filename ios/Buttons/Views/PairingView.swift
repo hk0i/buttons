@@ -172,16 +172,24 @@ struct PairingView: View {
 
     /// Also offers "Open Settings" alongside the primary retry.
     ///
-    /// A pairing failure here can't always be attributed to one cause —
-    /// stale token and a blocked Local Network permission both surface as
-    /// generic connect failures — Local Network has no pre-check API, so
-    /// this can't be resolved to a definite permission error. Offering
-    /// both actions instead of guessing wrong.
+    /// `discovery.isLocalNetworkDenied` resolves one specific ambiguity —
+    /// when true, the failure is definitely permission, not a stale token
+    /// or wrong network, and the copy says so instead of showing
+    /// `message`. Otherwise this stays a genuine hedge: a stale token and
+    /// an unconfirmed blocked Local Network permission both surface as
+    /// the same generic connect failure, with no way to tell them apart
+    /// from the error alone. Offering both actions either way is what
+    /// closes the gap without guessing wrong.
     private func failedView(_ message: String) -> some View {
         VStack(spacing: 16) {
-            Text(message)
-                .foregroundStyle(.red)
-                .multilineTextAlignment(.center)
+            if discovery.isLocalNetworkDenied {
+                localNetworkDeniedText
+                    .foregroundStyle(.red)
+            } else {
+                Text(message)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+            }
             Button("Scan QR Again") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
             Button("Open Settings", action: openSystemSettings)
