@@ -33,7 +33,7 @@ private struct RootView: View {
     var body: some View {
         Group {
             if let activeProfile {
-                DeckView(profile: activeProfile)
+                DeckView(profile: activeProfile, connection: connection)
             } else if connection.isConnected {
                 // Paired, but `ConfigSync` hasn't arrived yet — a brief
                 // gap between `PairResponse` and the next message, not a

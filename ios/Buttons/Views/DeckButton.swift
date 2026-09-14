@@ -21,6 +21,10 @@ extension Buttons_Button {
 /// ⬅️ / "Back" fallback, matching desktop's `DeckButton.svelte`.
 struct DeckButton: View {
     let button: Buttons_Button
+    /// Transient press-result icon overlay — `nil` shows nothing extra.
+    /// Defaults `nil` so the existing `#Preview` below still compiles
+    /// unchanged. See slice 08 spec, § Interface / Data Contract.
+    var pressFlash: PressFlash? = nil
 
     private var isBack: Bool {
         if case .back? = button.content {
@@ -53,6 +57,24 @@ struct DeckButton: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(8)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        // Icon overlay, not a background-color flash — deliberately, to
+        // leave the background channel free for a future persistent
+        // "active" indicator (state_push, step 9). See slice 08 spec,
+        // § Implementation Notes.
+        .overlay(alignment: .topTrailing) {
+            switch pressFlash {
+            case .success:
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(Color.actionSuccess)
+                    .padding(4)
+            case .failure:
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Color.actionFailure)
+                    .padding(4)
+            case nil:
+                EmptyView()
+            }
+        }
     }
 }
 

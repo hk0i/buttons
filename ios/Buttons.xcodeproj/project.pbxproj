@@ -18,6 +18,7 @@
 		B9735537876E8367A80D7744 /* DeckButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837BB78F51101BAAF346F8D2 /* DeckButton.swift */; };
 		BAAC61285D48302D17293BD5 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E5950233A0AF2021367194 /* Discovery.swift */; };
 		CC883E9181767737343DC9D6 /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F9D4B63899320FF149A60B86 /* SwiftProtobuf */; };
+		DEE34D9A1AB8365709AAF625 /* StatusColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5846F52EB1B721393DC848 /* StatusColors.swift */; };
 		EC0A3040A35010EFA593DD6C /* PageGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648E4D92C87862C1BAAF00C6 /* PageGrid.swift */; };
 		F4A322D336051B904DA34261 /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79D7AABE6ACF186EBB03068F /* Pairing.swift */; };
 /* End PBXBuildFile section */
@@ -29,6 +30,7 @@
 		39FD11F1CC06D809AA13E306 /* buttons.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = buttons.pb.swift; sourceTree = "<group>"; };
 		53B78430D6F9D9A98C1EF191 /* ButtonsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonsApp.swift; sourceTree = "<group>"; };
 		5E1078AA9050BF9993F58C2D /* wire.pb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = wire.pb.swift; sourceTree = "<group>"; };
+		5E5846F52EB1B721393DC848 /* StatusColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusColors.swift; sourceTree = "<group>"; };
 		61E5950233A0AF2021367194 /* Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Discovery.swift; sourceTree = "<group>"; };
 		648E4D92C87862C1BAAF00C6 /* PageGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageGrid.swift; sourceTree = "<group>"; };
 		6F658C43BDD668449F9C7777 /* DeckView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeckView.swift; sourceTree = "<group>"; };
@@ -57,6 +59,7 @@
 				837BB78F51101BAAF346F8D2 /* DeckButton.swift */,
 				648E4D92C87862C1BAAF00C6 /* PageGrid.swift */,
 				D27FA16BBBA5ACB9FCF01F0B /* PairingView.swift */,
+				5E5846F52EB1B721393DC848 /* StatusColors.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -191,6 +194,7 @@
 				F4A322D336051B904DA34261 /* Pairing.swift in Sources */,
 				8AA258A7B337257EB93A2742 /* PairingView.swift in Sources */,
 				5906FB84EBB7E981E75DC0CD /* PreviewFixtures.swift in Sources */,
+				DEE34D9A1AB8365709AAF625 /* StatusColors.swift in Sources */,
 				56C07AC6BEEE9A606CFE9FD2 /* buttons.pb.swift in Sources */,
 				1DDCED855B9AF798C8BECC11 /* wire.pb.swift in Sources */,
 			);

@@ -10,12 +10,14 @@ extension Buttons_Page: Identifiable {}
 /// as of slice 07 — no more `MockConfig`/`ButtonModel`.
 struct DeckView: View {
     let profile: Buttons_Profile
+    let connection: DesktopConnection
 
     @State private var currentPageId: String
     @State private var isFolderOpen = false
 
-    init(profile: Buttons_Profile) {
+    init(profile: Buttons_Profile, connection: DesktopConnection) {
         self.profile = profile
+        self.connection = connection
         _currentPageId = State(initialValue: profile.pages.first?.id ?? "")
     }
 
@@ -38,7 +40,7 @@ struct DeckView: View {
     var body: some View {
         TabView(selection: $currentPageId) {
             ForEach(visiblePages) { page in
-                PageGrid(page: page, isFolderOpen: $isFolderOpen)
+                PageGrid(page: page, isFolderOpen: $isFolderOpen, connection: connection)
                     .tag(page.id)
             }
         }
@@ -51,5 +53,5 @@ struct DeckView: View {
 }
 
 #Preview {
-    DeckView(profile: PreviewFixtures.config.profiles[0])
+    DeckView(profile: PreviewFixtures.config.profiles[0], connection: DesktopConnection())
 }

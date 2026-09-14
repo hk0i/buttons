@@ -14,6 +14,10 @@ extension Buttons_Button: Identifiable {}
 struct ButtonGrid: View {
     let buttons: [Buttons_Button]
     var onTap: (Buttons_Button) -> Void
+    /// `PageGrid`'s pending press-result flash, if any — passed through
+    /// (not owned here) since `DeckButton` is built in this view's own
+    /// `ForEach`. See slice 08 spec, § Interface / Data Contract.
+    var pressFlash: (buttonId: String, flash: PressFlash)? = nil
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -33,7 +37,10 @@ struct ButtonGrid: View {
                     Button {
                         onTap(button)
                     } label: {
-                        DeckButton(button: button)
+                        DeckButton(
+                            button: button,
+                            pressFlash: pressFlash?.buttonId == button.id ? pressFlash?.flash : nil
+                        )
                     }
                     .buttonStyle(DeckButtonStyle())
                     .aspectRatio(1, contentMode: .fit)
