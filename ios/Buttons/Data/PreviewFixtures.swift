@@ -124,14 +124,22 @@ enum PreviewFixtures {
             .action("btn.live", "Go Live", "🔴", [.hotkey(keys: ["cmd", "1"])]),
             .action("btn.brb", "BRB", "☕️", [.hotkey(keys: ["cmd", "2"])]),
             .action("btn.mute", "Mute", "🔇", [.mediaKey(.mute)]),
-            .folder("folder.cameras", "Cameras", "🎥", contents: [
-                .action("btn.cam.front", "Front", "🤳", [.hotkey(keys: ["cmd", "shift", "1"])]),
-                .action("btn.cam.desk", "Desk", "🖥️", [.hotkey(keys: ["cmd", "shift", "2"])]),
-                .folder("folder.presets", "Presets", "⭐️", contents: [
-                    .action("btn.preset.wide", "Wide", "↔️", [.hotkey(keys: ["cmd", "shift", "w"])]),
-                    .action("btn.preset.close", "Close-up", "🔍", [.hotkey(keys: ["cmd", "shift", "c"])]),
+            .folder(
+                "folder.cameras", "Cameras", "🎥",
+                contents: [
+                    .action("btn.cam.front", "Front", "🤳", [.hotkey(keys: ["cmd", "shift", "1"])]),
+                    .action("btn.cam.desk", "Desk", "🖥️", [.hotkey(keys: ["cmd", "shift", "2"])]),
+                    .folder(
+                        "folder.presets", "Presets", "⭐️",
+                        contents: [
+                            .action(
+                                "btn.preset.wide", "Wide", "↔️",
+                                [.hotkey(keys: ["cmd", "shift", "w"])]),
+                            .action(
+                                "btn.preset.close", "Close-up", "🔍",
+                                [.hotkey(keys: ["cmd", "shift", "c"])]),
+                        ]),
                 ]),
-            ]),
         ]
     )
 
@@ -154,7 +162,8 @@ enum PreviewFixtures {
         name: nil,
         buttons: [
             .action("btn.app.obs", "OBS", "🎬", [.launchApp(path: "/Applications/OBS.app")]),
-            .action("btn.app.discord", "Discord", "💬", [.launchApp(path: "/Applications/Discord.app")]),
+            .action(
+                "btn.app.discord", "Discord", "💬", [.launchApp(path: "/Applications/Discord.app")]),
             terminalButton,
         ]
     )

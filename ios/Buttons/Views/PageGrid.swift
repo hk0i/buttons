@@ -18,7 +18,7 @@ struct PageGrid: View {
 
     private var currentButtons: [Buttons_Button] {
         guard let openFolder = folderStack.last,
-              case .folder(let folderContent)? = openFolder.content
+            case .folder(let folderContent)? = openFolder.content
         else {
             return page.buttons
         }
@@ -37,7 +37,7 @@ struct PageGrid: View {
             guard !folderStack.isEmpty else { return }
             folderStack.removeLast()
         default:
-            break // .actions or unset — no-op this slice, see Scope
+            break  // .actions or unset — no-op this slice, see Scope
         }
         isFolderOpen = !folderStack.isEmpty
     }

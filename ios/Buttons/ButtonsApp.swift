@@ -59,7 +59,8 @@ private struct RootView: View {
     // back to `PairingView` instead of showing stale `DeckView` forever.
     private var activeProfile: Buttons_Profile? {
         guard connection.isConnected, let config = connection.configSync else { return nil }
-        return config.profiles.first(where: { $0.id == config.activeProfileID }) ?? config.profiles.first
+        return config.profiles.first(where: { $0.id == config.activeProfileID })
+            ?? config.profiles.first
     }
 
     /// Starts `PairingSession`'s silent mDNS reconnect, once per launch.

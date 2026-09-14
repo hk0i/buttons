@@ -111,7 +111,8 @@ final class DesktopConnection: NSObject {
         pairTimeout?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            let message = "Couldn't reach Buttons desktop — check it's on the same network, and that Local Network access is allowed for this app in Settings"
+            let message =
+                "Couldn't reach Buttons desktop — check it's on the same network, and that Local Network access is allowed for this app in Settings"
             self.pairError = message
             self.pairCompletion?(.failure(message))
             self.pairCompletion = nil
@@ -223,9 +224,11 @@ final class DesktopConnection: NSObject {
                 pairCompletion?(.success(response.authToken))
             } else {
                 isConnected = false
-                let message = response.hasError
+                let message =
+                    response.hasError
                     ? response.error
-                    : (response.ok ? "server reported success with no auth token" : "pairing failed")
+                    : (response.ok
+                        ? "server reported success with no auth token" : "pairing failed")
                 pairError = message
                 pairCompletion?(.failure(message))
             }
@@ -233,7 +236,7 @@ final class DesktopConnection: NSObject {
         case .configSync(let sync):
             configSync = sync.config
         case .pairRequest, .none:
-            break // desktop never sends these to mobile
+            break  // desktop never sends these to mobile
         }
     }
 
@@ -255,9 +258,10 @@ final class DesktopConnection: NSObject {
         guard nsError.domain == NSURLErrorDomain else { return error.localizedDescription }
         switch nsError.code {
         case NSURLErrorNotConnectedToInternet,
-             NSURLErrorCannotConnectToHost,
-             NSURLErrorTimedOut:
-            return "Couldn't reach the desktop — check that it's running, on the same network, and that Local Network access is allowed for this app in Settings."
+            NSURLErrorCannotConnectToHost,
+            NSURLErrorTimedOut:
+            return
+                "Couldn't reach the desktop — check that it's running, on the same network, and that Local Network access is allowed for this app in Settings."
         default:
             return error.localizedDescription
         }
@@ -265,7 +269,9 @@ final class DesktopConnection: NSObject {
 
     /// Parses a `sockaddr`/`sockaddr_in`/`sockaddr_in6` blob (as handed
     /// back by `NetService.addresses`) into a host string and port.
-    private static func parseSocketAddress(_ data: Data) -> (host: String, port: UInt16, isIPv4: Bool)? {
+    private static func parseSocketAddress(_ data: Data) -> (
+        host: String, port: UInt16, isIPv4: Bool
+    )? {
         data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> (String, UInt16, Bool)? in
             let family = raw.loadUnaligned(as: sockaddr.self).sa_family
             switch Int32(family) {

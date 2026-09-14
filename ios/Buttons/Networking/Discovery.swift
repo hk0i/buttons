@@ -1,5 +1,5 @@
-import Network
 import Foundation
+import Network
 
 /// One desktop found on the LAN — its connection endpoint and the
 /// `device_id` from its mDNS TXT record. `device_id` is generated once on
@@ -48,7 +48,8 @@ final class DesktopDiscovery {
         // stays .none, so device_id matching below always fails silently.
         // .bonjourWithTXTRecord is the descriptor that actually populates
         // result.metadata with .bonjour(txt).
-        let browser = NWBrowser(for: .bonjourWithTXTRecord(type: "_buttons._tcp", domain: nil), using: parameters)
+        let browser = NWBrowser(
+            for: .bonjourWithTXTRecord(type: "_buttons._tcp", domain: nil), using: parameters)
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             let devices = results.compactMap(Self.discoveredDesktop(from:))
             DispatchQueue.main.async {
@@ -87,7 +88,7 @@ final class DesktopDiscovery {
 
     private static func discoveredDesktop(from result: NWBrowser.Result) -> DiscoveredDesktop? {
         guard case let .bonjour(txt) = result.metadata,
-              let deviceId = txt["device_id"]
+            let deviceId = txt["device_id"]
         else { return nil }
         return DiscoveredDesktop(deviceId: deviceId, endpoint: result.endpoint)
     }

@@ -69,10 +69,12 @@ struct DeckButtonStyle: ButtonStyle {
 
 #Preview {
     HStack {
-        Button {} label: {
+        Button {
+        } label: {
             DeckButton(button: .action("p1", "Go Live", "🔴"))
         }
-        Button {} label: {
+        Button {
+        } label: {
             DeckButton(button: .back("p2"))
         }
     }

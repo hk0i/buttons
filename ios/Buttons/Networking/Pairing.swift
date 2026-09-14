@@ -43,7 +43,7 @@ enum PairingStore {
 
     static func load() -> StoredPairing? {
         guard let deviceId = readString(account: deviceIdAccount),
-              let authToken = readString(account: authTokenAccount)
+            let authToken = readString(account: authTokenAccount)
         else { return nil }
         return StoredPairing(deviceId: deviceId, authToken: authToken)
     }
@@ -127,7 +127,8 @@ final class PairingSession {
             return
         }
         lastError = nil
-        connection.connect(host: payload.host, port: payload.port, token: payload.token) { [weak self] (result: PairResult) in
+        connection.connect(host: payload.host, port: payload.port, token: payload.token) {
+            [weak self] (result: PairResult) in
             switch result {
             case .success(let authToken):
                 PairingStore.save(StoredPairing(deviceId: payload.deviceId, authToken: authToken))
@@ -146,7 +147,8 @@ final class PairingSession {
     // writing to Keychain here.
     func reconnect(stored: StoredPairing, endpoint: NWEndpoint) {
         lastError = nil
-        connection.connect(toBonjourEndpoint: endpoint, token: stored.authToken) { [weak self] (result: PairResult) in
+        connection.connect(toBonjourEndpoint: endpoint, token: stored.authToken) {
+            [weak self] (result: PairResult) in
             if case .failure(let message) = result {
                 self?.lastError = message
             }

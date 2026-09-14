@@ -28,7 +28,7 @@ struct DeckView: View {
     /// element, the pager has nowhere else to go — no gesture race at all.
     private var visiblePages: [Buttons_Page] {
         guard isFolderOpen,
-              let current = profile.pages.first(where: { $0.id == currentPageId })
+            let current = profile.pages.first(where: { $0.id == currentPageId })
         else {
             return profile.pages
         }

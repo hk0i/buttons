@@ -1,5 +1,5 @@
-import SwiftUI
 import AVFoundation
+import SwiftUI
 import VisionKit
 
 /// Landing / "Scan to Pair" / connecting / failed states, plus the three
@@ -39,7 +39,9 @@ struct PairingView: View {
             // Only escapes `.cameraDenied` specifically — an active
             // `.scanning`/`.connecting`/`.failed` attempt must survive an
             // unrelated foreground event (e.g. Control Center).
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            .onReceive(
+                NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            ) { _ in
                 if state == .cameraDenied {
                     checkCameraAndAdvance()
                 }
@@ -111,8 +113,10 @@ struct PairingView: View {
         case .notFound where discovery.isLocalNetworkDenied:
             localNetworkDeniedText
         case .notFound:
-            Text("Couldn't find Buttons desktop automatically. Make sure it's running on this network, or scan its QR code.")
-                .multilineTextAlignment(.center)
+            Text(
+                "Couldn't find Buttons desktop automatically. Make sure it's running on this network, or scan its QR code."
+            )
+            .multilineTextAlignment(.center)
         }
     }
 
@@ -123,8 +127,10 @@ struct PairingView: View {
     /// not only mDNS discovery. See slice 07 spec, § Implementation
     /// Notes, "Local Network (mDNS/`NWBrowser`)," amended 2026-09-13.
     private var localNetworkDeniedText: some View {
-        Text("Buttons needs Local Network access to find or connect to your desktop. Turn it on in Settings to continue.")
-            .multilineTextAlignment(.center)
+        Text(
+            "Buttons needs Local Network access to find or connect to your desktop. Turn it on in Settings to continue."
+        )
+        .multilineTextAlignment(.center)
     }
 
     /// Entry point into the camera-permission flow — only reached by an
@@ -262,5 +268,6 @@ private struct QRScannerRepresentable: UIViewControllerRepresentable {
 }
 
 #Preview {
-    PairingView(session: PairingSession(connection: DesktopConnection()), discovery: DesktopDiscovery())
+    PairingView(
+        session: PairingSession(connection: DesktopConnection()), discovery: DesktopDiscovery())
 }
