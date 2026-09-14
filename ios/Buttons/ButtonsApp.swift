@@ -49,7 +49,7 @@ private struct RootView: View {
         // without requiring a force-quit.
         .onChange(of: connection.isConnected) { wasConnected, isConnected in
             if wasConnected, !isConnected {
-                session.attemptAutoReconnect(discovery: discovery)
+                Task { await session.attemptAutoReconnect(discovery: discovery) }
             }
         }
     }
@@ -67,6 +67,6 @@ private struct RootView: View {
     private func attemptReconnectIfPaired() {
         guard !hasAttemptedReconnect else { return }
         hasAttemptedReconnect = true
-        session.attemptAutoReconnect(discovery: discovery)
+        Task { await session.attemptAutoReconnect(discovery: discovery) }
     }
 }

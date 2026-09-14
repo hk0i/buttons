@@ -110,10 +110,17 @@ enum AutoReconnectState: Equatable {
 ///
 /// QR scanning itself (`DataScannerViewController`) lives in
 /// `Views/PairingView.swift`; this only takes the decoded string.
+@MainActor
 @Observable
 final class PairingSession {
     private(set) var lastError: String?
     private(set) var autoReconnectState: AutoReconnectState = .idle
+
+    /// Whether a silent reconnect is already in progress — derived from
+    /// `autoReconnectState` rather than a separate stored flag, so
+    /// `attemptAutoReconnect` has one source of truth for its own dedupe
+    /// guard instead of two things to keep in sync.
+    var isReconnectInFlight: Bool { autoReconnectState == .searching }
 
     private let connection: DesktopConnection
 
@@ -166,26 +173,29 @@ final class PairingSession {
     /// screen shows first-pair copy, not a false "searching" state.
     ///
     /// - Parameter discovery: Browser to start and poll; left running on return.
-    func attemptAutoReconnect(discovery: DesktopDiscovery) {
+    // `discovery.start()` runs before the in-flight guard, not after —
+    // restarting the browse is what recovers from a Local-Network-denied-
+    // then-granted permission change (07d spec, DoD item 6), and that has
+    // to happen even when a reconnect poll is already running. Moving
+    // `start()` below the guard would silently break that recovery path.
+    func attemptAutoReconnect(discovery: DesktopDiscovery) async {
         discovery.start()
-        guard let stored = PairingStore.load() else { return }
+        guard !isReconnectInFlight, let stored = PairingStore.load() else { return }
         autoReconnectState = .searching
-        Task {
-            // ~5s of polling at 250ms — generous for LAN mDNS, not a
-            // network round trip to wait indefinitely on.
-            for _ in 0..<20 {
-                if let endpoint = discovery.endpoint(forDeviceId: stored.deviceId) {
-                    autoReconnectState = .idle
-                    reconnect(stored: stored, endpoint: endpoint)
-                    return
-                }
-                try? await Task.sleep(for: .milliseconds(250))
+        // ~5s of polling at 250ms — generous for LAN mDNS, not a
+        // network round trip to wait indefinitely on.
+        for _ in 0..<20 {
+            if let endpoint = discovery.endpoint(forDeviceId: stored.deviceId) {
+                autoReconnectState = .idle
+                reconnect(stored: stored, endpoint: endpoint)
+                return
             }
-            // Not found within the window — landing state shows this and
-            // still offers "Scan QR Code" as the recovery path (slice 07
-            // spec, § Scope → Out, "Manual IP entry / QR
-            // redisplay-for-reconnect fallback").
-            autoReconnectState = .notFound
+            try? await Task.sleep(for: .milliseconds(250))
         }
+        // Not found within the window — landing state shows this and
+        // still offers "Scan QR Code" as the recovery path (slice 07
+        // spec, § Scope → Out, "Manual IP entry / QR
+        // redisplay-for-reconnect fallback").
+        autoReconnectState = .notFound
     }
 }
