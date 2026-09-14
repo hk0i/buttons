@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The pressed cell's transient icon-overlay state — a checkmark or
-/// warning-triangle shown for ~400ms after an `ActionResult` arrives, then
+/// x-mark shown for ~400ms after an `ActionResult` arrives, then
 /// cleared. Derived lossily from `ActionResult.ok`; not haptic (that's
 /// `PageGrid.pressTrigger`), not the wire message itself
 /// (`Buttons_ActionResult`/`ActionResultEvent`, `Connection.swift`), and

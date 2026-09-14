@@ -68,7 +68,7 @@ struct DeckButton: View {
                     .foregroundStyle(Color.actionSuccess)
                     .padding(4)
             case .failure:
-                Image(systemName: "exclamationmark.triangle.fill")
+                Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(Color.actionFailure)
                     .padding(4)
             case nil:
