@@ -136,14 +136,17 @@ Non-Goals split) belongs in the document's outline/TOC, which only a real
 heading gives it.
 
 **Annotating a code snippet that changes existing code.** Decided
-2026-09-14. When a snippet shows a change to something that already
-exists — a new field, a new method, a modified signature — mark each
-change point with a short numbered `//` comment directly in the snippet,
-then follow the snippet with a numbered list (restarts at `1.`, same rule
-as above) that elaborates each point in a sentence or two. Makes new code
-visually distinct from the unchanged code around it, and keeps the
-"what changed and why" next to the snippet instead of buried in prose
-above it.
+2026-09-14, amended 2026-09-14. When a snippet shows a change to something
+that already exists — a new field, a new method, a modified signature —
+mark each change point with a short numbered `//` comment **on its own
+line directly above** the line it refers to, never trailing on the same
+line. A trailing comment competes with the code for the eye at exactly
+the point a reader most needs to slow down; a comment-only line reads as
+a clear "look here" marker before the code it annotates. Then follow the
+snippet with a numbered list (restarts at `1.`, same rule as above) that
+elaborates each point in a sentence or two. Makes new code visually
+distinct from the unchanged code around it, and keeps the "what changed
+and why" next to the snippet instead of buried in prose above it.
 
 ```swift
 @Observable
