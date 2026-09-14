@@ -200,6 +200,34 @@ comments, which this doesn't constrain.
 — planned as a follow-up, not blocking work in progress. New and
 touched-in-passing comments follow this style starting now.
 
+## Naming: `Phase` vs `State` (enums)
+
+Decided 2026-09-14. A tiebreaker, not a mandate — neither name is a bug,
+this just keeps a type's shape legible from its declaration.
+
+1. **`Phase`** when cases only move forward — a progression, where
+   re-entering the sequence starts a new cycle rather than looping within
+   the same one.
+2. **`State`** when any case can legally follow any other — FSM shape, no
+   inherent order.
+3. **Ownership doesn't decide it.** Code in this repo may itself advance a
+   `Phase`; system-advancement isn't a requirement. (Apple's own
+   `GestureState` is system-advanced but named State, because a gesture
+   isn't a progression — the same reasoning applies here in reverse.)
+4. **Tell for a close call:** a terminal case that isn't the end of the
+   progression — a failure branch you retry from, not a completion — means
+   the type loops back. That's `State`.
+5. **Default to `State` when unsure.** A `Phase` that loops back to its
+   own start is misnamed; a `State` that happens to be ordered is merely
+   unspecific.
+
+Applied to this repo's current enums: `PairingState`
+(`Views/PairingView.swift`) and `AutoReconnectState`
+(`Networking/Pairing.swift`) both stay `State` — `PairingState` because
+`.failed`/`.scanning`/`.cameraDenied` form a legal cycle, not a one-way
+walk; `AutoReconnectState` because it re-enters from `.idle` and retries
+from `.notFound` (rule 4's tell). No rename from this decision.
+
 ## Code formatting (Swift)
 
 Decided 2026-09-13. `ios/` uses [apple/swift-format](https://github.com/apple/swift-format)
