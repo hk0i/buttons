@@ -4,6 +4,7 @@
 //! § Implementation Notes, "Single-connection slot is
 //! `Mutex<Option<ConnectionHandle>>`."
 
+use crate::actions;
 use crate::config;
 use crate::pairing::{self, Pairing};
 use crate::proto::buttons;
@@ -11,7 +12,7 @@ use futures_util::{SinkExt, StreamExt};
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Mutex};
@@ -188,13 +189,20 @@ async fn handle_connection(
         return;
     }
 
-    // button_press/profile_switch etc. (steps 8-10) aren't designed yet —
-    // this slice just holds the connection open until evicted or closed.
+    // profile_switch/state_push (steps 9-10) aren't designed yet — this
+    // loop only handles ButtonPress.
     loop {
         tokio::select! {
             msg = ws.next() => match msg {
                 Some(Ok(Message::Close(_))) | None => break,
-                Some(Ok(_)) => {} // no other message types handled this slice
+                Some(Ok(Message::Text(text))) => {
+                    if let Some(result) = handle_button_press(&text, &config_path).await {
+                        if send_envelope(&mut ws, result).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+                Some(Ok(_)) => {} // no other frame types handled this slice
                 Some(Err(e)) => {
                     eprintln!("server: WebSocket error from {addr}: {e}");
                     break;
@@ -205,6 +213,70 @@ async fn handle_connection(
                 break;
             }
         }
+    }
+}
+
+/// Parses one incoming text frame as an `Envelope` and, if it's a
+/// `ButtonPress`, runs its actions and returns the `ActionResult` envelope
+/// to send back. Anything else this slice (malformed JSON, an unexpected
+/// variant) is logged and dropped — no reply, same as an unhandled frame
+/// type above. See slice 08 spec, § Implementation Notes.
+async fn handle_button_press(text: &str, config_path: &Path) -> Option<buttons::Envelope> {
+    let envelope: buttons::Envelope = match serde_json::from_str(text) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("server: malformed Envelope: {e}");
+            return None;
+        }
+    };
+    let Some(buttons::envelope::Message::ButtonPress(press)) = envelope.message else {
+        return None; // no other client-initiated message this slice
+    };
+
+    // Re-loaded fresh on every press, not the connect-time snapshot held
+    // in `handle_connection` — an edit made on desktop must be visible to
+    // the very next press, not just the next reconnect.
+    let config = match config::load_config(config_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("server: failed to load config for ButtonPress: {e}");
+            return Some(action_result(&press.button_id, Err(e)));
+        }
+    };
+
+    let Some(button_actions) = config.actions_for_button(&press.button_id) else {
+        return Some(action_result(
+            &press.button_id,
+            Err("unknown button id".to_string()),
+        ));
+    };
+    // Cloned to move into spawn_blocking — `button_actions` borrows from
+    // `config`, which doesn't outlive this function.
+    let button_actions = button_actions.to_vec();
+
+    // `actions::run` is blocking (Enigo, Command::spawn) — must not run
+    // inline on this async task, per §5.4's sub-50ms round-trip target.
+    let result = tokio::task::spawn_blocking(move || actions::run(&button_actions))
+        .await
+        .unwrap_or_else(|e| Err(format!("action task panicked: {e}")));
+
+    Some(action_result(&press.button_id, result))
+}
+
+fn action_result(button_id: &str, result: Result<(), String>) -> buttons::Envelope {
+    let (ok, error) = match result {
+        Ok(()) => (true, None),
+        Err(e) => (false, Some(e)),
+    };
+    buttons::Envelope {
+        protocol_version: pairing::PROTOCOL_VERSION.to_string(),
+        message: Some(buttons::envelope::Message::ActionResult(
+            buttons::ActionResult {
+                button_id: button_id.to_string(),
+                ok,
+                error,
+            },
+        )),
     }
 }
 
