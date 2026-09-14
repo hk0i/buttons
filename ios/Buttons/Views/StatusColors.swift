@@ -8,8 +8,10 @@ extension Color {
     /// Tint for a succeeded press's checkmark overlay.
     static let actionSuccess = Color.green
 
-    /// Tint for a failed press's warning-triangle overlay — yellow, not
-    /// red, matching real Stream Deck hardware's own convention for this
-    /// indicator.
-    static let actionFailure = Color.yellow
+    /// Tint for a failed press's warning-triangle overlay. Red, the plain
+    /// choice for a two-case success/failure indicator — real Stream Deck
+    /// hardware uses yellow, but only because it has a third state (in
+    /// progress) that red would collide with; revisit if this app ever
+    /// grows one.
+    static let actionFailure = Color.red
 }
