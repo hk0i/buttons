@@ -95,6 +95,8 @@ discussion.
 3. If a change touches behavior, say how you verified it.
 4. Design-level changes: open an issue or discussion first, and expect the
    relevant `docs/` file to be updated as part of the PR.
+5. Swift changes: run `swift-format lint` first — see § Code formatting
+   (Swift). No CI enforcement yet, so this is on the contributor.
 
 ## Documentation style
 
@@ -197,3 +199,38 @@ comments, which this doesn't constrain.
 **Not done yet:** a repo-wide pass bringing existing comments to this style
 — planned as a follow-up, not blocking work in progress. New and
 touched-in-passing comments follow this style starting now.
+
+## Code formatting (Swift)
+
+Decided 2026-09-13. `ios/` uses [apple/swift-format](https://github.com/apple/swift-format)
+(bundled with the Xcode toolchain — `xcrun swift-format`, no separate
+install), configured by `.swift-format` at the repo root.
+
+1. **Run before committing:**
+   ```
+   xcrun swift-format lint --configuration .swift-format -r ios/Buttons
+   xcrun swift-format format --configuration .swift-format -i -r ios/Buttons
+   ```
+   `lint` reports violations without changing files; `format -i` rewrites
+   them in place. No CI enforcement yet — this is a manual step, same as
+   every other verification command in this repo's slice specs.
+2. **4-space indent, not the tool's 2-space default.** The 2-space default
+   is inherited from Google's published Swift style guide (the guide
+   Apple's own formatter took its defaults from), not a separate Apple
+   mandate — Xcode's own editor default, and most existing code in this
+   repo, is 4-space. Tried a full 2-space repo reformat first; reverted
+   (2026-09-13) after review — revisit only with a concrete reason, not by
+   default.
+3. **`UseLetInEveryBoundCaseVariable` disabled.** Default style rewrites
+   `case let .foo(a, b, c)` to `case .foo(let a, let b, let c)` — this repo
+   prefers the single-`let` form for a multi-value pattern; less repeated
+   noise on the line.
+4. **No leading-operator line wrapping.** Wanted continuation lines to
+   break *before* an operator (`let message\n    = ...`) so operators
+   stack in the left column — confirmed against the tool's own
+   `Configuration.md` that no such option exists; wrap position isn't
+   configurable, only the pretty-printer's fixed trailing-operator style is
+   available. Not worth hand-formatting around — accepted as a real tool
+   limitation, not revisited without a new upstream capability.
+5. **Kotlin/Rust have no equivalent tool wired up yet.** `desktop/` and any
+   future `android/` code isn't covered by this section.
