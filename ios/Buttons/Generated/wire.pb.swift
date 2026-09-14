@@ -15,9 +15,8 @@
 // design rationale, the pairing sequence, and the deliberate findings this
 // schema produced.
 //
-// button_press/action_result/state_push/profile_switch (roadmap steps 8-10)
-// are not here yet — the Envelope oneof adding a case later for these is
-// non-breaking.
+// state_push/profile_switch (roadmap steps 9-10) are not here yet — the
+// Envelope oneof adding a case later for these is non-breaking.
 
 import SwiftProtobuf
 
@@ -65,12 +64,30 @@ nonisolated struct Buttons_Envelope: Sendable {
     set {message = .configSync(newValue)}
   }
 
+  var buttonPress: Buttons_ButtonPress {
+    get {
+      if case .buttonPress(let v)? = message {return v}
+      return Buttons_ButtonPress()
+    }
+    set {message = .buttonPress(newValue)}
+  }
+
+  var actionResult: Buttons_ActionResult {
+    get {
+      if case .actionResult(let v)? = message {return v}
+      return Buttons_ActionResult()
+    }
+    set {message = .actionResult(newValue)}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   nonisolated enum OneOf_Message: Equatable, Sendable {
     case pairRequest(Buttons_PairRequest)
     case pairResponse(Buttons_PairResponse)
     case configSync(Buttons_ConfigSync)
+    case buttonPress(Buttons_ButtonPress)
+    case actionResult(Buttons_ActionResult)
 
   }
 
@@ -147,13 +164,54 @@ nonisolated struct Buttons_ConfigSync: Sendable {
   fileprivate var _config: Buttons_Config? = nil
 }
 
+nonisolated struct Buttons_ButtonPress: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// the tapped button's id, nothing else this slice
+  var buttonID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
+nonisolated struct Buttons_ActionResult: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// echoed, not a request/sequence id — see slice 08
+  var buttonID: String = String()
+
+  /// spec, Interface § "Correlation"
+  var ok: Bool = false
+
+  /// present iff !ok — mirrors PairResponse
+  var error: String {
+    get {_error ?? String()}
+    set {_error = newValue}
+  }
+  /// Returns true if `error` has been explicitly set.
+  var hasError: Bool {self._error != nil}
+  /// Clears the value of `error`. Subsequent reads from it will return its default value.
+  mutating func clearError() {self._error = nil}
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+
+  fileprivate var _error: String? = nil
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "buttons"
 
 nonisolated extension Buttons_Envelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".Envelope"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}protocol_version\0\u{3}pair_request\0\u{3}pair_response\0\u{3}config_sync\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}protocol_version\0\u{3}pair_request\0\u{3}pair_response\0\u{3}config_sync\0\u{3}button_press\0\u{3}action_result\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -201,6 +259,32 @@ nonisolated extension Buttons_Envelope: SwiftProtobuf.Message, SwiftProtobuf._Me
           self.message = .configSync(v)
         }
       }()
+      case 5: try {
+        var v: Buttons_ButtonPress?
+        var hadOneofValue = false
+        if let current = self.message {
+          hadOneofValue = true
+          if case .buttonPress(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.message = .buttonPress(v)
+        }
+      }()
+      case 6: try {
+        var v: Buttons_ActionResult?
+        var hadOneofValue = false
+        if let current = self.message {
+          hadOneofValue = true
+          if case .actionResult(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.message = .actionResult(v)
+        }
+      }()
       default: break
       }
     }
@@ -226,6 +310,14 @@ nonisolated extension Buttons_Envelope: SwiftProtobuf.Message, SwiftProtobuf._Me
     case .configSync?: try {
       guard case .configSync(let v)? = self.message else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 4)
+    }()
+    case .buttonPress?: try {
+      guard case .buttonPress(let v)? = self.message else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 5)
+    }()
+    case .actionResult?: try {
+      guard case .actionResult(let v)? = self.message else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
     }()
     case nil: break
     }
@@ -343,6 +435,80 @@ nonisolated extension Buttons_ConfigSync: SwiftProtobuf.Message, SwiftProtobuf._
 
   static func ==(lhs: Buttons_ConfigSync, rhs: Buttons_ConfigSync) -> Bool {
     if lhs._config != rhs._config {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Buttons_ButtonPress: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ButtonPress"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}button_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.buttonID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.buttonID.isEmpty {
+      try visitor.visitSingularStringField(value: self.buttonID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Buttons_ButtonPress, rhs: Buttons_ButtonPress) -> Bool {
+    if lhs.buttonID != rhs.buttonID {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Buttons_ActionResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ActionResult"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}button_id\0\u{1}ok\0\u{1}error\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.buttonID) }()
+      case 2: try { try decoder.decodeSingularBoolField(value: &self.ok) }()
+      case 3: try { try decoder.decodeSingularStringField(value: &self._error) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    if !self.buttonID.isEmpty {
+      try visitor.visitSingularStringField(value: self.buttonID, fieldNumber: 1)
+    }
+    if self.ok != false {
+      try visitor.visitSingularBoolField(value: self.ok, fieldNumber: 2)
+    }
+    try { if let v = self._error {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 3)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Buttons_ActionResult, rhs: Buttons_ActionResult) -> Bool {
+    if lhs.buttonID != rhs.buttonID {return false}
+    if lhs.ok != rhs.ok {return false}
+    if lhs._error != rhs._error {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

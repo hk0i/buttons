@@ -15,9 +15,10 @@ target languages before anything in `/desktop`, `/ios`, or `/android`
 depends on it (that's roadmap step 7, and step 12 for Android). Run
 `cargo test` / `swift test` / `gradle test` in each to verify.
 
-**Wire envelope messages** (`pair_request`, `config_sync`) live in
-`wire.proto`, designed at step 7 alongside the real connection code.
-(`button_press`, `profile_switch`, etc. are steps 8-10, not designed yet.)
+**Wire envelope messages** (`pair_request`, `config_sync`, `button_press`,
+`action_result`) live in `wire.proto`, designed at steps 7-8 alongside the
+real connection code. (`profile_switch`, `state_push` are steps 9-10, not
+designed yet.)
 
 This directory is also the home for the **normative wire-protocol
 specification** — the message catalog, field shapes, and pairing sequence.
