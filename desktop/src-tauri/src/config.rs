@@ -60,6 +60,41 @@ pub enum MediaKeyKind {
     PreviousTrack,
 }
 
+impl Config {
+    /// Depth-first search over the active Profile's Pages (and nested
+    /// folders) for a Button by id. Returns its actions, or `None` if the
+    /// id doesn't exist (deleted since connect, or from a stale mobile
+    /// cache) or isn't an `.actions` button. See slice 08 spec, §
+    /// Implementation Notes.
+    pub fn actions_for_button(&self, button_id: &str) -> Option<&[Action]> {
+        let profile = self
+            .profiles
+            .iter()
+            .find(|p| p.id == self.active_profile_id)?;
+        profile
+            .pages
+            .iter()
+            .find_map(|page| find_actions(&page.buttons, button_id))
+    }
+}
+
+fn find_actions<'a>(buttons: &'a [Button], button_id: &str) -> Option<&'a [Action]> {
+    for button in buttons {
+        if button.id == button_id {
+            return match &button.content {
+                ButtonContent::Actions { actions } => Some(actions.as_slice()),
+                _ => None,
+            };
+        }
+        if let ButtonContent::Folder { buttons: nested } = &button.content {
+            if let Some(found) = find_actions(nested, button_id) {
+                return Some(found);
+            }
+        }
+    }
+    None
+}
+
 static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn new_id(prefix: &str) -> String {
