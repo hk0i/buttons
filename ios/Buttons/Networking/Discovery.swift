@@ -26,10 +26,12 @@ final class DesktopDiscovery {
     /// has been found yet.
     // Reset at the top of `start()`, not just set on denial — a fresh
     // attempt after permission is re-granted should stop reporting the
-    // stale denial. Untested as of the 2026-09-13 amendment below: whether
-    // this flag updates promptly if permission is revoked mid-session
-    // while the browser is already running, since `start()` isn't
-    // currently re-invoked on app-foreground.
+    // stale denial. `start()` is re-invoked on app-foreground as of slice
+    // 07d (`ButtonsApp.swift`'s `scenePhase` handler calls
+    // `attemptAutoReconnect`, which calls `start()` unconditionally), so
+    // a denied → Settings → granted → foreground round-trip now clears
+    // this promptly (07d spec, DoD item 6) — this was untested before
+    // that slice, since nothing called `start()` again until then.
     private(set) var isLocalNetworkDenied = false
 
     private var browser: NWBrowser?

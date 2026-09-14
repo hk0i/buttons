@@ -27,6 +27,8 @@ private struct RootView: View {
     let session: PairingSession
 
     @State private var hasAttemptedReconnect = false
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var wasBackgrounded = false
 
     var body: some View {
         Group {
@@ -50,6 +52,26 @@ private struct RootView: View {
         .onChange(of: connection.isConnected) { wasConnected, isConnected in
             if wasConnected, !isConnected {
                 Task { await session.attemptAutoReconnect(discovery: discovery) }
+            }
+        }
+        // `didBecomeActiveNotification` can't distinguish "returned from
+        // background" from a transient interruption (Control Center, a
+        // dismissed banner) — both fire it identically. `scenePhase`
+        // exposes `.background` as a distinguishable case, but a bare
+        // `.background → .active` match on `(old, new)` isn't reliable
+        // alone (a Control Center pull produces `.active → .inactive →
+        // .active`, and iOS may route the real background return through
+        // `.inactive` too) — the latch is the mechanism, not a fallback.
+        // See 07d spec, § Implementation Notes, for the on-device check
+        // this still needs.
+        .onChange(of: scenePhase) { old, new in
+            if new == .background { wasBackgrounded = true }
+            guard new == .active, wasBackgrounded else { return }
+            wasBackgrounded = false
+            Task {
+                if !(await connection.isConnectionAlive()) {
+                    await session.attemptAutoReconnect(discovery: discovery)
+                }
             }
         }
     }
