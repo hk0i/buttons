@@ -72,17 +72,22 @@ struct PairingView: View {
     /// Always shows "Scan QR Code" as an action.
     ///
     /// The silent reconnect (`statusText`, below) is a background
-    /// convenience layered on top — never a gate on the manual path.
-    // `.notFound` also offers Open Settings whenever Local Network access
-    // is the confirmed cause (`discovery.isLocalNetworkDenied`) — see
-    // Discovery.swift and slice 07 spec, § Implementation Notes, "Local
-    // Network (mDNS/`NWBrowser`)," amended 2026-09-13.
+    /// convenience layered on top — never a gate on the manual path. Still
+    /// shown even when Local Network is confirmed denied — scanning fails
+    /// the same way pairing would, and gives a definite `failedView`
+    /// message instead of quietly disabling the button.
+    // Open Settings shows whenever denial is confirmed
+    // (`discovery.isLocalNetworkDenied`), independent of
+    // `autoReconnectState` — denial affects `.idle` and `.notFound`
+    // equally now. See Discovery.swift and slice 07 spec, §
+    // Implementation Notes, "Local Network (mDNS/`NWBrowser`)," amended
+    // 2026-09-13.
     private var landingView: some View {
         VStack(spacing: 20) {
             statusText
             Button("Scan QR Code") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
-            if session.autoReconnectState == .notFound, discovery.isLocalNetworkDenied {
+            if discovery.isLocalNetworkDenied {
                 Button("Open Settings", action: openSystemSettings)
                     .buttonStyle(.bordered)
             }
@@ -92,6 +97,8 @@ struct PairingView: View {
     @ViewBuilder
     private var statusText: some View {
         switch session.autoReconnectState {
+        case .idle where discovery.isLocalNetworkDenied:
+            localNetworkDeniedText
         case .idle:
             Text("Scan your desktop's QR code to pair.")
                 .multilineTextAlignment(.center)
@@ -102,12 +109,22 @@ struct PairingView: View {
                     .multilineTextAlignment(.center)
             }
         case .notFound where discovery.isLocalNetworkDenied:
-            Text("Buttons can't search your network — Local Network access is off. Turn it on in Settings, or scan the desktop's QR code instead.")
-                .multilineTextAlignment(.center)
+            localNetworkDeniedText
         case .notFound:
             Text("Couldn't find Buttons desktop automatically. Make sure it's running on this network, or scan its QR code.")
                 .multilineTextAlignment(.center)
         }
+    }
+
+    /// Shared copy for both `.idle` and `.notFound` once denial is
+    /// confirmed — doesn't suggest "scan the QR code instead," since a
+    /// denied Local Network permission blocks the QR/connect path too
+    /// (`URLSessionWebSocketTask` just reports it as -1009, "offline"),
+    /// not only mDNS discovery. See slice 07 spec, § Implementation
+    /// Notes, "Local Network (mDNS/`NWBrowser`)," amended 2026-09-13.
+    private var localNetworkDeniedText: some View {
+        Text("Buttons needs Local Network access to find or connect to your desktop. Turn it on in Settings to continue.")
+            .multilineTextAlignment(.center)
     }
 
     /// Entry point into the camera-permission flow — only reached by an
