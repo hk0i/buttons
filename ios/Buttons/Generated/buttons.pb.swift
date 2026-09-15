@@ -159,6 +159,11 @@ nonisolated struct Buttons_Button: Sendable {
   /// Clears the value of `icon`. Subsequent reads from it will return its default value.
   mutating func clearIcon() {self._icon = nil}
 
+  /// current Switch state; wire-only, never persisted on either end — see
+  /// desktop/src-tauri/src/switch_state.rs and slice 09 spec Interface Note 1.
+  /// Meaningless (always false) for a non-.switch_content button.
+  var isActive: Bool = false
+
   /// flat numbering space with id/label/icon above —
   var content: Buttons_Button.OneOf_Content? = nil
 
@@ -187,6 +192,17 @@ nonisolated struct Buttons_Button: Sendable {
     set {content = .back(newValue)}
   }
 
+  /// named switch_content, not switch: `switch` is a reserved word in
+  /// Swift, and every other language's codegen would have to special-case
+  /// escaping it for no benefit — see slice 09 spec Interface Note 2.
+  var switchContent: Buttons_SwitchContent {
+    get {
+      if case .switchContent(let v)? = content {return v}
+      return Buttons_SwitchContent()
+    }
+    set {content = .switchContent(newValue)}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   /// flat numbering space with id/label/icon above —
@@ -195,6 +211,10 @@ nonisolated struct Buttons_Button: Sendable {
     case actions(Buttons_ActionList)
     case folder(Buttons_FolderContent)
     case back(Buttons_Back)
+    /// named switch_content, not switch: `switch` is a reserved word in
+    /// Swift, and every other language's codegen would have to special-case
+    /// escaping it for no benefit — see slice 09 spec Interface Note 2.
+    case switchContent(Buttons_SwitchContent)
 
   }
 
@@ -236,6 +256,75 @@ nonisolated struct Buttons_Back: Sendable {
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
+}
+
+/// Two-state toggle button, capped at two states (matching Elgato's own
+/// "Multi Action Switch" limit) — see slice 09 spec Scope → Out #3.
+nonisolated struct Buttons_SwitchContent: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var off: Buttons_SwitchState {
+    get {_off ?? Buttons_SwitchState()}
+    set {_off = newValue}
+  }
+  /// Returns true if `off` has been explicitly set.
+  var hasOff: Bool {self._off != nil}
+  /// Clears the value of `off`. Subsequent reads from it will return its default value.
+  mutating func clearOff() {self._off = nil}
+
+  var on: Buttons_SwitchState {
+    get {_on ?? Buttons_SwitchState()}
+    set {_on = newValue}
+  }
+  /// Returns true if `on` has been explicitly set.
+  var hasOn: Bool {self._on != nil}
+  /// Clears the value of `on`. Subsequent reads from it will return its default value.
+  mutating func clearOn() {self._on = nil}
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+
+  fileprivate var _off: Buttons_SwitchState? = nil
+  fileprivate var _on: Buttons_SwitchState? = nil
+}
+
+/// Mirrors Button's own label/icon shape plus a bare actions list — no
+/// nested ActionList wrapper, since this isn't a oneof case competing with
+/// Folder/Back.
+nonisolated struct Buttons_SwitchState: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var label: String {
+    get {_label ?? String()}
+    set {_label = newValue}
+  }
+  /// Returns true if `label` has been explicitly set.
+  var hasLabel: Bool {self._label != nil}
+  /// Clears the value of `label`. Subsequent reads from it will return its default value.
+  mutating func clearLabel() {self._label = nil}
+
+  var icon: String {
+    get {_icon ?? String()}
+    set {_icon = newValue}
+  }
+  /// Returns true if `icon` has been explicitly set.
+  var hasIcon: Bool {self._icon != nil}
+  /// Clears the value of `icon`. Subsequent reads from it will return its default value.
+  mutating func clearIcon() {self._icon = nil}
+
+  var actions: [Buttons_Action] = []
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+
+  fileprivate var _label: String? = nil
+  fileprivate var _icon: String? = nil
 }
 
 nonisolated struct Buttons_Action: Sendable {
@@ -434,7 +523,7 @@ nonisolated extension Buttons_Page: SwiftProtobuf.Message, SwiftProtobuf._Messag
 
 nonisolated extension Buttons_Button: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".Button"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}label\0\u{1}icon\0\u{1}actions\0\u{1}folder\0\u{1}back\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}label\0\u{1}icon\0\u{1}actions\0\u{1}folder\0\u{1}back\0\u{3}is_active\0\u{3}switch_content\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -484,6 +573,20 @@ nonisolated extension Buttons_Button: SwiftProtobuf.Message, SwiftProtobuf._Mess
           self.content = .back(v)
         }
       }()
+      case 7: try { try decoder.decodeSingularBoolField(value: &self.isActive) }()
+      case 8: try {
+        var v: Buttons_SwitchContent?
+        var hadOneofValue = false
+        if let current = self.content {
+          hadOneofValue = true
+          if case .switchContent(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.content = .switchContent(v)
+        }
+      }()
       default: break
       }
     }
@@ -516,8 +619,14 @@ nonisolated extension Buttons_Button: SwiftProtobuf.Message, SwiftProtobuf._Mess
       guard case .back(let v)? = self.content else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 6)
     }()
-    case nil: break
+    default: break
     }
+    if self.isActive != false {
+      try visitor.visitSingularBoolField(value: self.isActive, fieldNumber: 7)
+    }
+    try { if case .switchContent(let v)? = self.content {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -525,6 +634,7 @@ nonisolated extension Buttons_Button: SwiftProtobuf.Message, SwiftProtobuf._Mess
     if lhs.id != rhs.id {return false}
     if lhs._label != rhs._label {return false}
     if lhs._icon != rhs._icon {return false}
+    if lhs.isActive != rhs.isActive {return false}
     if lhs.content != rhs.content {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
@@ -605,6 +715,89 @@ nonisolated extension Buttons_Back: SwiftProtobuf.Message, SwiftProtobuf._Messag
   }
 
   static func ==(lhs: Buttons_Back, rhs: Buttons_Back) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Buttons_SwitchContent: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SwitchContent"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}off\0\u{1}on\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularMessageField(value: &self._off) }()
+      case 2: try { try decoder.decodeSingularMessageField(value: &self._on) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._off {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._on {
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 2)
+    } }()
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Buttons_SwitchContent, rhs: Buttons_SwitchContent) -> Bool {
+    if lhs._off != rhs._off {return false}
+    if lhs._on != rhs._on {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Buttons_SwitchState: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".SwitchState"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}label\0\u{1}icon\0\u{1}actions\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self._label) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self._icon) }()
+      case 3: try { try decoder.decodeRepeatedMessageField(value: &self.actions) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    // The use of inline closures is to circumvent an issue where the compiler
+    // allocates stack space for every if/case branch local when no optimizations
+    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
+    // https://github.com/apple/swift-protobuf/issues/1182
+    try { if let v = self._label {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 1)
+    } }()
+    try { if let v = self._icon {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
+    } }()
+    if !self.actions.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.actions, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Buttons_SwitchState, rhs: Buttons_SwitchState) -> Bool {
+    if lhs._label != rhs._label {return false}
+    if lhs._icon != rhs._icon {return false}
+    if lhs.actions != rhs.actions {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
