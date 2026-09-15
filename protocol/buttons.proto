@@ -34,15 +34,39 @@ message Button {
   string id = 1;
   optional string label = 2;
   optional string icon = 3; // emoji/text glyph, per slice 2's convention
+  // current Switch state; wire-only, never persisted on either end — see
+  // desktop/src-tauri/src/switch_state.rs and slice 09 spec Interface Note 1.
+  // Meaningless (always false) for a non-.switch_content button.
+  bool is_active = 7;
   oneof content {           // flat numbering space with id/label/icon above —
     ActionList actions = 4; // don't restart the oneof at 1, it'd collide
     FolderContent folder = 5;
     Back back = 6;
+    // named switch_content, not switch: `switch` is a reserved word in
+    // Swift, and every other language's codegen would have to special-case
+    // escaping it for no benefit — see slice 09 spec Interface Note 2.
+    SwitchContent switch_content = 8;
   }
 }
 message ActionList { repeated Action actions = 1; } // doubled key on purpose — see spec finding 6
 message FolderContent { repeated Button buttons = 1; } // buttons[0] is always Back
 message Back {} // no payload; pops one nav level
+
+// Two-state toggle button, capped at two states (matching Elgato's own
+// "Multi Action Switch" limit) — see slice 09 spec Scope → Out #3.
+message SwitchContent {
+  SwitchState off = 1;
+  SwitchState on = 2;
+}
+
+// Mirrors Button's own label/icon shape plus a bare actions list — no
+// nested ActionList wrapper, since this isn't a oneof case competing with
+// Folder/Back.
+message SwitchState {
+  optional string label = 1;
+  optional string icon = 2;
+  repeated Action actions = 3;
+}
 
 message Action {
   oneof action {
