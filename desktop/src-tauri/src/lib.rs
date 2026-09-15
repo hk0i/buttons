@@ -3,6 +3,7 @@ mod config;
 mod pairing;
 mod proto;
 mod server;
+mod switch_state;
 
 use config::{Action, Config};
 use pairing::Pairing;

@@ -54,6 +54,14 @@ impl From<&config::Button> for buttons::Button {
             id: b.id.clone(),
             label: b.label.clone(),
             icon: b.icon.clone(),
+            // Scoped to .switch_content buttons only; a plain
+            // .actions/.folder/.back button always reports false and
+            // mobile never reads it (slice 09 spec, § Implementation
+            // Notes #6). Always false here regardless of content — this
+            // `From` stays pure/persisted-only and has no access to live
+            // SwitchStates; `apply_switch_states` below is the post-pass
+            // that fills in the real value at config_sync send time.
+            is_active: false,
             content: Some(buttons::button::Content::from(&b.content)),
         }
     }
@@ -75,6 +83,22 @@ impl From<&config::ButtonContent> for buttons::button::Content {
             // no payload; empty message case must stay Some(Back{}), not
             // None — see protocol/verify-rust's presence round-trip test.
             config::ButtonContent::Back => buttons::button::Content::Back(buttons::Back {}),
+            config::ButtonContent::Switch { off, on } => {
+                buttons::button::Content::SwitchContent(buttons::SwitchContent {
+                    off: Some(buttons::SwitchState::from(off)),
+                    on: Some(buttons::SwitchState::from(on)),
+                })
+            }
+        }
+    }
+}
+
+impl From<&config::SwitchState> for buttons::SwitchState {
+    fn from(s: &config::SwitchState) -> Self {
+        buttons::SwitchState {
+            label: s.label.clone(),
+            icon: s.icon.clone(),
+            actions: s.actions.iter().map(buttons::Action::from).collect(),
         }
     }
 }
@@ -110,6 +134,36 @@ impl From<&config::MediaKeyKind> for buttons::MediaKeyKind {
             config::MediaKeyKind::Mute => buttons::MediaKeyKind::Mute,
             config::MediaKeyKind::NextTrack => buttons::MediaKeyKind::NextTrack,
             config::MediaKeyKind::PreviousTrack => buttons::MediaKeyKind::PreviousTrack,
+        }
+    }
+}
+
+/// Merges live `SwitchStates` into an already-built proto `Config`, for
+/// `ConfigSync`. `From<&config::Config>` above stays pure/persisted-only —
+/// it has no access to `SwitchStates` and shouldn't gain one; this
+/// post-pass runs immediately after, at every `config_sync` send site.
+/// **The seam this whole slice turns on** — a future reader reaching for
+/// "just thread the map into `From`" should land here instead of
+/// rediscovering the wall. See slice 09 spec, § Interface Note 6.
+pub fn apply_switch_states(config: &mut buttons::Config, states: &crate::switch_state::SwitchStates) {
+    let map = states.lock().unwrap();
+    for profile in &mut config.profiles {
+        for page in &mut profile.pages {
+            apply_switch_states_to_buttons(&mut page.buttons, &map);
+        }
+    }
+}
+
+fn apply_switch_states_to_buttons(
+    buttons: &mut [buttons::Button],
+    map: &std::collections::HashMap<String, bool>,
+) {
+    for button in buttons {
+        if let Some(is_on) = map.get(&button.id) {
+            button.is_active = *is_on;
+        }
+        if let Some(buttons::button::Content::Folder(folder)) = &mut button.content {
+            apply_switch_states_to_buttons(&mut folder.buttons, map);
         }
     }
 }
