@@ -127,6 +127,19 @@ Decision: the random-access-pointer benefit outweighs both costs. Numbered
 lists are the standard going forward, full stop — including new lists in
 existing docs, not just new docs.
 
+**Protobuf code fences: use `` ```protobuf ``, not `` ```proto ``.** Decided
+2026-09-15. GitHub renders both identically. The difference is VS Code: the
+installed extension (`DrBlury/protobuf-vsc-extension`, successor to the now-
+deprecated `vscode-proto3`) registers no Markdown-injection grammar for
+either tag, so the editor view highlights neither — but VS Code's built-in
+Markdown *preview* uses its own bundled Shiki grammars independent of any
+installed extension, and Shiki recognizes `protobuf`, not `proto`. Until a
+PR lands upstream adding the missing injection grammar (tracked
+separately), `protobuf` is the one tag that gets any highlighting at all
+locally. Going forward only — existing docs using `` ```proto `` are not
+being retrofitted; update one only if you're already touching that fence
+for another reason.
+
 **Bold vs. heading.** A standalone line that labels the block of content
 beneath it is a heading (`#`, one level below its parent) — not bold text.
 Bold is for a label/value lead-in inline with its value (`**Verification:**`
