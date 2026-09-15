@@ -98,6 +98,45 @@ discussion.
 5. Swift changes: run `swift-format lint` first — see § Code formatting
    (Swift). No CI enforcement yet, so this is on the contributor.
 
+## Commit messages
+
+Decided 2026-09-15. Format:
+
+```
+[NN][slug][platform] type: concise description
+```
+
+Bracket-tag mechanics (ordering, never dropping a tag to save width) are a
+global habit, not repo-specific — see `~/.claude/CLAUDE.md` § Response
+Format. This section is this repo's own vocabulary for those brackets.
+
+1. `[NN]` — the slice number, exactly as it appears in the spec's filename
+   (`09`, `09a`, ...). Omit for a commit with no slice (a CLAUDE.md-style
+   process change, a toolchain fix) — start the tag list at whichever of
+   `[slug]`/`[platform]` still applies, or use neither.
+2. `[slug]` — a slug of that slice's own title, matching its spec filename
+   (`09. Switch Buttons.spec.md` → `switch-buttons`). Per-slice, not a
+   shared arc name across closely related slices (e.g. 09/09a stay
+   `switch-buttons` / `state-push`, not both `stateful-buttons`) — derivable
+   from the filename with zero judgment call, which is what makes the
+   convention survive not thinking about it. `git log --grep '\[09'`
+   already pulls a coupled pair together by number when that's needed.
+3. `[platform]` — `protocol` / `desktop` / `ios` / `android`, whichever
+   top-level directory the commit touches (matches the license table
+   above). Lets `git log --oneline | grep '\[ios\]'` answer "what changed
+   on this platform" without opening diffs — the payoff that justifies a
+   third tag in a monorepo with no PR-label tooling.
+4. Order is stable-outermost: `[NN]` and `[slug]` hold constant across a
+   whole slice's commits; `[platform]` varies commit to commit within it.
+
+**Deliberate departure from [Conventional Commits](https://www.conventionalcommits.org/):**
+that spec caps at one `type(scope):` because scope feeds release automation
+(semantic-release, changesets) that needs an unambiguous key. This repo has
+no release automation and is single-branch, solo-maintained — the tradeoff
+that rule protects doesn't apply here, and multiple bracket tags answer a
+real, current need (platform/slice filtering in `git log`) that one scope
+can't. Revisit if this repo ever adopts scope-driven release tooling.
+
 ## Documentation style
 
 Numbered lists (`1.`, `2.`, ...) are the default list style in all docs in
