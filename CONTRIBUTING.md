@@ -209,6 +209,18 @@ rule applies per fence, and a reader hitting a list item numbered `5.`
 after a fence with only two comments in it has no way to know three
 numbers went missing before it.
 
+**One blank line between top-level declarations inside a multi-declaration
+snippet** — two structs, an `impl` block and the struct it returns,
+consecutive `message`s in a `.proto` fragment. Without it, a closing `}`
+sitting directly above the next declaration's numbered comment reads as
+an indentation error on a first pass, not two separate things — exactly
+the confusion this whole annotation convention exists to avoid. Doesn't
+apply to a run of genuinely trivial one-line wrapper declarations
+presented as a deliberate compact batch (e.g. `message Back {}` sitting
+next to other one-liners) — that's a different, already-legible shape;
+this rule is for the case a reader could mistake two separate blocks for
+one nested inside the other.
+
 **One list item per change point — never a range like `3-4.` to cover
 two points with one entry.** Neither Markdown nor HTML's ordered-list
 syntax supports a range as an item number; a renderer either drops the
