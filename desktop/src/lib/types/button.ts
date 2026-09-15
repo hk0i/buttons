@@ -25,7 +25,20 @@ export interface Button {
 export type ButtonContent =
   | { type: "actions"; actions: Action[] }
   | { type: "folder"; buttons: Button[] } // buttons[0] is always Back
-  | { type: "back" }; // no payload; pops one level off the nav stack
+  | { type: "back" } // no payload; pops one level off the nav stack
+  // Two-state toggle, capped at two states (matching Elgato's own "Multi
+  // Action Switch" limit) — see slice 09 spec Scope → Out #3. `Button`
+  // itself gains no new field — no TS mirror of the wire's `is_active`,
+  // which is local-Rust-only (slice 09 spec, § Files to Touch #8).
+  | { type: "switch"; off: SwitchState; on: SwitchState };
+
+// Mirrors `Button`'s own `label`/`icon` shape plus a bare `actions` list —
+// matches `config.rs`'s `SwitchState` and the wire `SwitchState` exactly.
+export interface SwitchState {
+  label?: string;
+  icon?: string;
+  actions: Action[];
+}
 
 export type Action =
   | { type: "launchApp"; path: string }
