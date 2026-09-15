@@ -136,7 +136,7 @@ Non-Goals split) belongs in the document's outline/TOC, which only a real
 heading gives it.
 
 **Annotating a code snippet that changes existing code.** Decided
-2026-09-14, amended 2026-09-14. When a snippet shows a change to something
+2026-09-14, amended 2026-09-14, 2026-09-15. When a snippet shows a change to something
 that already exists — a new field, a new method, a modified signature —
 mark each change point with a short numbered `//` comment **on its own
 line directly above** the line it refers to, never trailing on the same
@@ -196,6 +196,27 @@ in tension with this rule, which never crosses a section boundary. A
 snippet showing a shape with nothing pre-existing to distinguish (a fresh
 type, a `.proto` fragment with no prior version) doesn't need this —
 it's for changes, not every snippet.
+
+**Multiple related files in one section share one snippet and one list,
+restarting at `1.` once — never several snippets each silently
+continuing the last one's count.** If two files' changes belong together
+(e.g. a Rust type and the function that returns it, or a struct and the
+wire message it mirrors), put them in one fenced block with a plain `//
+file.ext` comment marking where each starts, same as this doc's own
+Mobile-side example elsewhere in this repo. Never split them into
+separate fences that keep counting up from the last one — the restart
+rule applies per fence, and a reader hitting a list item numbered `5.`
+after a fence with only two comments in it has no way to know three
+numbers went missing before it.
+
+**One list item per change point — never a range like `3-4.` to cover
+two points with one entry.** Neither Markdown nor HTML's ordered-list
+syntax supports a range as an item number; a renderer either drops the
+line or mangles the list that follows it. Give every numbered comment
+its own list item, even when the explanation is one shared sentence —
+write it once under the first number and have the second point say "see
+above" or add only what's different, rather than merging the numbers
+themselves.
 
 ## Doc comments (code)
 
