@@ -8,16 +8,25 @@ use crate::actions;
 use crate::config;
 use crate::pairing::{self, Pairing};
 use crate::proto::buttons;
+use crate::switch_state::{self, SwitchStates};
 use futures_util::{SinkExt, StreamExt};
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tauri::Emitter;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Mutex};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
+
+/// Fired after any successful flip (a real `ButtonPress` here, or the
+/// editor's `Test` button in `lib.rs` — both go through `execute_press`),
+/// carrying the full current map. Desktop's own preview grid
+/// (`switchStates.svelte.ts`) is this event's only listener this slice —
+/// see slice 09 spec, § Files to Touch #8-9.
+const SWITCH_STATES_CHANGED_EVENT: &str = "switch-states-changed";
 
 const SERVICE_TYPE: &str = "_buttons._tcp.local.";
 const INSTANCE_NAME: &str = "buttons-desktop";
@@ -51,7 +60,13 @@ type ConnSlot = Arc<Mutex<Option<ConnectionHandle>>>;
 
 /// Advertises mDNS, binds the WebSocket listener, and runs the accept loop
 /// forever. Spawned as a background task from Tauri's `.setup()` hook.
-pub async fn run(pairing: Arc<Pairing>, config_path: PathBuf) {
+pub async fn run(
+    pairing: Arc<Pairing>,
+    config_path: PathBuf,
+    switch_state_path: PathBuf,
+    switch_states: SwitchStates,
+    app: tauri::AppHandle,
+) {
     let device_id = pairing.device_id();
 
     let mdns = ServiceDaemon::new().expect("failed to create mDNS daemon");
@@ -78,6 +93,9 @@ pub async fn run(pairing: Arc<Pairing>, config_path: PathBuf) {
                     addr,
                     Arc::clone(&pairing),
                     config_path.clone(),
+                    switch_state_path.clone(),
+                    Arc::clone(&switch_states),
+                    app.clone(),
                     Arc::clone(&slot),
                 ));
             }
@@ -91,6 +109,9 @@ async fn handle_connection(
     addr: SocketAddr,
     pairing: Arc<Pairing>,
     config_path: PathBuf,
+    switch_state_path: PathBuf,
+    switch_states: SwitchStates,
+    app: tauri::AppHandle,
     slot: ConnSlot,
 ) {
     let mut ws = match tokio_tungstenite::accept_async(stream).await {
@@ -172,13 +193,18 @@ async fn handle_connection(
             return;
         }
     };
+    let mut wire_config = buttons::Config::from(&config);
+    // Merge-at-send-time, not baked into `From` — a reconnecting mobile
+    // client sees the real current Switch states immediately, not a
+    // hardcoded default. See slice 09 spec, § Interface Note 6.
+    crate::proto::apply_switch_states(&mut wire_config, &switch_states);
     if send_envelope(
         &mut ws,
         buttons::Envelope {
             protocol_version: pairing::PROTOCOL_VERSION.to_string(),
             message: Some(buttons::envelope::Message::ConfigSync(
                 buttons::ConfigSync {
-                    config: Some(buttons::Config::from(&config)),
+                    config: Some(wire_config),
                 },
             )),
         },
@@ -196,7 +222,15 @@ async fn handle_connection(
             msg = ws.next() => match msg {
                 Some(Ok(Message::Close(_))) | None => break,
                 Some(Ok(Message::Text(text))) => {
-                    if let Some(result) = handle_button_press(&text, &config_path).await {
+                    if let Some(result) = handle_button_press(
+                        &text,
+                        &config_path,
+                        &switch_state_path,
+                        &switch_states,
+                        &app,
+                    )
+                    .await
+                    {
                         if send_envelope(&mut ws, result).await.is_err() {
                             break;
                         }
@@ -217,11 +251,18 @@ async fn handle_connection(
 }
 
 /// Parses one incoming text frame as an `Envelope` and, if it's a
-/// `ButtonPress`, runs its actions and returns the `ActionResult` envelope
-/// to send back. Anything else this slice (malformed JSON, an unexpected
-/// variant) is logged and dropped — no reply, same as an unhandled frame
-/// type above. See slice 08 spec, § Implementation Notes.
-async fn handle_button_press(text: &str, config_path: &Path) -> Option<buttons::Envelope> {
+/// `ButtonPress`, runs it through `execute_press` and returns the
+/// `ActionResult` envelope to send back. Anything else this slice
+/// (malformed JSON, an unexpected variant) is logged and dropped — no
+/// reply, same as an unhandled frame type above. See slice 08 spec, §
+/// Implementation Notes.
+async fn handle_button_press(
+    text: &str,
+    config_path: &Path,
+    switch_state_path: &Path,
+    switch_states: &SwitchStates,
+    app: &tauri::AppHandle,
+) -> Option<buttons::Envelope> {
     let envelope: buttons::Envelope = match serde_json::from_str(text) {
         Ok(envelope) => envelope,
         Err(parse_error) => {
@@ -233,34 +274,62 @@ async fn handle_button_press(text: &str, config_path: &Path) -> Option<buttons::
         return None; // no other client-initiated message this slice
     };
 
-    // Re-loaded fresh on every press, not the connect-time snapshot held
-    // in `handle_connection` — an edit made on desktop must be visible to
-    // the very next press, not just the next reconnect.
-    let config = match config::load_config(config_path) {
-        Ok(config) => config,
-        Err(load_error) => {
-            eprintln!("server: failed to load config for ButtonPress: {load_error}");
-            return Some(action_result(&press.button_id, Err(load_error)));
-        }
-    };
+    let result = execute_press(
+        &press.button_id,
+        config_path,
+        switch_state_path,
+        switch_states,
+        app,
+    )
+    .await;
+    Some(action_result(&press.button_id, result))
+}
 
-    let Some(button_actions) = config.actions_for_button(&press.button_id) else {
-        return Some(action_result(
-            &press.button_id,
-            Err("unknown button id".to_string()),
-        ));
+/// What pressing `button_id` does, right now — the one function a real
+/// `ButtonPress` (above) and the editor's `Test` button (`lib.rs`'s
+/// `test_button` command) both call, so there is exactly one definition
+/// of "what pressing this button does." See slice 09 spec, § Interface
+/// Note 3.
+///
+/// Loads `Config` fresh (not a connect-time snapshot — an edit made on
+/// desktop must be visible to the very next press), runs the current
+/// target's actions off the async runtime (`actions::run` is blocking:
+/// Enigo, `Command::spawn`), and — only on success, and only for a
+/// Switch — records the flip and broadcasts the updated map to
+/// `SWITCH_STATES_CHANGED_EVENT`'s listeners.
+pub async fn execute_press(
+    button_id: &str,
+    config_path: &Path,
+    switch_state_path: &Path,
+    switch_states: &SwitchStates,
+    app: &tauri::AppHandle,
+) -> Result<(), String> {
+    let config = config::load_config(config_path)?;
+
+    let current_states = switch_states.lock().unwrap().clone();
+    let Some(target) = config.press_target(button_id, &current_states) else {
+        return Err("unknown button id".to_string());
     };
-    // Cloned to move into spawn_blocking — `button_actions` borrows from
+    // Cloned to move into spawn_blocking — `target.actions` borrows from
     // `config`, which doesn't outlive this function.
-    let button_actions = button_actions.to_vec();
+    let actions = target.actions.to_vec();
+    let flips_to = target.flips_to;
 
-    // `actions::run` is blocking (Enigo, Command::spawn) — must not run
-    // inline on this async task, per §5.4's sub-50ms round-trip target.
-    let result = tokio::task::spawn_blocking(move || actions::run(&button_actions))
+    let result = tokio::task::spawn_blocking(move || actions::run(&actions))
         .await
         .unwrap_or_else(|join_error| Err(format!("action task panicked: {join_error}")));
 
-    Some(action_result(&press.button_id, result))
+    if result.is_ok() {
+        if let Some(new_value) = flips_to {
+            switch_state::flip_and_save(switch_state_path, switch_states, button_id, new_value);
+            let snapshot = switch_states.lock().unwrap().clone();
+            if let Err(e) = app.emit(SWITCH_STATES_CHANGED_EVENT, snapshot) {
+                eprintln!("server: failed to emit {SWITCH_STATES_CHANGED_EVENT}: {e}");
+            }
+        }
+    }
+
+    result
 }
 
 fn action_result(button_id: &str, result: Result<(), String>) -> buttons::Envelope {

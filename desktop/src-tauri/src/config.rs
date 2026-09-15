@@ -76,26 +76,6 @@ pub enum MediaKeyKind {
 }
 
 impl Config {
-    /// Depth-first search over the active Profile's Pages (and nested
-    /// folders) for a Button by id. Returns its actions, or `None` if the
-    /// id doesn't exist (deleted since connect, or from a stale mobile
-    /// cache) or isn't an `.actions` button. See slice 08 spec, §
-    /// Implementation Notes.
-    ///
-    /// Superseded by `press_target` below for actually deciding what a
-    /// press does (slice 09) — kept as-is until its one remaining caller
-    /// (`server.rs`) migrates.
-    pub fn actions_for_button(&self, button_id: &str) -> Option<&[Action]> {
-        let profile = self
-            .profiles
-            .iter()
-            .find(|p| p.id == self.active_profile_id)?;
-        profile
-            .pages
-            .iter()
-            .find_map(|page| find_actions(&page.buttons, button_id))
-    }
-
     /// Which actions a press on `button_id` should run right now, and (for
     /// a Switch) what a successful run flips to. `current_states` supplies
     /// live Switch indices (button_id -> is "on" showing); absent means
@@ -125,23 +105,6 @@ pub struct PressTarget<'a> {
     /// `Some(new_value)` for a Switch (flip iff the run succeeds); `None`
     /// for a plain `.actions` button — nothing to flip.
     pub flips_to: Option<bool>,
-}
-
-fn find_actions<'a>(buttons: &'a [Button], button_id: &str) -> Option<&'a [Action]> {
-    for button in buttons {
-        if button.id == button_id {
-            return match &button.content {
-                ButtonContent::Actions { actions } => Some(actions.as_slice()),
-                _ => None,
-            };
-        }
-        if let ButtonContent::Folder { buttons: nested } = &button.content {
-            if let Some(found) = find_actions(nested, button_id) {
-                return Some(found);
-            }
-        }
-    }
-    None
 }
 
 fn find_press_target<'a>(

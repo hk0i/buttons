@@ -46,3 +46,15 @@ pub fn save(switch_state_path: &Path, states: &SwitchStates) {
         Err(e) => eprintln!("switch_state: failed to serialize switch_state.json: {e}"),
     }
 }
+
+/// Records a successful flip and persists it — the only way `switch_state.json`
+/// changes. Two sequential lock scopes, not one nested call: `save` takes
+/// its own lock, and `Mutex` isn't reentrant, so the write must fully
+/// release the guard before `save` acquires it again.
+pub fn flip_and_save(switch_state_path: &Path, states: &SwitchStates, button_id: &str, new_value: bool) {
+    {
+        let mut map = states.lock().unwrap();
+        map.insert(button_id.to_string(), new_value);
+    }
+    save(switch_state_path, states);
+}

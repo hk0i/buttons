@@ -8,9 +8,11 @@ mod switch_state;
 use config::{Action, Config};
 use pairing::Pairing;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
+use switch_state::SwitchStates;
 use tauri::{AppHandle, Manager};
 
 /// Tauri-specific glue, kept out of `config.rs` so its data/persistence logic
@@ -29,6 +31,14 @@ fn device_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(dir.join("device.json"))
 }
 
+/// Beside `buttons.json`/`device.json` — local-only, never part of
+/// `save_config`/`get_config`. See slice 09 spec, § Scope → In #3.
+fn switch_state_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("switch_state.json"))
+}
+
 #[tauri::command]
 fn get_config(app: tauri::AppHandle) -> Result<Config, String> {
     config::load_config(&config_path(&app)?)
@@ -42,6 +52,32 @@ fn save_config(app: tauri::AppHandle, config: Config) -> Result<(), String> {
 #[tauri::command]
 fn run_actions(actions: Vec<Action>) -> Result<(), String> {
     actions::run(&actions)
+}
+
+/// Mirrors `SwitchStates` client-side — `switchStates.svelte.ts` calls this
+/// once at load, then updates from the `switch-states-changed` event
+/// `server::execute_press` emits after every successful flip. See slice 09
+/// spec, § Files to Touch #7, #9.
+#[tauri::command]
+fn get_switch_states(states: tauri::State<SwitchStates>) -> HashMap<String, bool> {
+    states.lock().unwrap().clone()
+}
+
+/// The editor's `Test` button. Content-type-aware: for a plain `.actions`
+/// button this runs its one array, exactly as `run_actions` always has;
+/// for a `.switch` button it goes through the same `execute_press` path a
+/// real `ButtonPress` uses — "simulates a full real press," not a
+/// separate testing-only code path that could drift from what a real
+/// press actually does. See slice 09 spec, § Implementation Notes #4.
+#[tauri::command]
+async fn test_button(
+    app: AppHandle,
+    button_id: String,
+    states: tauri::State<'_, SwitchStates>,
+) -> Result<(), String> {
+    let config_path = config_path(&app)?;
+    let switch_state_path = switch_state_path(&app)?;
+    server::execute_press(&button_id, &config_path, &switch_state_path, &states, &app).await
 }
 
 #[derive(Serialize)]
@@ -81,16 +117,27 @@ pub fn run() {
             let handle = app.handle();
             let config_path = config_path(handle)?;
             let device_path = device_path(handle)?;
+            let switch_state_path = switch_state_path(handle)?;
             let pairing = Arc::new(Pairing::load_or_create(device_path)?);
             app.manage(Arc::clone(&pairing));
-            tauri::async_runtime::spawn(server::run(pairing, config_path));
+            let switch_states: SwitchStates = switch_state::load(&switch_state_path);
+            app.manage(switch_states.clone());
+            tauri::async_runtime::spawn(server::run(
+                pairing,
+                config_path,
+                switch_state_path,
+                switch_states,
+                handle.clone(),
+            ));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_config,
             save_config,
             run_actions,
-            get_pairing_qr
+            get_pairing_qr,
+            get_switch_states,
+            test_button
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
