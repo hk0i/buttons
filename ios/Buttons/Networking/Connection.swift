@@ -65,6 +65,12 @@ final class DesktopConnection: NSObject {
     /// `PairResponse` means a real `auth_token` exists to store.
     private var pairCompletion: ((PairResult) -> Void)?
 
+    /// True while a connection already exists, or an attempt to establish
+    /// one hasn't resolved yet — the single gate both `connect(...)`
+    /// overloads check before starting a second one. See slice 09b spec,
+    /// § Scope → In #1.
+    private var isConnectingOrConnected: Bool { isConnected || pairCompletion != nil }
+
     /// Reconnect path: a Bonjour endpoint already resolved by
     /// `DesktopDiscovery` (matched by stored `device_id`). Resolution goes
     /// through the classic `NetService` API, not `NWConnection` — the
@@ -77,9 +83,8 @@ final class DesktopConnection: NSObject {
     ) {
         // At most one socket exists at a time — a second concurrent
         // request (e.g. two reconnect triggers landing close together) is
-        // dropped, not queued or superseded. See slice 09b spec, § Scope
-        // → In #1.
-        guard !isConnected, pairCompletion == nil else { return }
+        // dropped, not queued or superseded.
+        guard !isConnectingOrConnected else { return }
         guard case let .service(name, type, domain, _) = endpoint else {
             pairError = "not a Bonjour service endpoint"
             onPairResult?(.failure("not a Bonjour service endpoint"))
@@ -105,7 +110,7 @@ final class DesktopConnection: NSObject {
         onPairResult: ((PairResult) -> Void)? = nil
     ) {
         // See the other connect(...) overload's identical guard.
-        guard !isConnected, pairCompletion == nil else { return }
+        guard !isConnectingOrConnected else { return }
         pendingToken = token
         pairCompletion = onPairResult
         guard let url = URL(string: "ws://\(host):\(port)") else {
