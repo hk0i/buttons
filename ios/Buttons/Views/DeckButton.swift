@@ -81,11 +81,16 @@ struct DeckButton: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(8)
-        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        // Icon overlay, not a background-color flash — deliberately, to
-        // leave the background channel free for a future persistent
-        // "active" indicator (state_push, step 9). See slice 08 spec,
-        // § Implementation Notes.
+        // The persistent "active" indicator the background channel was
+        // deliberately left free for (slice 08 spec, § Implementation
+        // Notes) — a Switch button's own isActive, not the transient
+        // PressFlash overlay below. `AnyShapeStyle` because the two
+        // branches are otherwise incompatible types (`HierarchicalShapeStyle`
+        // vs `Color`). See slice 09a spec, § Scope → In #5.
+        .background(
+            isActive ? AnyShapeStyle(Color.switchActive) : AnyShapeStyle(.quaternary),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
         .overlay(alignment: .topTrailing) {
             switch pressFlash {
             case .success:
