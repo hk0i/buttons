@@ -99,3 +99,74 @@ None of the four attempts above should produce `server: WebSocket error
 from …` either — that line comes only from the post-authentication loop,
 so seeing it during one of these attempts would mean the payload
 authenticated when it shouldn't have.
+
+## Faking the desktop side with `websocat`
+
+The section above uses `websocat` as a stand-in *mobile* client against a
+real desktop. This is the reverse: `websocat` stands in for **desktop**,
+against a real mobile app — for testing a D→M message no real trigger
+produces yet (e.g. a `state_push` with more than one `StateChange`, used
+to verify slice 09a DoD 3). Same tool, opposite direction; don't confuse
+the two.
+
+**Caveat — this overwrites mobile's real pairing.** A fresh QR pair
+replaces whatever `device_id`/`auth_token` mobile's Keychain currently
+holds. After this test, restart the real desktop app and re-scan its
+real QR to restore normal pairing — don't skip this.
+
+1. **Find your Mac's LAN IP** (must be reachable from the phone's WiFi;
+   `127.0.0.1` won't work here since the phone is a separate device):
+   ```
+   ipconfig getifaddr en0   # or en1/en2 — whichever interface has your LAN IP
+   ```
+2. **Build a fresh-pair QR** pointing at a `websocat` server instead of
+   the real desktop. `device_id`/token can be any string — this bypasses
+   `Pairing::validate` entirely, since `websocat` isn't running desktop's
+   real validation code:
+   ```
+   qrencode -o fake-desktop.png -s 10 "fake-device 10.10.10.152 47822 fake-token"
+   ```
+   Display `fake-desktop.png` somewhere the phone's camera can scan it
+   (a second screen, not the phone itself).
+3. **Start `websocat` in server mode**, piped through a FIFO so more than
+   one message can be sent over the same connection (plain
+   `websocat -s <addr>` alone only pipes stdin once — a FIFO kept open on
+   a spare file descriptor lets separate shell commands append to it
+   without closing the pipe):
+   ```
+   mkfifo ws_in
+   exec 3<> ws_in                         # open read-write so it doesn't block
+   websocat -s 10.10.10.152:47822 <&3 > ws_out.log 2>&1 &
+   ```
+4. **On the phone**: get to `PairingView` (stop the real desktop app so
+   the existing connection drops), tap "Scan QR Code," scan
+   `fake-desktop.png`.
+5. **Watch `ws_out.log` for the incoming `PairRequest`**, then write
+   responses into the FIFO, one JSON line each (canonical proto3 JSON,
+   same shape as the client-side section above — oneof case as a
+   top-level key):
+   ```
+   echo '{"protocolVersion":"1","pairResponse":{"ok":true,"authToken":"fake-token"}}' > ws_in
+   echo '{"protocolVersion":"1","configSync":{"config":{"profiles":[{"id":"p1","name":"Test","pages":[{"id":"pg1","buttons":[{"id":"btnA","label":"A","switchContent":{"off":{"label":"Off A"},"on":{"label":"On A"}}},{"id":"btnB","label":"B","switchContent":{"off":{"label":"Off B"},"on":{"label":"On B"}}}]}]}],"activeProfileId":"p1"}}}' > ws_in
+   ```
+   Mobile shows the two Switch buttons once `ConfigSync` lands. Now send
+   whatever D→M message is actually under test, e.g. a 2-entry
+   `state_push`:
+   ```
+   echo '{"protocolVersion":"1","statePush":{"changes":[{"buttonId":"btnA","isActive":true},{"buttonId":"btnB","isActive":true}]}}' > ws_in
+   ```
+6. **Beat the 10s `pairTimeout`** — `DesktopConnection.connect(...)`
+   cancels the whole attempt 10s after `PairRequest` is sent if no
+   `PairResponse` arrives (`Connection.swift`'s `scheduleTimeout`). Typing
+   the response by hand while also relaying between two people/screens
+   easily blows through that window. If timing by hand is too slow, poll
+   for the request and react in one script instead of a manual
+   back-and-forth:
+   ```bash
+   for i in $(seq 1 40); do
+     grep -q pairRequest ws_out.log && { echo '{"protocolVersion":"1","pairResponse":{"ok":true,"authToken":"fake-token"}}' > ws_in; break; }
+     sleep 0.25
+   done
+   ```
+7. **Clean up**: kill the `websocat` process, restart the real desktop
+   app, re-scan its real QR on the phone.
