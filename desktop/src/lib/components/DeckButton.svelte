@@ -1,28 +1,13 @@
 <script lang="ts">
-  import type { Button as ButtonModel } from "$lib/types/button";
-  import { switchStatesStore } from "$lib/stores/switchStates.svelte";
-
-  let {
-    icon,
-    label,
-    selected = false,
-    button,
-  }: { icon?: string; label?: string; selected?: boolean; button?: ButtonModel } = $props();
-
-  // A Switch button's real face is its current state's icon/label, not its
-  // own top-level ones (which stay unset — see slice 09 spec, Files to
-  // Touch #8). Falls back to the plain props every other caller passes
-  // directly (the editor's live-typing preview, PreviewPane's "back" glyph).
-  let resolvedIcon = $derived(switchStatesStore.currentState(button)?.icon ?? icon);
-  let resolvedLabel = $derived(switchStatesStore.currentState(button)?.label ?? label);
+  let { icon, label, selected = false }: { icon?: string; label?: string; selected?: boolean } = $props();
 </script>
 
 <div class="deck-button" class:selected>
-  {#if resolvedIcon}
-    <span class="icon">{resolvedIcon}</span>
+  {#if icon}
+    <span class="icon">{icon}</span>
   {/if}
-  {#if resolvedLabel}
-    <span class="label">{resolvedLabel}</span>
+  {#if label}
+    <span class="label">{label}</span>
   {/if}
 </div>
 

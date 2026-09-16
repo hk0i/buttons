@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { configStore } from "$lib/stores/config.svelte";
+  import { switchStatesStore } from "$lib/stores/switchStates.svelte";
   import DeckButton from "./DeckButton.svelte";
   import PagePager from "./PagePager.svelte";
   import type { Button as ButtonModel } from "$lib/types/button";
@@ -56,6 +57,19 @@
         break;
     }
   }
+
+  // A Switch button's face is its current state's icon/label (via
+  // switchStatesStore), not its own top-level ones, which stay unset — see
+  // slice 09 spec, Files to Touch #8. DeckButton itself stays a plain
+  // presentational leaf (icon/label/selected only); this is where that
+  // resolution lives, since PreviewPane already owns button-domain logic
+  // (the drag rules and fire() above).
+  function displayIcon(button: ButtonModel): string | undefined {
+    return switchStatesStore.currentState(button)?.icon ?? button.icon ?? (button.content.type === "back" ? "⬅" : undefined);
+  }
+  function displayLabel(button: ButtonModel): string | undefined {
+    return switchStatesStore.currentState(button)?.label ?? button.label ?? (button.content.type === "back" ? "Back" : undefined);
+  }
 </script>
 
 <div class="preview-pane" class:landscape={orientation === "landscape"}>
@@ -103,9 +117,8 @@
               ondblclick={() => fire(button)}
             >
               <DeckButton
-                {button}
-                icon={button.icon ?? (button.content.type === "back" ? "⬅" : undefined)}
-                label={button.label ?? (button.content.type === "back" ? "Back" : undefined)}
+                icon={displayIcon(button)}
+                label={displayLabel(button)}
                 selected={button.id === selectedId}
               />
             </button>
