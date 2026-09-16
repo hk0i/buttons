@@ -103,6 +103,7 @@
               ondblclick={() => fire(button)}
             >
               <DeckButton
+                {button}
                 icon={button.icon ?? (button.content.type === "back" ? "⬅" : undefined)}
                 label={button.label ?? (button.content.type === "back" ? "Back" : undefined)}
                 selected={button.id === selectedId}

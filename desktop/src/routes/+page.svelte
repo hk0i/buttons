@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { resolve } from "$app/paths";
   import { configStore } from "$lib/stores/config.svelte";
+  import { switchStatesStore } from "$lib/stores/switchStates.svelte";
   import ButtonEditor from "$lib/components/ButtonEditor.svelte";
   import PreviewPane from "$lib/components/PreviewPane.svelte";
   import ProfileSwitcher from "$lib/components/ProfileSwitcher.svelte";
@@ -13,6 +14,10 @@
 
   onMount(async () => {
     await configStore.load();
+    // Not part of Config/ConfigStore — desktop's own runtime record of which
+    // state each Switch button is currently showing (switch_state.json),
+    // loaded independently. See slice 09 spec, § Files to Touch #9.
+    await switchStatesStore.load();
   });
 
   function startAdd() {
