@@ -134,6 +134,12 @@ final class DesktopConnection: NSObject {
         pairTimeout?.cancel()
         pairTimeout = nil
         netService?.stop()
+        // Not just .stop() — a NetService can still deliver a queued
+        // delegate callback after being stopped, and nil is what
+        // netServiceDidResolveAddress/didNotResolve's `sender ===
+        // netService` guard actually checks against. See slice 09b spec,
+        // § Scope → In #3.
+        netService = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         isConnected = false
         // Without this, a caller invoking disconnect() while an attempt is
@@ -416,35 +422,45 @@ final class DesktopConnection: NSObject {
 
 extension DesktopConnection: NetServiceDelegate {
     func netServiceDidResolveAddress(_ sender: NetService) {
+        // NetService can call this delegate method more than once per
+        // resolve as addresses arrive in separate batches (e.g. an IPv6
+        // link-local address before an IPv4 one) — a firing for a
+        // NetService this instance has already stopped and forgotten
+        // (below, or via disconnect()) must not start a second real
+        // connection. See slice 09b spec, § Scope → In #3.
+        guard sender === netService else { return }
         let parsed = (sender.addresses ?? []).compactMap(Self.parseSocketAddress)
         // Prefer IPv4, matching the desktop's own IPv4 pairing/QR payload.
         guard let resolved = parsed.first(where: { $0.isIPv4 }) ?? parsed.first else {
             let message = "resolved service has no usable addresses"
-            pairTimeout?.cancel()
-            pairTimeout = nil
             pairError = message
             pairCompletion?(.failure(message))
-            pairCompletion = nil
+            disconnect()
             return
         }
         guard let url = URL(string: "ws://\(resolved.host):\(resolved.port)") else {
+            // This firing's address didn't work (e.g. an unbracketed IPv6
+            // literal) — stop and forget this NetService via disconnect()
+            // before failing, so a *later* firing on the same resolve (a
+            // good IPv4 address arriving after a bad IPv6 one) can't sneak
+            // past the guard above and start a second connection with the
+            // still-set pendingToken.
             let message = "invalid resolved address"
-            pairTimeout?.cancel()
-            pairTimeout = nil
             pairError = message
             pairCompletion?(.failure(message))
-            pairCompletion = nil
+            disconnect()
             return
         }
+        netService?.stop()
+        netService = nil
         connectWebSocket(to: url)
     }
 
     func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
+        guard sender === netService else { return }
         let message = "failed to resolve desktop: \(errorDict)"
-        pairTimeout?.cancel()
-        pairTimeout = nil
         pairError = message
         pairCompletion?(.failure(message))
-        pairCompletion = nil
+        disconnect()
     }
 }
