@@ -75,6 +75,11 @@ final class DesktopConnection: NSObject {
         token: String,
         onPairResult: ((PairResult) -> Void)? = nil
     ) {
+        // At most one socket exists at a time — a second concurrent
+        // request (e.g. two reconnect triggers landing close together) is
+        // dropped, not queued or superseded. See slice 09b spec, § Scope
+        // → In #1.
+        guard !isConnected, pairCompletion == nil else { return }
         guard case let .service(name, type, domain, _) = endpoint else {
             pairError = "not a Bonjour service endpoint"
             onPairResult?(.failure("not a Bonjour service endpoint"))
@@ -99,6 +104,8 @@ final class DesktopConnection: NSObject {
         token: String,
         onPairResult: ((PairResult) -> Void)? = nil
     ) {
+        // See the other connect(...) overload's identical guard.
+        guard !isConnected, pairCompletion == nil else { return }
         pendingToken = token
         pairCompletion = onPairResult
         guard let url = URL(string: "ws://\(host):\(port)") else {
@@ -124,6 +131,12 @@ final class DesktopConnection: NSObject {
         netService?.stop()
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         isConnected = false
+        // Without this, a caller invoking disconnect() while an attempt is
+        // still unresolved would leave pairCompletion set with nothing
+        // left running to ever clear it, wedging connect(...)'s in-flight
+        // guard permanently. See slice 09b spec, § Scope → In #2.
+        pairCompletion = nil
+        pendingToken = nil
     }
 
     /// Actively confirms the socket is still alive.
