@@ -63,21 +63,29 @@
   }
 
   // Two-state toggle content — off/on named to match config.rs's
-  // ButtonContent::Switch exactly. Each state gets its own label/icon/
-  // actions, split into separate $state primitives (not one SwitchState
-  // object) so plain <input bind:value> works the same way the top-level
-  // label/icon fields above already do. `initialSwitch` narrows the type
-  // once so the six fields below just read off it, instead of each
-  // re-checking `button?.content.type === "switch"` on its own.
-  const initialSwitch = button?.content.type === "switch" ? button.content : null;
+  // ButtonContent::Switch exactly. One $state object, not six separate
+  // primitives: Svelte 5's $state deep-proxies plain objects, so
+  // bind:value={switchState[activeTab].label} works the same as binding
+  // to a flat variable — and it's what lets the template below use one
+  // appearance block for both tabs instead of two near-identical copies.
+  // Form-local shape, not the wire SwitchState (label/icon plain string,
+  // not optional) — same "" convention the top-level label/icon fields
+  // above use, coerced to `undefined` at persist time.
+  interface SwitchStateForm {
+    label: string;
+    icon: string;
+    actions: Action[];
+  }
+  function initialSwitchState(which: "off" | "on"): SwitchStateForm {
+    const state = button?.content.type === "switch" ? button.content[which] : undefined;
+    return { label: state?.label ?? "", icon: state?.icon ?? "", actions: state ? [...state.actions] : [] };
+  }
 
   let activeTab = $state<"off" | "on">("off");
-  let switchOffLabel = $state(initialSwitch?.off.label ?? "");
-  let switchOffIcon = $state(initialSwitch?.off.icon ?? "");
-  let switchOffActions = $state<Action[]>(initialSwitch ? [...initialSwitch.off.actions] : []);
-  let switchOnLabel = $state(initialSwitch?.on.label ?? "");
-  let switchOnIcon = $state(initialSwitch?.on.icon ?? "");
-  let switchOnActions = $state<Action[]>(initialSwitch ? [...initialSwitch.on.actions] : []);
+  let switchState = $state<{ off: SwitchStateForm; on: SwitchStateForm }>({
+    off: initialSwitchState("off"),
+    on: initialSwitchState("on"),
+  });
 
   // The action-list sub-form below (add/edit/remove/move) is one copy,
   // reused for both a plain Actions button and whichever Switch tab is
@@ -87,7 +95,7 @@
   // same as if the sub-form's functions still closed over `actions`
   // directly.
   let currentActions = $derived(
-    contentType === "switch" ? (activeTab === "off" ? switchOffActions : switchOnActions) : plainActions,
+    contentType === "switch" ? switchState[activeTab].actions : plainActions,
   );
 
   // Switching content type or tab mid-draft would otherwise leave
@@ -107,12 +115,7 @@
     icon;
     contentType;
     JSON.stringify(plainActions);
-    switchOffLabel;
-    switchOffIcon;
-    JSON.stringify(switchOffActions);
-    switchOnLabel;
-    switchOnIcon;
-    JSON.stringify(switchOnActions);
+    JSON.stringify(switchState);
 
     // Don't autosave a blank new-button draft — avoids a phantom empty
     // tile showing up in the preview grid before the user types anything.
@@ -138,14 +141,14 @@
           ? {
               type: "switch",
               off: {
-                label: switchOffLabel || undefined,
-                icon: switchOffIcon || undefined,
-                actions: switchOffActions,
+                label: switchState.off.label || undefined,
+                icon: switchState.off.icon || undefined,
+                actions: switchState.off.actions,
               },
               on: {
-                label: switchOnLabel || undefined,
-                icon: switchOnIcon || undefined,
-                actions: switchOnActions,
+                label: switchState.on.label || undefined,
+                icon: switchState.on.icon || undefined,
+                actions: switchState.on.actions,
               },
             }
           : { type: "actions", actions: plainActions };
@@ -431,35 +434,19 @@
         </div>
         <div class="appearance-group">
           <span class="section-label">{activeTab === "off" ? "Off" : "On"} Appearance</span>
-          {#if activeTab === "off"}
-            <div class="identity-row">
-              <div class="icon-preview">
-                <DeckButton icon={switchOffIcon} label={switchOffLabel} />
-              </div>
-              <label class="label-field">
-                Label:
-                <input type="text" bind:value={switchOffLabel} placeholder="None" />
-              </label>
-              <label class="icon-field">
-                Icon:
-                <input type="text" bind:value={switchOffIcon} placeholder="🔘" maxlength="4" />
-              </label>
+          <div class="identity-row">
+            <div class="icon-preview">
+              <DeckButton icon={switchState[activeTab].icon} label={switchState[activeTab].label} />
             </div>
-          {:else}
-            <div class="identity-row">
-              <div class="icon-preview">
-                <DeckButton icon={switchOnIcon} label={switchOnLabel} />
-              </div>
-              <label class="label-field">
-                Label:
-                <input type="text" bind:value={switchOnLabel} placeholder="None" />
-              </label>
-              <label class="icon-field">
-                Icon:
-                <input type="text" bind:value={switchOnIcon} placeholder="🔘" maxlength="4" />
-              </label>
-            </div>
-          {/if}
+            <label class="label-field">
+              Label:
+              <input type="text" bind:value={switchState[activeTab].label} placeholder="None" />
+            </label>
+            <label class="icon-field">
+              Icon:
+              <input type="text" bind:value={switchState[activeTab].icon} placeholder="🔘" maxlength="4" />
+            </label>
+          </div>
         </div>
       {/if}
 
