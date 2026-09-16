@@ -39,13 +39,16 @@
   // folderButtons already used, extended to a Switch's two states — so
   // toggling the dropdown back and forth within one editing session never
   // clobbers whatever that branch already held.
-  let contentType = $state<"actions" | "folder" | "switch">(
-    button?.content.type === "folder"
-      ? "folder"
-      : button?.content.type === "switch"
-        ? "switch"
-        : "actions",
-  );
+  function initialContentType(): "actions" | "folder" | "switch" {
+    switch (button?.content.type) {
+      case "folder":
+      case "switch":
+        return button.content.type;
+      default:
+        return "actions";
+    }
+  }
+  let contentType = $state<"actions" | "folder" | "switch">(initialContentType());
 
   let plainActions = $state<Action[]>(
     button?.content.type === "actions" ? [...button.content.actions] : [],
@@ -63,18 +66,18 @@
   // ButtonContent::Switch exactly. Each state gets its own label/icon/
   // actions, split into separate $state primitives (not one SwitchState
   // object) so plain <input bind:value> works the same way the top-level
-  // label/icon fields above already do.
+  // label/icon fields above already do. `initialSwitch` narrows the type
+  // once so the six fields below just read off it, instead of each
+  // re-checking `button?.content.type === "switch"` on its own.
+  const initialSwitch = button?.content.type === "switch" ? button.content : null;
+
   let activeTab = $state<"off" | "on">("off");
-  let switchOffLabel = $state(button?.content.type === "switch" ? (button.content.off.label ?? "") : "");
-  let switchOffIcon = $state(button?.content.type === "switch" ? (button.content.off.icon ?? "") : "");
-  let switchOffActions = $state<Action[]>(
-    button?.content.type === "switch" ? [...button.content.off.actions] : [],
-  );
-  let switchOnLabel = $state(button?.content.type === "switch" ? (button.content.on.label ?? "") : "");
-  let switchOnIcon = $state(button?.content.type === "switch" ? (button.content.on.icon ?? "") : "");
-  let switchOnActions = $state<Action[]>(
-    button?.content.type === "switch" ? [...button.content.on.actions] : [],
-  );
+  let switchOffLabel = $state(initialSwitch?.off.label ?? "");
+  let switchOffIcon = $state(initialSwitch?.off.icon ?? "");
+  let switchOffActions = $state<Action[]>(initialSwitch ? [...initialSwitch.off.actions] : []);
+  let switchOnLabel = $state(initialSwitch?.on.label ?? "");
+  let switchOnIcon = $state(initialSwitch?.on.icon ?? "");
+  let switchOnActions = $state<Action[]>(initialSwitch ? [...initialSwitch.on.actions] : []);
 
   // The action-list sub-form below (add/edit/remove/move) is one copy,
   // reused for both a plain Actions button and whichever Switch tab is
