@@ -32,13 +32,9 @@
   let label = $state(button?.label ?? "");
   let icon = $state(button?.icon ?? "");
 
-  // The 3-way content-type choice a boolean can't express once Switch joins
-  // Actions/Folder. Every branch's own data (plainActions, folderButtons,
-  // the switchOff/On fields below) is kept around even while a different
-  // type is selected — same "preserve while not selected" treatment
-  // folderButtons already used, extended to a Switch's two states — so
-  // toggling the dropdown back and forth within one editing session never
-  // clobbers whatever that branch already held.
+  // A boolean can't express 3 content types. Each branch's data
+  // (plainActions, folderButtons, switchState) is preserved while
+  // unselected, same as folderButtons already did.
   function initialContentType(): "actions" | "folder" | "switch" {
     switch (button?.content.type) {
       case "folder":
@@ -62,17 +58,11 @@
     return [{ id: crypto.randomUUID(), content: { type: "back" } }];
   }
 
-  // Two-state toggle content — off/on named to match config.rs's
-  // ButtonContent::Switch exactly. One $state object, not six separate
-  // primitives: Svelte 5's $state deep-proxies plain objects, so
-  // bind:value={switchState[activeTab].label} works the same as binding
-  // to a flat variable — and it's what lets the template below use one
-  // appearance block for both tabs instead of two near-identical copies.
-  // Edit-buffer shape, not the wire SwitchState (label/icon plain string,
-  // not optional) — same "" convention the top-level label/icon fields
-  // above use, coerced to `undefined` at persist time. "Draft" matches
-  // this file's own existing vocabulary for an in-progress, not-yet-
-  // persisted edit (hasPendingDraft, "Discard unsaved action?").
+  // off/on match config.rs's ButtonContent::Switch. One $state object, not
+  // six primitives — Svelte 5 deep-proxies plain objects, so
+  // bind:value={switchState[activeTab].label} works like a flat variable.
+  // "Draft" reuses this file's own vocabulary (hasPendingDraft); label/icon
+  // are plain strings, coerced to undefined at persist time.
   interface SwitchStateDraft {
     label: string;
     icon: string;
@@ -89,13 +79,9 @@
     on: initialSwitchState("on"),
   });
 
-  // The action-list sub-form below (add/edit/remove/move) is one copy,
-  // reused for both a plain Actions button and whichever Switch tab is
-  // active — not duplicated three times. `currentActions` is a live
-  // reference to whichever underlying $state array applies, not a copy:
-  // mutating it (push/splice/index-assign) mutates that array in place,
-  // same as if the sub-form's functions still closed over `actions`
-  // directly.
+  // One action-list sub-form, reused for Actions and either Switch tab
+  // instead of tripled. A live reference into whichever $state array
+  // applies, not a copy — push/splice mutate it in place.
   let currentActions = $derived(
     contentType === "switch" ? switchState[activeTab].actions : plainActions,
   );
@@ -119,11 +105,8 @@
     JSON.stringify(plainActions);
     JSON.stringify(switchState);
 
-    // Don't autosave a blank new-button draft — avoids a phantom empty
-    // tile showing up in the preview grid before the user types anything.
-    // Choosing Folder or Switch is itself meaningful, same as the old
-    // isFolder boolean was — only bare Actions with nothing in it stays
-    // unsaved.
+    // Don't autosave a blank new-button draft. Choosing Folder or Switch
+    // is itself meaningful, same as the old isFolder boolean.
     if (!label.trim() && !icon.trim() && contentType === "actions" && plainActions.length === 0) {
       return;
     }
@@ -356,14 +339,9 @@
 
   let testResult = $state<{ ok: boolean; message: string } | null>(null);
 
-  // Simulates a full real press through the same shared backend path a
-  // real ButtonPress uses (server.rs's execute_press) — for a Switch this
-  // runs the current state's actions and flips on success, not a separate
-  // testing-only code path that could drift from what a real press does.
-  // Flushes the pending autosave first so test_button (which loads
-  // buttons.json fresh) sees this session's latest edits, not a stale
-  // on-disk copy — same flush finish()/showContent() already do before
-  // navigating away.
+  // Goes through the same shared backend path a real press uses
+  // (server.rs's execute_press) — flips a Switch on success. Flushes the
+  // pending autosave first since test_button reads buttons.json from disk.
   async function test() {
     testResult = null;
     try {
