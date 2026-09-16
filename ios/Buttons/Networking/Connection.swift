@@ -300,6 +300,14 @@ final class DesktopConnection: NSObject {
         case .actionResult(let result):
             actionResultSequence += 1
             lastActionResult = ActionResultEvent(result: result, sequence: actionResultSequence)
+        case .statePush(let push):
+            // Overwrite, not toggle — this is authoritative correction, not
+            // another optimistic guess. Same precedence rule as configSync:
+            // no "is my own optimistic flip newer" check. See slice 09a
+            // spec, § Interface, "Mobile-side."
+            for change in push.changes {
+                isActiveByButtonId[change.buttonID] = change.isActive
+            }
         case .pairRequest, .buttonPress, .none:
             break  // desktop never sends these to mobile
         }
