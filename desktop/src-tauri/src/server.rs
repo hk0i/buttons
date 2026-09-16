@@ -223,31 +223,9 @@ async fn handle_connection(
         eprintln!("[{}] server: {addr} authenticated, holding the connection slot", log_time());
     }
 
-    let config = match config::load_config(&config_path) {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("[{}] server: failed to load config for {addr}: {e}", log_time());
-            return;
-        }
-    };
-    let mut wire_config = buttons::Config::from(&config);
-    // Merge-at-send-time, not baked into `From` — a reconnecting mobile
-    // client sees the real current Switch states immediately, not a
-    // hardcoded default. See slice 09 spec, § Interface Note 6.
-    crate::proto::apply_switch_states(&mut wire_config, &switch_states);
-    if send_envelope(
-        &mut ws,
-        buttons::Envelope {
-            protocol_version: pairing::PROTOCOL_VERSION.to_string(),
-            message: Some(buttons::envelope::Message::ConfigSync(
-                buttons::ConfigSync {
-                    config: Some(wire_config),
-                },
-            )),
-        },
-    )
-    .await
-    .is_err()
+    if build_and_send_config_sync(&mut ws, &config_path, &switch_states)
+        .await
+        .is_err()
     {
         return;
     }
@@ -303,6 +281,42 @@ async fn handle_connection(
             }
         }
     }
+}
+
+/// Loads `Config` fresh from disk, merges in the live `SwitchStates`, and
+/// sends it as a `config_sync` envelope. The one place a `config_sync` gets
+/// built — both the connect-time send above and (slice 09c) a live resync
+/// call this, so there's one definition of "send a config_sync," not two
+/// that can drift. See slice 09c spec, § Interface Note 2.
+async fn build_and_send_config_sync(
+    ws: &mut WebSocketStream<TcpStream>,
+    config_path: &Path,
+    switch_states: &SwitchStates,
+) -> Result<(), ()> {
+    let config = match config::load_config(config_path) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[{}] server: failed to load config: {e}", log_time());
+            return Err(());
+        }
+    };
+    let mut wire_config = buttons::Config::from(&config);
+    // Merge-at-send-time, not baked into `From` — a reconnecting mobile
+    // client sees the real current Switch states immediately, not a
+    // hardcoded default. See slice 09 spec, § Interface Note 6.
+    crate::proto::apply_switch_states(&mut wire_config, switch_states);
+    send_envelope(
+        ws,
+        buttons::Envelope {
+            protocol_version: pairing::PROTOCOL_VERSION.to_string(),
+            message: Some(buttons::envelope::Message::ConfigSync(
+                buttons::ConfigSync {
+                    config: Some(wire_config),
+                },
+            )),
+        },
+    )
+    .await
 }
 
 fn state_push_envelope(changes: Vec<StateChange>) -> buttons::Envelope {
