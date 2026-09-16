@@ -50,6 +50,13 @@ pub struct StateChange {
 /// Interface Notes 1-2.
 pub type StatePushTx = broadcast::Sender<Vec<StateChange>>;
 
+/// Signal-only — no payload. `Config` is always re-read fresh at send time
+/// via `build_and_send_config_sync` (same "don't snapshot, reload" rule
+/// `execute_press` already follows for Switch presses), so the broadcast
+/// only ever needs to say "something changed, go re-read." See slice 09c
+/// spec, § Interface Note 1.
+pub type ConfigChangedTx = broadcast::Sender<()>;
+
 /// Fired after any successful flip (a real `ButtonPress` here, or the
 /// editor's `Test` button in `lib.rs` — both go through `execute_press`),
 /// carrying the full current map. Desktop's own preview grid
@@ -95,6 +102,7 @@ pub async fn run(
     switch_state_path: PathBuf,
     switch_states: SwitchStates,
     state_push_tx: StatePushTx,
+    config_changed_tx: ConfigChangedTx,
     app: tauri::AppHandle,
 ) {
     let device_id = pairing.device_id();
@@ -126,6 +134,7 @@ pub async fn run(
                     switch_state_path.clone(),
                     Arc::clone(&switch_states),
                     state_push_tx.clone(),
+                    config_changed_tx.clone(),
                     app.clone(),
                     Arc::clone(&slot),
                 ));
@@ -143,6 +152,7 @@ async fn handle_connection(
     switch_state_path: PathBuf,
     switch_states: SwitchStates,
     state_push_tx: StatePushTx,
+    config_changed_tx: ConfigChangedTx,
     app: tauri::AppHandle,
     slot: ConnSlot,
 ) {
@@ -233,6 +243,7 @@ async fn handle_connection(
     // profile_switch (step 10) isn't designed yet — this loop only handles
     // ButtonPress as a client-initiated message.
     let mut state_push_rx = state_push_tx.subscribe();
+    let mut config_changed_rx = config_changed_tx.subscribe();
 
     loop {
         tokio::select! {
@@ -276,6 +287,23 @@ async fn handle_connection(
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {}
+                // sender outlives the app; unreachable in practice
+                Err(broadcast::error::RecvError::Closed) => {}
+            },
+            // Opposite Lagged policy from state_push_rx above — a
+            // config_changed signal carries no content to supersede it
+            // with (unlike a state_push batch), so dropping a lagged one
+            // means mobile has no way to learn it missed an edit until
+            // another one happens to arrive. Resync on Lagged too: one
+            // fresh read subsumes every signal that was missed. See slice
+            // 09c spec, § Implementation Notes #8.
+            config_changed = config_changed_rx.recv() => match config_changed {
+                Ok(()) => {
+                    let _ = build_and_send_config_sync(&mut ws, &config_path, &switch_states).await;
+                }
+                Err(broadcast::error::RecvError::Lagged(_)) => {
+                    let _ = build_and_send_config_sync(&mut ws, &config_path, &switch_states).await;
+                }
                 // sender outlives the app; unreachable in practice
                 Err(broadcast::error::RecvError::Closed) => {}
             }

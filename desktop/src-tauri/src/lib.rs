@@ -139,12 +139,18 @@ pub fn run() {
             // subscribers (Implementation Notes #2).
             let (state_push_tx, _): (server::StatePushTx, _) = broadcast::channel(16);
             app.manage(state_push_tx.clone());
+            // Signal-only — see server.rs's ConfigChangedTx doc comment.
+            // Nothing sends on this yet; the debounce task that will
+            // (slice 09c) is wired up in a later step. The receiver half
+            // is dropped immediately, same as state_push_tx above.
+            let (config_changed_tx, _): (server::ConfigChangedTx, _) = broadcast::channel(16);
             tauri::async_runtime::spawn(server::run(
                 pairing,
                 config_path,
                 switch_state_path,
                 switch_states,
                 state_push_tx,
+                config_changed_tx,
                 handle.clone(),
             ));
             Ok(())
