@@ -37,6 +37,12 @@ final class DesktopConnection: NSObject {
     private(set) var pairError: String?
     private(set) var lastActionResult: ActionResultEvent?
 
+    /// button_id -> is "on" showing, for every Switch button. Rebuilt from
+    /// scratch (not merged) on every configSync, flipped optimistically by
+    /// `PageGrid` on tap, flipped again (not "reverted to X") on failure —
+    /// see slice 09 spec, § Interface Note 1.
+    private(set) var isActiveByButtonId: [String: Bool] = [:]
+
     private var netService: NetService?
     private var webSocketTask: URLSessionWebSocketTask?
     private var pendingToken: String?
@@ -102,6 +108,14 @@ final class DesktopConnection: NSObject {
         }
         scheduleTimeout()
         connectWebSocket(to: url)
+    }
+
+    /// Flips a Switch button's tracked state — a toggle, not a setter,
+    /// since with exactly two states "the user tapped it" and "the press
+    /// failed, undo" are the identical operation. See slice 09 spec, §
+    /// Interface Note 2.
+    func applyOptimisticFlip(buttonId: String) {
+        isActiveByButtonId[buttonId, default: false].toggle()
     }
 
     func disconnect() {
@@ -282,6 +296,7 @@ final class DesktopConnection: NSObject {
             pairCompletion = nil
         case .configSync(let sync):
             configSync = sync.config
+            isActiveByButtonId = Self.collectSwitchStates(from: sync.config)
         case .actionResult(let result):
             actionResultSequence += 1
             lastActionResult = ActionResultEvent(result: result, sequence: actionResultSequence)
@@ -314,6 +329,35 @@ final class DesktopConnection: NSObject {
                 "Couldn't reach the desktop — check that it's running, on the same network, and that Local Network access is allowed for this app in Settings."
         default:
             return error.localizedDescription
+        }
+    }
+
+    /// Full rebuild of `isActiveByButtonId` from a fresh `Config` — every
+    /// Switch button (at any folder depth) gets an entry, everything else
+    /// is absent. Never a merge: a `MultiSwitch` later would need its own
+    /// `Int`-keyed map, not a reshape of this one. See slice 09 spec, §
+    /// Interface Note 1.
+    private static func collectSwitchStates(from config: Buttons_Config?) -> [String: Bool] {
+        guard let config else { return [:] }
+        var result: [String: Bool] = [:]
+        for profile in config.profiles {
+            for page in profile.pages {
+                collectSwitchStates(from: page.buttons, into: &result)
+            }
+        }
+        return result
+    }
+
+    private static func collectSwitchStates(
+        from buttons: [Buttons_Button], into result: inout [String: Bool]
+    ) {
+        for button in buttons {
+            if case .switchContent? = button.content {
+                result[button.id] = button.isActive
+            }
+            if case .folder(let folderContent)? = button.content {
+                collectSwitchStates(from: folderContent.buttons, into: &result)
+            }
         }
     }
 

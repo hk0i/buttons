@@ -31,6 +31,11 @@ struct PageGrid: View {
 
     @State private var folderStack: [Buttons_Button] = []
     @State private var pressedButtonId: String?
+    /// Whether the in-flight press above was a Switch — decides whether a
+    /// failed `ActionResult` should flip `isActiveByButtonId` back. Not
+    /// derivable from `pressedButtonId` alone once the press resolves
+    /// (the button could since have been deleted from `Config`).
+    @State private var pressedButtonWasSwitch = false
     @State private var pressFlash: PressFlash?
     @State private var pressTrigger = false
 
@@ -49,22 +54,36 @@ struct PageGrid: View {
     }
 
     var body: some View {
-        ButtonGrid(buttons: currentButtons, onTap: handleTap, pressFlash: currentPressFlash)
-            .sensoryFeedback(.impact, trigger: pressTrigger)
-            .onChange(of: connection.lastActionResult) { _, event in
-                guard let event, event.result.buttonID == pressedButtonId else { return }
-                pressFlash = event.result.ok ? .success : .failure
-                // `error`'s string isn't surfaced in the UI this slice —
-                // logged only. See slice 08 spec, § Implementation Notes.
-                if !event.result.ok, event.result.hasError {
+        ButtonGrid(
+            buttons: currentButtons,
+            onTap: handleTap,
+            pressFlash: currentPressFlash,
+            isActiveByButtonId: connection.isActiveByButtonId
+        )
+        .sensoryFeedback(.impact, trigger: pressTrigger)
+        .onChange(of: connection.lastActionResult) { _, event in
+            guard let event, event.result.buttonID == pressedButtonId else { return }
+            pressFlash = event.result.ok ? .success : .failure
+            // `error`'s string isn't surfaced in the UI this slice —
+            // logged only. See slice 08 spec, § Implementation Notes.
+            if !event.result.ok {
+                if event.result.hasError {
                     print("PageGrid: button \(event.result.buttonID) failed: \(event.result.error)")
                 }
-                Task {
-                    try? await Task.sleep(for: .milliseconds(400))
-                    pressedButtonId = nil
-                    pressFlash = nil
+                // Undo the optimistic guess — with exactly two states,
+                // "the user tapped it" and "the press failed" are the
+                // same operation (flip). See slice 09 spec, § Scope -> In
+                // #10.
+                if pressedButtonWasSwitch {
+                    connection.applyOptimisticFlip(buttonId: event.result.buttonID)
                 }
             }
+            Task {
+                try? await Task.sleep(for: .milliseconds(400))
+                pressedButtonId = nil
+                pressFlash = nil
+            }
+        }
     }
 
     private func handleTap(_ button: Buttons_Button) {
@@ -77,6 +96,17 @@ struct PageGrid: View {
         case .actions?:
             connection.pressButton(button.id)
             pressedButtonId = button.id
+            pressedButtonWasSwitch = false
+            pressTrigger.toggle()
+        case .switchContent?:
+            // Flips immediately, before ButtonPress's reply — it already
+            // has both states' icon/label from configSync, so nothing
+            // about the flip needs the network. See slice 09 spec, §
+            // Scope -> In #9.
+            connection.applyOptimisticFlip(buttonId: button.id)
+            connection.pressButton(button.id)
+            pressedButtonId = button.id
+            pressedButtonWasSwitch = true
             pressTrigger.toggle()
         case .none:
             break

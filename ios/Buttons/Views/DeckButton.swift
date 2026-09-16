@@ -12,6 +12,21 @@ import SwiftUI
 extension Buttons_Button {
     var iconOrNil: String? { hasIcon ? icon : nil }
     var labelOrNil: String? { hasLabel ? label : nil }
+
+    /// Resolves the state to render for a `.switchContent` button; `nil`
+    /// for any other content, same as the existing `isBack`/glyph
+    /// fallback chain below. See slice 09 spec, § Mobile-side signatures.
+    func currentSwitchState(isActive: Bool) -> Buttons_SwitchState? {
+        guard case .switchContent(let content) = self.content else { return nil }
+        return isActive ? content.on : content.off
+    }
+}
+
+/// Same presence footgun as `Buttons_Button` above — `SwitchState.label`/
+/// `.icon` are proto3 `optional` too.
+extension Buttons_SwitchState {
+    var iconOrNil: String? { hasIcon ? icon : nil }
+    var labelOrNil: String? { hasLabel ? label : nil }
 }
 
 /// One cell in the deck grid: a rounded tile showing the button's icon glyph
@@ -25,6 +40,12 @@ struct DeckButton: View {
     /// Defaults `nil` so the existing `#Preview` below still compiles
     /// unchanged. See slice 08 spec, § Interface / Data Contract.
     var pressFlash: PressFlash? = nil
+    /// Whether `button` (if it's a `.switchContent`) is currently showing
+    /// its `on` state. Meaningless for any other content — defaults
+    /// `false` so the existing `#Preview` below still compiles unchanged.
+    /// Plain `Bool`, not `Connection` — stays pure/preview-friendly. See
+    /// slice 09 spec, § Mobile-side Note 3.
+    var isActive: Bool = false
 
     private var isBack: Bool {
         if case .back? = button.content {
@@ -33,12 +54,16 @@ struct DeckButton: View {
         return false
     }
 
+    private var switchState: Buttons_SwitchState? {
+        button.currentSwitchState(isActive: isActive)
+    }
+
     private var glyph: String? {
-        button.iconOrNil ?? (isBack ? "⬅️" : nil)
+        switchState?.iconOrNil ?? button.iconOrNil ?? (isBack ? "⬅️" : nil)
     }
 
     private var caption: String? {
-        button.labelOrNil ?? (isBack ? "Back" : nil)
+        switchState?.labelOrNil ?? button.labelOrNil ?? (isBack ? "Back" : nil)
     }
 
     var body: some View {

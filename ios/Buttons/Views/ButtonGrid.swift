@@ -18,6 +18,11 @@ struct ButtonGrid: View {
     /// (not owned here) since `DeckButton` is built in this view's own
     /// `ForEach`. See slice 08 spec, § Interface / Data Contract.
     var pressFlash: (buttonId: String, flash: PressFlash)? = nil
+    /// `Connection.isActiveByButtonId`, passed as a plain dict (not
+    /// `Connection` itself) — same pass-through shape as `pressFlash`.
+    /// Per-button resolution (`?? button.isActive`) happens in this
+    /// view's own `ForEach` below. See slice 09 spec, § Mobile-side Note 3.
+    var isActiveByButtonId: [String: Bool] = [:]
 
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
@@ -39,7 +44,8 @@ struct ButtonGrid: View {
                     } label: {
                         DeckButton(
                             button: button,
-                            pressFlash: pressFlash?.buttonId == button.id ? pressFlash?.flash : nil
+                            pressFlash: pressFlash?.buttonId == button.id ? pressFlash?.flash : nil,
+                            isActive: isActiveByButtonId[button.id] ?? button.isActive
                         )
                     }
                     .buttonStyle(DeckButtonStyle())
