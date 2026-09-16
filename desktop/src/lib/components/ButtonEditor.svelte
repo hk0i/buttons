@@ -31,15 +31,26 @@
 
   let label = $state(button?.label ?? "");
   let icon = $state(button?.icon ?? "");
-  let actions = $state<Action[]>(
+
+  // The 3-way content-type choice a boolean can't express once Switch joins
+  // Actions/Folder. Every branch's own data (plainActions, folderButtons,
+  // the switchOff/On fields below) is kept around even while a different
+  // type is selected — same "preserve while not selected" treatment
+  // folderButtons already used, extended to a Switch's two states — so
+  // toggling the dropdown back and forth within one editing session never
+  // clobbers whatever that branch already held.
+  let contentType = $state<"actions" | "folder" | "switch">(
+    button?.content.type === "folder"
+      ? "folder"
+      : button?.content.type === "switch"
+        ? "switch"
+        : "actions",
+  );
+
+  let plainActions = $state<Action[]>(
     button?.content.type === "actions" ? [...button.content.actions] : [],
   );
 
-  // A folder button's own nested grid. Kept around even while `isFolder` is
-  // off so toggling folder-ness on and off within one editing session (or
-  // just editing label/icon on an existing folder) never clobbers whatever
-  // nested buttons already live inside it.
-  let isFolder = $state(button?.content.type === "folder");
   let folderButtons = $state<ButtonModel[]>(
     button?.content.type === "folder" ? [...button.content.buttons] : newFolderButtons(),
   );
@@ -48,6 +59,42 @@
     return [{ id: crypto.randomUUID(), content: { type: "back" } }];
   }
 
+  // Two-state toggle content — off/on named to match config.rs's
+  // ButtonContent::Switch exactly. Each state gets its own label/icon/
+  // actions, split into separate $state primitives (not one SwitchState
+  // object) so plain <input bind:value> works the same way the top-level
+  // label/icon fields above already do.
+  let activeTab = $state<"off" | "on">("off");
+  let switchOffLabel = $state(button?.content.type === "switch" ? (button.content.off.label ?? "") : "");
+  let switchOffIcon = $state(button?.content.type === "switch" ? (button.content.off.icon ?? "") : "");
+  let switchOffActions = $state<Action[]>(
+    button?.content.type === "switch" ? [...button.content.off.actions] : [],
+  );
+  let switchOnLabel = $state(button?.content.type === "switch" ? (button.content.on.label ?? "") : "");
+  let switchOnIcon = $state(button?.content.type === "switch" ? (button.content.on.icon ?? "") : "");
+  let switchOnActions = $state<Action[]>(
+    button?.content.type === "switch" ? [...button.content.on.actions] : [],
+  );
+
+  // The action-list sub-form below (add/edit/remove/move) is one copy,
+  // reused for both a plain Actions button and whichever Switch tab is
+  // active — not duplicated three times. `currentActions` is a live
+  // reference to whichever underlying $state array applies, not a copy:
+  // mutating it (push/splice/index-assign) mutates that array in place,
+  // same as if the sub-form's functions still closed over `actions`
+  // directly.
+  let currentActions = $derived(
+    contentType === "switch" ? (activeTab === "off" ? switchOffActions : switchOnActions) : plainActions,
+  );
+
+  // Switching content type or tab mid-draft would otherwise leave
+  // editingIndex pointing at an index in a now-different array.
+  $effect(() => {
+    contentType;
+    activeTab;
+    resetActionForm();
+  });
+
   let hasAutosaved = $state(false);
   let saveTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -55,12 +102,23 @@
     // Reference every field so any edit re-arms the debounce below.
     label;
     icon;
-    isFolder;
-    JSON.stringify(actions);
+    contentType;
+    JSON.stringify(plainActions);
+    switchOffLabel;
+    switchOffIcon;
+    JSON.stringify(switchOffActions);
+    switchOnLabel;
+    switchOnIcon;
+    JSON.stringify(switchOnActions);
 
     // Don't autosave a blank new-button draft — avoids a phantom empty
     // tile showing up in the preview grid before the user types anything.
-    if (!label.trim() && !icon.trim() && actions.length === 0 && !isFolder) return;
+    // Choosing Folder or Switch is itself meaningful, same as the old
+    // isFolder boolean was — only bare Actions with nothing in it stays
+    // unsaved.
+    if (!label.trim() && !icon.trim() && contentType === "actions" && plainActions.length === 0) {
+      return;
+    }
 
     clearTimeout(saveTimeout);
     saveTimeout = setTimeout(persist, 500);
@@ -70,9 +128,24 @@
 
   async function persist() {
     hasAutosaved = true;
-    const content: ButtonContent = isFolder
-      ? { type: "folder", buttons: folderButtons }
-      : { type: "actions", actions };
+    const content: ButtonContent =
+      contentType === "folder"
+        ? { type: "folder", buttons: folderButtons }
+        : contentType === "switch"
+          ? {
+              type: "switch",
+              off: {
+                label: switchOffLabel || undefined,
+                icon: switchOffIcon || undefined,
+                actions: switchOffActions,
+              },
+              on: {
+                label: switchOnLabel || undefined,
+                icon: switchOnIcon || undefined,
+                actions: switchOnActions,
+              },
+            }
+          : { type: "actions", actions: plainActions };
     await configStore.saveButtonAt(homePageId, homeFolderPath, {
       id,
       label: label || undefined,
@@ -121,7 +194,7 @@
   }
 
   function startEditAction(index: number) {
-    const action = actions[index];
+    const action = currentActions[index];
     editingIndex = index;
     newActionType = action.type;
     if (action.type === "launchApp") {
@@ -144,11 +217,11 @@
     const index = editingIndex;
 
     if (newActionType === "launchApp") {
-      if (newPath) actions[index] = { type: "launchApp", path: newPath };
+      if (newPath) currentActions[index] = { type: "launchApp", path: newPath };
     } else if (newActionType === "hotkey") {
-      if (newKeys.length > 0) actions[index] = { type: "hotkey", keys: newKeys };
+      if (newKeys.length > 0) currentActions[index] = { type: "hotkey", keys: newKeys };
     } else {
-      actions[index] = { type: "mediaKey", key: newMediaKey };
+      currentActions[index] = { type: "mediaKey", key: newMediaKey };
     }
   });
 
@@ -180,19 +253,19 @@
   function submitAction() {
     if (newActionType === "launchApp") {
       if (!newPath) return;
-      actions.push({ type: "launchApp", path: newPath });
+      currentActions.push({ type: "launchApp", path: newPath });
     } else if (newActionType === "hotkey") {
       if (newKeys.length === 0) return;
-      actions.push({ type: "hotkey", keys: newKeys });
+      currentActions.push({ type: "hotkey", keys: newKeys });
     } else {
-      actions.push({ type: "mediaKey", key: newMediaKey });
+      currentActions.push({ type: "mediaKey", key: newMediaKey });
     }
-    flashJustAdded(actions.length - 1);
+    flashJustAdded(currentActions.length - 1);
     resetActionForm();
   }
 
   function removeAction(index: number) {
-    actions.splice(index, 1);
+    currentActions.splice(index, 1);
     if (editingIndex === index) {
       resetActionForm();
     } else if (editingIndex !== null && index < editingIndex) {
@@ -202,8 +275,8 @@
 
   function moveAction(index: number, direction: -1 | 1) {
     const target = index + direction;
-    if (target < 0 || target >= actions.length) return;
-    [actions[index], actions[target]] = [actions[target], actions[index]];
+    if (target < 0 || target >= currentActions.length) return;
+    [currentActions[index], currentActions[target]] = [currentActions[target], currentActions[index]];
     if (editingIndex === index) {
       editingIndex = target;
     } else if (editingIndex === target) {
@@ -275,10 +348,20 @@
 
   let testResult = $state<{ ok: boolean; message: string } | null>(null);
 
+  // Simulates a full real press through the same shared backend path a
+  // real ButtonPress uses (server.rs's execute_press) — for a Switch this
+  // runs the current state's actions and flips on success, not a separate
+  // testing-only code path that could drift from what a real press does.
+  // Flushes the pending autosave first so test_button (which loads
+  // buttons.json fresh) sees this session's latest edits, not a stale
+  // on-disk copy — same flush finish()/showContent() already do before
+  // navigating away.
   async function test() {
     testResult = null;
     try {
-      await invoke("run_actions", { actions });
+      clearTimeout(saveTimeout);
+      await persist();
+      await invoke("test_button", { buttonId: id });
       testResult = { ok: true, message: "All actions ran successfully." };
     } catch (e) {
       testResult = { ok: false, message: String(e) };
@@ -303,39 +386,90 @@
 
     <div class="appearance-group">
       <span class="section-label">Appearance</span>
-      <div class="identity-row">
-        <div class="icon-preview">
-          <DeckButton {icon} {label} />
+      {#if contentType !== "switch"}
+        <div class="identity-row">
+          <div class="icon-preview">
+            <DeckButton {icon} {label} />
+          </div>
+          <label class="label-field">
+            Button Label:
+            <input type="text" bind:value={label} placeholder="None" />
+          </label>
+          <label class="icon-field">
+            Icon:
+            <input type="text" bind:value={icon} placeholder="🔘" maxlength="4" />
+          </label>
         </div>
-        <label class="label-field">
-          Button Label:
-          <input type="text" bind:value={label} placeholder="None" />
-        </label>
-        <label class="icon-field">
-          Icon:
-          <input type="text" bind:value={icon} placeholder="🔘" maxlength="4" />
-        </label>
-      </div>
-      <label class="folder-toggle">
-        <input type="checkbox" bind:checked={isFolder} />
-        Is folder
+      {/if}
+      <label class="content-type-field">
+        Content:
+        <select bind:value={contentType}>
+          <option value="actions">Actions</option>
+          <option value="folder">Folder</option>
+          <option value="switch">Switch</option>
+        </select>
       </label>
     </div>
 
-    {#if isFolder}
+    {#if contentType === "folder"}
       <div class="action-list">
         <span class="section-label">Content</span>
         <button type="button" class="primary" onclick={showContent}>Show Content</button>
       </div>
     {:else}
+      {#if contentType === "switch"}
+        <div class="switch-tabs">
+          <button type="button" class:active={activeTab === "off"} onclick={() => (activeTab = "off")}>
+            Off
+          </button>
+          <button type="button" class:active={activeTab === "on"} onclick={() => (activeTab = "on")}>
+            On
+          </button>
+        </div>
+        <div class="appearance-group">
+          <span class="section-label">{activeTab === "off" ? "Off" : "On"} Appearance</span>
+          {#if activeTab === "off"}
+            <div class="identity-row">
+              <div class="icon-preview">
+                <DeckButton icon={switchOffIcon} label={switchOffLabel} />
+              </div>
+              <label class="label-field">
+                Label:
+                <input type="text" bind:value={switchOffLabel} placeholder="None" />
+              </label>
+              <label class="icon-field">
+                Icon:
+                <input type="text" bind:value={switchOffIcon} placeholder="🔘" maxlength="4" />
+              </label>
+            </div>
+          {:else}
+            <div class="identity-row">
+              <div class="icon-preview">
+                <DeckButton icon={switchOnIcon} label={switchOnLabel} />
+              </div>
+              <label class="label-field">
+                Label:
+                <input type="text" bind:value={switchOnLabel} placeholder="None" />
+              </label>
+              <label class="icon-field">
+                Icon:
+                <input type="text" bind:value={switchOnIcon} placeholder="🔘" maxlength="4" />
+              </label>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       <div class="action-list">
-        <span class="section-label">Actions</span>
-        {#each actions as action, index (index)}
+        <span class="section-label">
+          {contentType === "switch" ? `${activeTab === "off" ? "Off" : "On"} Actions` : "Actions"}
+        </span>
+        {#each currentActions as action, index (index)}
           <div class="action-row" class:editing={editingIndex === index} class:just-added={justAddedIndex === index}>
             <span class="action-summary">{summarize(action)}</span>
             <button type="button" onclick={() => startEditAction(index)}>✎</button>
             <button type="button" onclick={() => moveAction(index, -1)} disabled={index === 0}>↑</button>
-            <button type="button" onclick={() => moveAction(index, 1)} disabled={index === actions.length - 1}>↓</button>
+            <button type="button" onclick={() => moveAction(index, 1)} disabled={index === currentActions.length - 1}>↓</button>
             <button type="button" class="danger" onclick={() => removeAction(index)}>×</button>
           </div>
         {/each}
@@ -371,7 +505,7 @@
     {/if}
 
     <div class="footer-actions">
-      {#if button && !isFolder}
+      {#if button && contentType !== "folder"}
         <button type="button" class="primary" onclick={test}>Test</button>
       {/if}
       {#if button}
@@ -444,12 +578,29 @@
     width: 96px;
   }
 
-  .folder-toggle {
+  .content-type-field {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     font-size: 14px;
-    cursor: pointer;
+  }
+
+  .switch-tabs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .switch-tabs button {
+    flex: 1;
+    padding: 8px;
+    border-radius: 4px;
+    background: var(--neutral-500);
+    opacity: 0.6;
+  }
+
+  .switch-tabs button.active {
+    background: var(--primary-700);
+    opacity: 1;
   }
 
   .action-list {
