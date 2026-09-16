@@ -34,10 +34,13 @@ class SwitchStatesStore {
     return this.states[buttonId] ?? false;
   }
 
-  // Resolves a button's currently-showing SwitchState directly, so callers
-  // read imperatively (currentState(button)?.label) instead of re-deriving
-  // "which of off/on is showing" from isOn() at every render site. undefined
-  // for anything that isn't a .switch button (including no button at all).
+  /**
+   * Resolves a button's currently-showing SwitchState.
+   * @returns `undefined` for anything that isn't a `.switch` button
+   *   (including no button at all).
+   */
+  // So callers read imperatively (currentState(button)?.label) instead of
+  // re-deriving "which of off/on is showing" from isOn() at every render site.
   currentState(button: Button | undefined): SwitchState | undefined {
     if (button?.content.type !== "switch") return undefined;
     return this.isOn(button.id) ? button.content.on : button.content.off;
