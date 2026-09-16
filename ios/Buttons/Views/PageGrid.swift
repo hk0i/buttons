@@ -35,7 +35,7 @@ struct PageGrid: View {
     /// failed `ActionResult` should flip `isActiveByButtonId` back. Not
     /// derivable from `pressedButtonId` alone once the press resolves
     /// (the button could since have been deleted from `Config`).
-    @State private var pressedButtonWasSwitch = false
+    @State private var wasPressedButtonSwitch = false
     @State private var pressFlash: PressFlash?
     @State private var pressTrigger = false
 
@@ -74,7 +74,7 @@ struct PageGrid: View {
                 // "the user tapped it" and "the press failed" are the
                 // same operation (flip). See slice 09 spec, § Scope -> In
                 // #10.
-                if pressedButtonWasSwitch {
+                if wasPressedButtonSwitch {
                     connection.applyOptimisticFlip(buttonId: event.result.buttonID)
                 }
             }
@@ -96,7 +96,7 @@ struct PageGrid: View {
         case .actions?:
             connection.pressButton(button.id)
             pressedButtonId = button.id
-            pressedButtonWasSwitch = false
+            wasPressedButtonSwitch = false
             pressTrigger.toggle()
         case .switchContent?:
             // Flips immediately, before ButtonPress's reply — it already
@@ -106,7 +106,7 @@ struct PageGrid: View {
             connection.applyOptimisticFlip(buttonId: button.id)
             connection.pressButton(button.id)
             pressedButtonId = button.id
-            pressedButtonWasSwitch = true
+            wasPressedButtonSwitch = true
             pressTrigger.toggle()
         case .none:
             break
