@@ -261,7 +261,8 @@ async fn handle_connection(
                         }
                     }
                 }
-                Some(Ok(_)) => {} // no other frame types handled this slice
+                // no other frame types handled this slice
+                Some(Ok(_)) => {}
                 Some(Err(e)) => {
                     eprintln!("server: WebSocket error from {addr}: {e}");
                     break;
@@ -282,7 +283,8 @@ async fn handle_connection(
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {}
-                Err(broadcast::error::RecvError::Closed) => {} // sender outlives the app; unreachable in practice
+                // sender outlives the app; unreachable in practice
+                Err(broadcast::error::RecvError::Closed) => {}
             }
         }
     }
@@ -325,7 +327,8 @@ async fn handle_button_press(
         }
     };
     let Some(buttons::envelope::Message::ButtonPress(press)) = envelope.message else {
-        return None; // no other client-initiated message this slice
+        // no other client-initiated message this slice
+        return None;
     };
 
     let result = execute_press(
