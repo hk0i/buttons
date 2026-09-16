@@ -4,6 +4,7 @@
 //! "which state is this Switch showing right now" lives durably. See
 //! slice 09 spec, § Scope → In #3 and Implementation Notes #2.
 
+use crate::server::{StateChange, StatePushTx};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -47,14 +48,30 @@ pub fn save(switch_state_path: &Path, states: &SwitchStates) {
     }
 }
 
-/// Records a successful flip and persists it — the only way `switch_state.json`
-/// changes. Two sequential lock scopes, not one nested call: `save` takes
-/// its own lock, and `Mutex` isn't reentrant, so the write must fully
-/// release the guard before `save` acquires it again.
-pub fn flip_and_save(switch_state_path: &Path, states: &SwitchStates, button_id: &str, new_value: bool) {
+/// Records a successful flip, persists it, and broadcasts the change —
+/// the only way `switch_state.json` changes, and the one shared exit for
+/// every flip regardless of what triggered it (a real `ButtonPress` or the
+/// editor's `Test`). See slice 09a spec, § Scope → In #3. Two sequential
+/// lock scopes, not one nested call: `save` takes its own lock, and
+/// `Mutex` isn't reentrant, so the write must fully release the guard
+/// before `save` acquires it again.
+pub fn flip_and_save(
+    switch_state_path: &Path,
+    states: &SwitchStates,
+    button_id: &str,
+    new_value: bool,
+    state_push_tx: &StatePushTx,
+) {
     {
         let mut map = states.lock().unwrap();
         map.insert(button_id.to_string(), new_value);
     }
     save(switch_state_path, states);
+    // Send if anyone's listening, ignore if not — `send` errors only when
+    // there are zero subscribers (no connection open), a normal state, not
+    // a fault to log or retry. See slice 09a spec, § Implementation Notes 2.
+    let _ = state_push_tx.send(vec![StateChange {
+        button_id: button_id.to_string(),
+        is_active: new_value,
+    }]);
 }

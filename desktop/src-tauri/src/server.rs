@@ -17,9 +17,28 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::Emitter;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{broadcast, oneshot, Mutex};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
+
+/// Mirrors wire.proto's `StateChange`, kept as a plain struct here rather
+/// than passing the generated `buttons::StateChange` through the channel —
+/// server logic stays decoupled from the wire type until `state_push_envelope`
+/// converts at the point of sending. See slice 09a spec, § Interface,
+/// "Desktop-side signatures."
+#[derive(Clone)]
+pub struct StateChange {
+    pub button_id: String,
+    pub is_active: bool,
+}
+
+/// Broadcast, not unicast — v1 has one connection, and broadcast needs no
+/// rework once that's no longer true. Sent as one `Vec<StateChange>` per
+/// broadcast, not one `StateChange` sent N times, so a batch of changes
+/// that happened together can never be torn apart by an unrelated
+/// broadcast interleaving on a lagging receiver. See slice 09a spec, §
+/// Interface Notes 1-2.
+pub type StatePushTx = broadcast::Sender<Vec<StateChange>>;
 
 /// Fired after any successful flip (a real `ButtonPress` here, or the
 /// editor's `Test` button in `lib.rs` — both go through `execute_press`),
@@ -65,6 +84,7 @@ pub async fn run(
     config_path: PathBuf,
     switch_state_path: PathBuf,
     switch_states: SwitchStates,
+    state_push_tx: StatePushTx,
     app: tauri::AppHandle,
 ) {
     let device_id = pairing.device_id();
@@ -95,6 +115,7 @@ pub async fn run(
                     config_path.clone(),
                     switch_state_path.clone(),
                     Arc::clone(&switch_states),
+                    state_push_tx.clone(),
                     app.clone(),
                     Arc::clone(&slot),
                 ));
@@ -111,6 +132,7 @@ async fn handle_connection(
     config_path: PathBuf,
     switch_state_path: PathBuf,
     switch_states: SwitchStates,
+    state_push_tx: StatePushTx,
     app: tauri::AppHandle,
     slot: ConnSlot,
 ) {
@@ -215,8 +237,10 @@ async fn handle_connection(
         return;
     }
 
-    // profile_switch/state_push (steps 9-10) aren't designed yet — this
-    // loop only handles ButtonPress.
+    // profile_switch (step 10) isn't designed yet — this loop only handles
+    // ButtonPress as a client-initiated message.
+    let mut state_push_rx = state_push_tx.subscribe();
+
     loop {
         tokio::select! {
             msg = ws.next() => match msg {
@@ -227,6 +251,7 @@ async fn handle_connection(
                         &config_path,
                         &switch_state_path,
                         &switch_states,
+                        &state_push_tx,
                         &app,
                     )
                     .await
@@ -246,7 +271,35 @@ async fn handle_connection(
                 let _ = ws.close(None).await;
                 break;
             }
+            // A lagging receiver drops old batches rather than blocking the
+            // sender — acceptable for a UI-refresh signal that's about to
+            // be superseded by whatever state is current anyway. See
+            // slice 09a spec, § Implementation Notes 1.
+            changes = state_push_rx.recv() => match changes {
+                Ok(changes) => {
+                    if send_envelope(&mut ws, state_push_envelope(changes)).await.is_err() {
+                        break;
+                    }
+                }
+                Err(broadcast::error::RecvError::Lagged(_)) => {}
+                Err(broadcast::error::RecvError::Closed) => {} // sender outlives the app; unreachable in practice
+            }
         }
+    }
+}
+
+fn state_push_envelope(changes: Vec<StateChange>) -> buttons::Envelope {
+    buttons::Envelope {
+        protocol_version: pairing::PROTOCOL_VERSION.to_string(),
+        message: Some(buttons::envelope::Message::StatePush(buttons::StatePush {
+            changes: changes
+                .into_iter()
+                .map(|c| buttons::StateChange {
+                    button_id: c.button_id,
+                    is_active: c.is_active,
+                })
+                .collect(),
+        })),
     }
 }
 
@@ -261,6 +314,7 @@ async fn handle_button_press(
     config_path: &Path,
     switch_state_path: &Path,
     switch_states: &SwitchStates,
+    state_push_tx: &StatePushTx,
     app: &tauri::AppHandle,
 ) -> Option<buttons::Envelope> {
     let envelope: buttons::Envelope = match serde_json::from_str(text) {
@@ -279,6 +333,7 @@ async fn handle_button_press(
         config_path,
         switch_state_path,
         switch_states,
+        state_push_tx,
         app,
     )
     .await;
@@ -302,6 +357,7 @@ pub async fn execute_press(
     config_path: &Path,
     switch_state_path: &Path,
     switch_states: &SwitchStates,
+    state_push_tx: &StatePushTx,
     app: &tauri::AppHandle,
 ) -> Result<(), String> {
     let config = config::load_config(config_path)?;
@@ -321,7 +377,13 @@ pub async fn execute_press(
 
     if result.is_ok() {
         if let Some(new_value) = flips_to {
-            switch_state::flip_and_save(switch_state_path, switch_states, button_id, new_value);
+            switch_state::flip_and_save(
+                switch_state_path,
+                switch_states,
+                button_id,
+                new_value,
+                state_push_tx,
+            );
             let snapshot = switch_states.lock().unwrap().clone();
             if let Err(e) = app.emit(SWITCH_STATES_CHANGED_EVENT, snapshot) {
                 eprintln!("server: failed to emit {SWITCH_STATES_CHANGED_EVENT}: {e}");

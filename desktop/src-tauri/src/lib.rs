@@ -14,6 +14,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use switch_state::SwitchStates;
 use tauri::{AppHandle, Manager};
+use tokio::sync::broadcast;
 
 /// Tauri-specific glue, kept out of `config.rs` so its data/persistence logic
 /// stays plain Rust — reusable as-is if the UI layer ever changes.
@@ -74,10 +75,19 @@ async fn test_button(
     app: AppHandle,
     button_id: String,
     states: tauri::State<'_, SwitchStates>,
+    state_push_tx: tauri::State<'_, server::StatePushTx>,
 ) -> Result<(), String> {
     let config_path = config_path(&app)?;
     let switch_state_path = switch_state_path(&app)?;
-    server::execute_press(&button_id, &config_path, &switch_state_path, &states, &app).await
+    server::execute_press(
+        &button_id,
+        &config_path,
+        &switch_state_path,
+        &states,
+        &state_push_tx,
+        &app,
+    )
+    .await
 }
 
 #[derive(Serialize)]
@@ -122,11 +132,19 @@ pub fn run() {
             app.manage(Arc::clone(&pairing));
             let switch_states: SwitchStates = switch_state::load(&switch_state_path);
             app.manage(switch_states.clone());
+            // Created once at startup, cloned into server::run and into
+            // every command that can trigger a flip (test_button) — see
+            // slice 09a spec, § Files to Touch #6. The receiver half is
+            // dropped immediately; the Sender stays valid with zero
+            // subscribers (Implementation Notes #2).
+            let (state_push_tx, _): (server::StatePushTx, _) = broadcast::channel(16);
+            app.manage(state_push_tx.clone());
             tauri::async_runtime::spawn(server::run(
                 pairing,
                 config_path,
                 switch_state_path,
                 switch_states,
+                state_push_tx,
                 handle.clone(),
             ));
             Ok(())
