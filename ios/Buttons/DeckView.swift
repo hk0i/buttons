@@ -49,6 +49,13 @@ struct DeckView: View {
         // background — invisible against this screen's white ground.
         // `.always` forces the system's translucent backdrop behind them.
         .indexViewStyle(.page(backgroundDisplayMode: .always))
+        .onChange(of: profile) { _, newProfile in
+            // Falls back if a live resync drops this page. See slice 09c
+            // spec, § Implementation Notes #6.
+            if !newProfile.pages.contains(where: { $0.id == currentPageId }) {
+                currentPageId = newProfile.pages.first?.id ?? ""
+            }
+        }
     }
 }
 
