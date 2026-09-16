@@ -68,21 +68,23 @@
   // bind:value={switchState[activeTab].label} works the same as binding
   // to a flat variable — and it's what lets the template below use one
   // appearance block for both tabs instead of two near-identical copies.
-  // Form-local shape, not the wire SwitchState (label/icon plain string,
+  // Edit-buffer shape, not the wire SwitchState (label/icon plain string,
   // not optional) — same "" convention the top-level label/icon fields
-  // above use, coerced to `undefined` at persist time.
-  interface SwitchStateForm {
+  // above use, coerced to `undefined` at persist time. "Draft" matches
+  // this file's own existing vocabulary for an in-progress, not-yet-
+  // persisted edit (hasPendingDraft, "Discard unsaved action?").
+  interface SwitchStateDraft {
     label: string;
     icon: string;
     actions: Action[];
   }
-  function initialSwitchState(which: "off" | "on"): SwitchStateForm {
+  function initialSwitchState(which: "off" | "on"): SwitchStateDraft {
     const state = button?.content.type === "switch" ? button.content[which] : undefined;
     return { label: state?.label ?? "", icon: state?.icon ?? "", actions: state ? [...state.actions] : [] };
   }
 
   let activeTab = $state<"off" | "on">("off");
-  let switchState = $state<{ off: SwitchStateForm; on: SwitchStateForm }>({
+  let switchState = $state<{ off: SwitchStateDraft; on: SwitchStateDraft }>({
     off: initialSwitchState("off"),
     on: initialSwitchState("on"),
   });
