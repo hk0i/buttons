@@ -9,6 +9,7 @@ use crate::config;
 use crate::pairing::{self, Pairing};
 use crate::proto::buttons;
 use crate::switch_state::{self, SwitchStates};
+use chrono::Local;
 use futures_util::{SinkExt, StreamExt};
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 use std::collections::HashMap;
@@ -20,6 +21,15 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{broadcast, oneshot, Mutex};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
+
+/// Local wall-clock time, `HH:MM:SS.mmm` — the console's own lines
+/// otherwise carry no ordering signal at all. Wall clock, not elapsed-
+/// since-launch, so it reads like a normal log timestamp and stays
+/// meaningful (and boundedly-sized) across a long-running `tauri dev`
+/// session instead of growing into an ever-larger, contextless count.
+fn log_time() -> String {
+    Local::now().format("%H:%M:%S%.3f").to_string()
+}
 
 /// Mirrors wire.proto's `StateChange`, kept as a plain struct here rather
 /// than passing the generated `buttons::StateChange` through the channel —
@@ -120,7 +130,7 @@ pub async fn run(
                     Arc::clone(&slot),
                 ));
             }
-            Err(e) => eprintln!("server: failed to accept connection: {e}"),
+            Err(e) => eprintln!("[{}] server: failed to accept connection: {e}", log_time()),
         }
     }
 }
@@ -139,7 +149,7 @@ async fn handle_connection(
     let mut ws = match tokio_tungstenite::accept_async(stream).await {
         Ok(ws) => ws,
         Err(e) => {
-            eprintln!("server: WebSocket handshake with {addr} failed: {e}");
+            eprintln!("[{}] server: WebSocket handshake with {addr} failed: {e}", log_time());
             return;
         }
     };
@@ -201,17 +211,17 @@ async fn handle_connection(
             // absence during a failed authenticate() attempt is itself the
             // evidence DoD 11 checks for (see PAIRING.md's websocat
             // procedure).
-            eprintln!("server: evicting previous connection to authenticate {addr}");
+            eprintln!("[{}] server: evicting previous connection to authenticate {addr}", log_time());
             let _ = old.evict_tx.send(());
         }
         *guard = Some(ConnectionHandle { evict_tx });
-        println!("server: {addr} authenticated, holding the connection slot");
+        println!("[{}] server: {addr} authenticated, holding the connection slot", log_time());
     }
 
     let config = match config::load_config(&config_path) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("server: failed to load config for {addr}: {e}");
+            eprintln!("[{}] server: failed to load config for {addr}: {e}", log_time());
             return;
         }
     };
@@ -264,7 +274,7 @@ async fn handle_connection(
                 // no other frame types handled this slice
                 Some(Ok(_)) => {}
                 Some(Err(e)) => {
-                    eprintln!("server: WebSocket error from {addr}: {e}");
+                    eprintln!("[{}] server: WebSocket error from {addr}: {e}", log_time());
                     break;
                 }
             },
@@ -322,7 +332,7 @@ async fn handle_button_press(
     let envelope: buttons::Envelope = match serde_json::from_str(text) {
         Ok(envelope) => envelope,
         Err(parse_error) => {
-            eprintln!("server: malformed Envelope: {parse_error}");
+            eprintln!("[{}] server: malformed Envelope: {parse_error}", log_time());
             return None;
         }
     };
@@ -389,7 +399,7 @@ pub async fn execute_press(
             );
             let snapshot = switch_states.lock().unwrap().clone();
             if let Err(e) = app.emit(SWITCH_STATES_CHANGED_EVENT, snapshot) {
-                eprintln!("server: failed to emit {SWITCH_STATES_CHANGED_EVENT}: {e}");
+                eprintln!("[{}] server: failed to emit {SWITCH_STATES_CHANGED_EVENT}: {e}", log_time());
             }
         }
     }
