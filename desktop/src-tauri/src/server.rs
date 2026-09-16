@@ -215,7 +215,12 @@ async fn handle_connection(
             let _ = old.evict_tx.send(());
         }
         *guard = Some(ConnectionHandle { evict_tx });
-        println!("[{}] server: {addr} authenticated, holding the connection slot", log_time());
+        // eprintln!, not println! — sharing one stream with the eviction
+        // line right above keeps the pair in true order; stdout/stderr are
+        // independently buffered, so mixing them let a "authenticated" and
+        // "evicting" pair from the same connection print out of sequence
+        // in a merged terminal view (harmless, but confusing to read).
+        eprintln!("[{}] server: {addr} authenticated, holding the connection slot", log_time());
     }
 
     let config = match config::load_config(&config_path) {
