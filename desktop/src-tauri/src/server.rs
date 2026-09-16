@@ -50,11 +50,8 @@ pub struct StateChange {
 /// Interface Notes 1-2.
 pub type StatePushTx = broadcast::Sender<Vec<StateChange>>;
 
-/// Signal-only — no payload. `Config` is always re-read fresh at send time
-/// via `build_and_send_config_sync` (same "don't snapshot, reload" rule
-/// `execute_press` already follows for Switch presses), so the broadcast
-/// only ever needs to say "something changed, go re-read." See slice 09c
-/// spec, § Interface Note 1.
+/// Signal-only — `Config` is always re-read fresh at send time. See slice
+/// 09c spec, § Interface Note 1.
 pub type ConfigChangedTx = broadcast::Sender<()>;
 
 /// Fired after any successful flip (a real `ButtonPress` here, or the
@@ -290,19 +287,10 @@ async fn handle_connection(
                 // sender outlives the app; unreachable in practice
                 Err(broadcast::error::RecvError::Closed) => {}
             },
-            // Opposite Lagged policy from state_push_rx above — a
-            // config_changed signal carries no content to supersede it
-            // with (unlike a state_push batch), so dropping a lagged one
-            // means mobile has no way to learn it missed an edit until
-            // another one happens to arrive. Resync on Lagged too: one
-            // fresh read subsumes every signal that was missed. See slice
-            // 09c spec, § Implementation Notes #8.
+            // Lagged still resyncs here, unlike state_push_rx above — see
+            // slice 09c spec, § Implementation Notes #8.
             config_changed = config_changed_rx.recv() => match config_changed {
-                // A Load failure is treated as transient — logged inside
-                // the helper, connection stays open, the next edit tries
-                // again. A Send failure means the socket is dead — break,
-                // same as every other arm in this select! on a failed
-                // send.
+                // Load: transient, keep connection. Send: dead socket, break.
                 Ok(()) => {
                     if let Err(ConfigSyncSendError::Send) =
                         build_and_send_config_sync(&mut ws, &config_path, &switch_states).await
@@ -324,23 +312,15 @@ async fn handle_connection(
     }
 }
 
-/// Distinguishes *why* `build_and_send_config_sync` failed. The connect-time
-/// call site treats both the same (either way, the attempt is over — break).
-/// The live-resync arm doesn't: a load failure is treated as transient and
-/// logged-then-skipped (the connection stays open, the next edit tries
-/// again), while a send failure means the socket itself is dead, so it
-/// breaks the loop — same as every other arm in `handle_connection`'s
-/// `select!` on a failed send. See slice 09c spec, § Implementation Notes #5.
+/// Load: transient, log-and-continue. Send: dead socket, break. See slice
+/// 09c spec, § Implementation Notes #9.
 enum ConfigSyncSendError {
     Load,
     Send,
 }
 
-/// Loads `Config` fresh from disk, merges in the live `SwitchStates`, and
-/// sends it as a `config_sync` envelope. The one place a `config_sync` gets
-/// built — both the connect-time send above and (slice 09c) a live resync
-/// call this, so there's one definition of "send a config_sync," not two
-/// that can drift. See slice 09c spec, § Interface Note 2.
+/// The one place a `config_sync` gets built and sent — connect-time and a
+/// live resync both call this. See slice 09c spec, § Interface Note 2.
 async fn build_and_send_config_sync(
     ws: &mut WebSocketStream<TcpStream>,
     config_path: &Path,

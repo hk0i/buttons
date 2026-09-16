@@ -17,11 +17,8 @@ use switch_state::SwitchStates;
 use tauri::{AppHandle, Manager};
 use tokio::sync::broadcast;
 
-/// The "an edit happened" line — named for what it carries, not the
-/// mechanism, so `config.rs`'s own signatures never need to mention
-/// channels at all. Sent by `save_config` after a successful write;
-/// consumed by `config_sync_debounce::run`. See slice 09c spec, § Interface
-/// Note 0 (in the small numbered-signature list) / Files to Touch #3.
+/// Sent by `save_config` after a write; consumed by `config_sync_debounce`.
+/// See slice 09c spec, § Files to Touch #3.
 pub type ConfigDirtyTx = tokio::sync::mpsc::UnboundedSender<Config>;
 
 /// Tauri-specific glue, kept out of `config.rs` so its data/persistence logic
@@ -147,19 +144,10 @@ pub fn run() {
             // subscribers (Implementation Notes #2).
             let (state_push_tx, _): (server::StatePushTx, _) = broadcast::channel(16);
             app.manage(state_push_tx.clone());
-            // Signal-only — see server.rs's ConfigChangedTx doc comment.
-            // The receiver half is dropped immediately, same as
-            // state_push_tx above; config_sync_debounce::run holds the
-            // only sender.
+            // Receiver dropped immediately, same as state_push_tx above;
+            // config_sync_debounce::run holds the only sender.
             let (config_changed_tx, _): (server::ConfigChangedTx, _) = broadcast::channel(16);
-            // The dirty channel: save_config (next step) will send on
-            // dirty_tx after a successful write. Managed now so the
-            // command can take it as tauri::State once it does — see
-            // slice 09c spec, § Files to Touch #3. Nothing sends on it
-            // yet, so config_sync_debounce::run's dirty_rx.recv() just
-            // waits; harmless, and matches this step's scope (the
-            // debounce task exists and is spawned, not yet triggered by
-            // an edit).
+            // save_config sends on this after a write (next step).
             let (dirty_tx, dirty_rx): (ConfigDirtyTx, _) = tokio::sync::mpsc::unbounded_channel();
             app.manage(dirty_tx);
             tauri::async_runtime::spawn(config_sync_debounce::run(
