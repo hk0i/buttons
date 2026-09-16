@@ -50,9 +50,18 @@ fn get_config(app: tauri::AppHandle) -> Result<Config, String> {
     config::load_config(&config_path(&app)?)
 }
 
+// Persist and notify are sibling calls made here, the coordinator — never
+// one nested inside the other, never moved into config.rs. See slice 09c
+// spec, § Interface, "save_config is the coordinator."
 #[tauri::command]
-fn save_config(app: tauri::AppHandle, config: Config) -> Result<(), String> {
-    config::save_config(&config_path(&app)?, &config)
+fn save_config(
+    app: tauri::AppHandle,
+    config: Config,
+    dirty_tx: tauri::State<ConfigDirtyTx>,
+) -> Result<(), String> {
+    config::save_config(&config_path(&app)?, &config)?;
+    let _ = dirty_tx.send(config);
+    Ok(())
 }
 
 #[tauri::command]
