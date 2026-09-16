@@ -353,6 +353,26 @@ comments, which this doesn't constrain.
 — planned as a follow-up, not blocking work in progress. New and
 touched-in-passing comments follow this style starting now.
 
+### Protobuf (`.proto`)
+
+Decided 2026-09-15, per slice 09a review. `.proto` has no `///`/`/** */`
+token — it's plain `//`/`/* */` throughout — but `protoc` still has a de
+facto doc comment: a comment block placed **immediately above** a
+message/field/oneof case, no blank line in between, is captured as that
+declaration's leading comment via `SourceCodeInfo` and promoted into the
+generated doc comment by every generator that emits one (swift-protobuf
+turns it into Swift `///`; `protoc-gen-doc` and `buf` use it the same
+way). A same-line trailing comment doesn't get this treatment reliably
+across generators.
+
+1. Put a field/message comment on the line(s) above the declaration, not
+   trailing on the same line — this is what makes it a doc comment instead
+   of an implementation aside that dies at the `.proto` source.
+2. The Summary/rationale split above still applies once the comment
+   reaches generated code: keep it to the one-sentence contract a caller
+   needs; rationale for a non-obvious choice still follows Doc comments
+   (code) item 3's citation rules.
+
 ## Naming: `Phase` vs `State` (enums)
 
 Decided 2026-09-14. A tiebreaker, not a mandate — neither name is a bug,
