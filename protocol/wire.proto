@@ -5,8 +5,8 @@
 // design rationale, the pairing sequence, and the deliberate findings this
 // schema produced.
 //
-// state_push/profile_switch (roadmap steps 9-10) are not here yet — the
-// Envelope oneof adding a case later for these is non-breaking.
+// profile_switch (roadmap step 10) is not here yet — the Envelope oneof
+// adding a case later for it is non-breaking.
 
 syntax = "proto3";
 package buttons;
@@ -21,6 +21,7 @@ message Envelope {
     ConfigSync config_sync = 4;
     ButtonPress button_press = 5;
     ActionResult action_result = 6;
+    StatePush state_push = 7; // unsolicited D→M, batched — see slice 09a
   }
 }
 
@@ -49,4 +50,14 @@ message ActionResult {
                          // spec, Interface § "Correlation"
   bool ok = 2;
   optional string error = 3; // present iff !ok — mirrors PairResponse
+}
+
+message StatePush {
+  repeated StateChange changes = 1; // batched — see slice 09a spec, Interface
+                                     // Note 1, for why repeated not singular
+}
+
+message StateChange {
+  string button_id = 1;
+  bool is_active = 2;
 }
