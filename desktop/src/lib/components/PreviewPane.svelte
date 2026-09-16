@@ -65,10 +65,14 @@
   // resolution lives, since PreviewPane already owns button-domain logic
   // (the drag rules and fire() above).
   function displayIcon(button: ButtonModel): string | undefined {
-    return switchStatesStore.currentState(button)?.icon ?? button.icon ?? (button.content.type === "back" ? "⬅" : undefined);
+    return switchStatesStore.currentState(button)?.icon
+      ?? button.icon
+      ?? (button.content.type === "back" ? "⬅" : undefined);
   }
   function displayLabel(button: ButtonModel): string | undefined {
-    return switchStatesStore.currentState(button)?.label ?? button.label ?? (button.content.type === "back" ? "Back" : undefined);
+    return switchStatesStore.currentState(button)?.label
+      ?? button.label
+      ?? (button.content.type === "back" ? "Back" : undefined);
   }
 </script>
 
