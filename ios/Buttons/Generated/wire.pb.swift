@@ -125,7 +125,7 @@ nonisolated struct Buttons_PairResponse: Sendable {
 
   var ok: Bool = false
 
-  /// present iff ok — same value on every
+  /// present iff ok — same value on every successful reconnect, no rotation (v1)
   var authToken: String {
     get {_authToken ?? String()}
     set {_authToken = newValue}
@@ -135,7 +135,7 @@ nonisolated struct Buttons_PairResponse: Sendable {
   /// Clears the value of `authToken`. Subsequent reads from it will return its default value.
   mutating func clearAuthToken() {self._authToken = nil}
 
-  /// successful reconnect, no rotation (v1)
+  /// present iff !ok
   var error: String {
     get {_error ?? String()}
     set {_error = newValue}
@@ -158,7 +158,8 @@ nonisolated struct Buttons_ConfigSync: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  /// buttons.Config from buttons.proto — the whole thing,
+  /// buttons.Config from buttons.proto — the whole thing, every Profile, per
+  /// EDD §5.2's decision
   var config: Buttons_Config {
     get {_config ?? Buttons_Config()}
     set {_config = newValue}
@@ -193,10 +194,10 @@ nonisolated struct Buttons_ActionResult: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  /// echoed, not a request/sequence id — see slice 08
+  /// echoed, not a request/sequence id — see slice 08 spec, Interface §
+  /// "Correlation"
   var buttonID: String = String()
 
-  /// spec, Interface § "Correlation"
   var ok: Bool = false
 
   /// present iff !ok — mirrors PairResponse
@@ -221,7 +222,8 @@ nonisolated struct Buttons_StatePush: Sendable {
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
 
-  /// batched — see slice 09a spec, Interface
+  /// batched — see slice 09a spec, Interface Note 1, for why repeated not
+  /// singular
   var changes: [Buttons_StateChange] = []
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
