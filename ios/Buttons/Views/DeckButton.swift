@@ -66,6 +66,16 @@ struct DeckButton: View {
         switchState?.labelOrNil ?? button.labelOrNil ?? (isBack ? "Back" : nil)
     }
 
+    /// The persistent "active" indicator the background channel was
+    /// deliberately left free for (slice 08 spec, § Implementation Notes)
+    /// — a Switch button's own isActive, not the transient PressFlash
+    /// overlay below. `AnyShapeStyle` erases the two branches'
+    /// otherwise-incompatible types (`Color` vs `HierarchicalShapeStyle`).
+    /// See slice 09a spec, § Scope → In #5.
+    private var backgroundStyle: AnyShapeStyle {
+        isActive ? AnyShapeStyle(Color.switchActive) : AnyShapeStyle(.quaternary)
+    }
+
     var body: some View {
         VStack(spacing: 6) {
             if let glyph {
@@ -81,16 +91,7 @@ struct DeckButton: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(8)
-        // The persistent "active" indicator the background channel was
-        // deliberately left free for (slice 08 spec, § Implementation
-        // Notes) — a Switch button's own isActive, not the transient
-        // PressFlash overlay below. `AnyShapeStyle` because the two
-        // branches are otherwise incompatible types (`HierarchicalShapeStyle`
-        // vs `Color`). See slice 09a spec, § Scope → In #5.
-        .background(
-            isActive ? AnyShapeStyle(Color.switchActive) : AnyShapeStyle(.quaternary),
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-        )
+        .background(backgroundStyle, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(alignment: .topTrailing) {
             switch pressFlash {
             case .success:
