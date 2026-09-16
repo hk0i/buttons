@@ -298,17 +298,42 @@ async fn handle_connection(
             // fresh read subsumes every signal that was missed. See slice
             // 09c spec, § Implementation Notes #8.
             config_changed = config_changed_rx.recv() => match config_changed {
+                // A Load failure is treated as transient — logged inside
+                // the helper, connection stays open, the next edit tries
+                // again. A Send failure means the socket is dead — break,
+                // same as every other arm in this select! on a failed
+                // send.
                 Ok(()) => {
-                    let _ = build_and_send_config_sync(&mut ws, &config_path, &switch_states).await;
+                    if let Err(ConfigSyncSendError::Send) =
+                        build_and_send_config_sync(&mut ws, &config_path, &switch_states).await
+                    {
+                        break;
+                    }
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {
-                    let _ = build_and_send_config_sync(&mut ws, &config_path, &switch_states).await;
+                    if let Err(ConfigSyncSendError::Send) =
+                        build_and_send_config_sync(&mut ws, &config_path, &switch_states).await
+                    {
+                        break;
+                    }
                 }
                 // sender outlives the app; unreachable in practice
                 Err(broadcast::error::RecvError::Closed) => {}
             }
         }
     }
+}
+
+/// Distinguishes *why* `build_and_send_config_sync` failed. The connect-time
+/// call site treats both the same (either way, the attempt is over — break).
+/// The live-resync arm doesn't: a load failure is treated as transient and
+/// logged-then-skipped (the connection stays open, the next edit tries
+/// again), while a send failure means the socket itself is dead, so it
+/// breaks the loop — same as every other arm in `handle_connection`'s
+/// `select!` on a failed send. See slice 09c spec, § Implementation Notes #5.
+enum ConfigSyncSendError {
+    Load,
+    Send,
 }
 
 /// Loads `Config` fresh from disk, merges in the live `SwitchStates`, and
@@ -320,12 +345,12 @@ async fn build_and_send_config_sync(
     ws: &mut WebSocketStream<TcpStream>,
     config_path: &Path,
     switch_states: &SwitchStates,
-) -> Result<(), ()> {
+) -> Result<(), ConfigSyncSendError> {
     let config = match config::load_config(config_path) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("[{}] server: failed to load config: {e}", log_time());
-            return Err(());
+            return Err(ConfigSyncSendError::Load);
         }
     };
     let mut wire_config = buttons::Config::from(&config);
@@ -345,6 +370,7 @@ async fn build_and_send_config_sync(
         },
     )
     .await
+    .map_err(|_| ConfigSyncSendError::Send)
 }
 
 fn state_push_envelope(changes: Vec<StateChange>) -> buttons::Envelope {
