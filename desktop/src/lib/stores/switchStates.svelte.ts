@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { Button, SwitchState } from "$lib/types/button";
 
 // Matches server.rs's SWITCH_STATES_CHANGED_EVENT constant.
 const SWITCH_STATES_CHANGED_EVENT = "switch-states-changed";
@@ -31,6 +32,15 @@ class SwitchStatesStore {
   // with no recorded press yet).
   isOn(buttonId: string): boolean {
     return this.states[buttonId] ?? false;
+  }
+
+  // Resolves a button's currently-showing SwitchState directly, so callers
+  // read imperatively (currentState(button)?.label) instead of re-deriving
+  // "which of off/on is showing" from isOn() at every render site. undefined
+  // for anything that isn't a .switch button (including no button at all).
+  currentState(button: Button | undefined): SwitchState | undefined {
+    if (button?.content.type !== "switch") return undefined;
+    return this.isOn(button.id) ? button.content.on : button.content.off;
   }
 }
 

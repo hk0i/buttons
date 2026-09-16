@@ -13,16 +13,8 @@
   // own top-level ones (which stay unset — see slice 09 spec, Files to
   // Touch #8). Falls back to the plain props every other caller passes
   // directly (the editor's live-typing preview, PreviewPane's "back" glyph).
-  let resolvedIcon = $derived(
-    button?.content.type === "switch"
-      ? ((switchStatesStore.isOn(button.id) ? button.content.on : button.content.off).icon ?? icon)
-      : icon,
-  );
-  let resolvedLabel = $derived(
-    button?.content.type === "switch"
-      ? ((switchStatesStore.isOn(button.id) ? button.content.on : button.content.off).label ?? label)
-      : label,
-  );
+  let resolvedIcon = $derived(switchStatesStore.currentState(button)?.icon ?? icon);
+  let resolvedLabel = $derived(switchStatesStore.currentState(button)?.label ?? label);
 </script>
 
 <div class="deck-button" class:selected>
