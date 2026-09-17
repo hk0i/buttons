@@ -154,9 +154,11 @@ pub fn run() {
             // Receiver dropped immediately, same as state_push_tx above;
             // config_sync_debounce::run holds the only sender.
             let (config_changed_tx, _): (server::ConfigChangedTx, _) = broadcast::channel(16);
-            // save_config sends on this after a write (next step).
+            // save_config sends on this after a write; server::run's own
+            // clone lets a mobile-requested profile_switch feed it too —
+            // see slice 10 spec, § Interface.
             let (dirty_tx, dirty_rx): (ConfigDirtyTx, _) = tokio::sync::mpsc::unbounded_channel();
-            app.manage(dirty_tx);
+            app.manage(dirty_tx.clone());
             tauri::async_runtime::spawn(config_sync_debounce::run(
                 config_path.clone(),
                 dirty_rx,
@@ -169,6 +171,7 @@ pub fn run() {
                 switch_states,
                 state_push_tx,
                 config_changed_tx,
+                dirty_tx,
                 handle.clone(),
             ));
             Ok(())

@@ -61,6 +61,11 @@ pub type ConfigChangedTx = broadcast::Sender<()>;
 /// see slice 09 spec, § Files to Touch #8-9.
 const SWITCH_STATES_CHANGED_EVENT: &str = "switch-states-changed";
 
+/// Fired after a mobile-requested profile_switch. The desktop frontend's
+/// only notification of a write it didn't author itself — see slice 10
+/// spec, § Scope → In #4.
+const ACTIVE_PROFILE_CHANGED_EVENT: &str = "active-profile-changed";
+
 const SERVICE_TYPE: &str = "_buttons._tcp.local.";
 const INSTANCE_NAME: &str = "buttons-desktop";
 // Fixed, arbitrary — no port-conflict handling this slice (Scope → Out
@@ -100,6 +105,7 @@ pub async fn run(
     switch_states: SwitchStates,
     state_push_tx: StatePushTx,
     config_changed_tx: ConfigChangedTx,
+    dirty_tx: crate::ConfigDirtyTx,
     app: tauri::AppHandle,
 ) {
     let device_id = pairing.device_id();
@@ -132,6 +138,7 @@ pub async fn run(
                     Arc::clone(&switch_states),
                     state_push_tx.clone(),
                     config_changed_tx.clone(),
+                    dirty_tx.clone(),
                     app.clone(),
                     Arc::clone(&slot),
                 ));
@@ -150,6 +157,7 @@ async fn handle_connection(
     switch_states: SwitchStates,
     state_push_tx: StatePushTx,
     config_changed_tx: ConfigChangedTx,
+    dirty_tx: crate::ConfigDirtyTx,
     app: tauri::AppHandle,
     slot: ConnSlot,
 ) {
@@ -237,8 +245,6 @@ async fn handle_connection(
         return;
     }
 
-    // profile_switch (step 10) isn't designed yet — this loop only handles
-    // ButtonPress as a client-initiated message.
     let mut state_push_rx = state_push_tx.subscribe();
     let mut config_changed_rx = config_changed_tx.subscribe();
 
@@ -247,12 +253,13 @@ async fn handle_connection(
             msg = ws.next() => match msg {
                 Some(Ok(Message::Close(_))) | None => break,
                 Some(Ok(Message::Text(text))) => {
-                    if let Some(result) = handle_button_press(
+                    if let Some(result) = handle_client_message(
                         &text,
                         &config_path,
                         &switch_state_path,
                         &switch_states,
                         &state_push_tx,
+                        &dirty_tx,
                         &app,
                     )
                     .await
@@ -369,17 +376,17 @@ fn state_push_envelope(changes: Vec<StateChange>) -> buttons::Envelope {
 }
 
 /// Parses one incoming text frame as an `Envelope` and, if it's a
-/// `ButtonPress`, runs it through `execute_press` and returns the
-/// `ActionResult` envelope to send back. Anything else this slice
-/// (malformed JSON, an unexpected variant) is logged and dropped — no
+/// Parses one client-initiated frame and routes it by oneof case.
+/// Malformed JSON or an unhandled variant is logged and dropped — no
 /// reply, same as an unhandled frame type above. See slice 08 spec, §
-/// Implementation Notes.
-async fn handle_button_press(
+/// Implementation Notes; slice 10 spec, § Interface.
+async fn handle_client_message(
     text: &str,
     config_path: &Path,
     switch_state_path: &Path,
     switch_states: &SwitchStates,
     state_push_tx: &StatePushTx,
+    dirty_tx: &crate::ConfigDirtyTx,
     app: &tauri::AppHandle,
 ) -> Option<buttons::Envelope> {
     let envelope: buttons::Envelope = match serde_json::from_str(text) {
@@ -389,21 +396,59 @@ async fn handle_button_press(
             return None;
         }
     };
-    let Some(buttons::envelope::Message::ButtonPress(press)) = envelope.message else {
+    match envelope.message {
+        Some(buttons::envelope::Message::ButtonPress(press)) => {
+            let result = execute_press(
+                &press.button_id,
+                config_path,
+                switch_state_path,
+                switch_states,
+                state_push_tx,
+                app,
+            )
+            .await;
+            Some(action_result(&press.button_id, result))
+        }
+        Some(buttons::envelope::Message::ProfileSwitch(switch)) => {
+            handle_profile_switch(switch, config_path, dirty_tx, app).await;
+            // no reply envelope — see slice 10 spec, Scope → Out #4
+            None
+        }
         // no other client-initiated message this slice
-        return None;
-    };
+        _ => None,
+    }
+}
 
-    let result = execute_press(
-        &press.button_id,
-        config_path,
-        switch_state_path,
-        switch_states,
-        state_push_tx,
-        app,
-    )
-    .await;
-    Some(action_result(&press.button_id, result))
+/// A mobile-requested Profile switch. Unknown id: logged and dropped, no
+/// crash-loop risk from a corrupted persisted `buttons.json` re-serving
+/// the same bad id every relaunch. See slice 10 spec, § Implementation
+/// Notes #1.
+async fn handle_profile_switch(
+    switch: buttons::ProfileSwitch,
+    config_path: &Path,
+    dirty_tx: &crate::ConfigDirtyTx,
+    app: &tauri::AppHandle,
+) {
+    let Ok(mut config) = config::load_config(config_path) else {
+        eprintln!("[{}] server: profile_switch: failed to load config", log_time());
+        return;
+    };
+    if !config.profiles.iter().any(|p| p.id == switch.active_profile_id) {
+        eprintln!(
+            "[{}] server: profile_switch to unknown id {}, dropped",
+            log_time(),
+            switch.active_profile_id
+        );
+        return;
+    }
+    config.active_profile_id = switch.active_profile_id.clone();
+    if config::save_config(config_path, &config).is_err() {
+        eprintln!("[{}] server: profile_switch: failed to save config", log_time());
+        return;
+    }
+    // feeds 09c's debounce → config_sync to mobile
+    let _ = dirty_tx.send(config);
+    let _ = app.emit(ACTIVE_PROFILE_CHANGED_EVENT, switch.active_profile_id);
 }
 
 /// What pressing `button_id` does, right now — the one function a real
