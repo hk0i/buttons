@@ -43,6 +43,13 @@ private struct RootView: View {
                 PairingView(session: session, discovery: discovery)
             }
         }
+        // Self-guards via configSync/profiles.count — never shows over
+        // PairingView (no configSync yet) or the single-Profile case.
+        .overlay(alignment: .topTrailing) {
+            if let config = connection.configSync, config.profiles.count > 1 {
+                ProfileSwitcherMenu(config: config, connection: connection)
+            }
+        }
         .onAppear(perform: attemptReconnectIfPaired)
         // A live connection can die mid-session — phone locks, iOS
         // suspends the socket, the OS eventually delivers a reset — with
@@ -90,5 +97,32 @@ private struct RootView: View {
         guard !hasAttemptedReconnect else { return }
         hasAttemptedReconnect = true
         Task { await session.attemptAutoReconnect(discovery: discovery) }
+    }
+}
+
+/// Manual Profile switching, mobile-initiated — slice 10. Round-trip, not
+/// optimistic: the tap only requests; `activeProfile` updates once the
+/// next `config_sync` lands. See slice 10 spec, Scope → Out #3.
+private struct ProfileSwitcherMenu: View {
+    let config: Buttons_Config
+    let connection: DesktopConnection
+
+    var body: some View {
+        Menu {
+            ForEach(config.profiles, id: \.id) { profile in
+                Button {
+                    connection.requestProfileSwitch(to: profile.id)
+                } label: {
+                    if profile.id == config.activeProfileID {
+                        Label(profile.name, systemImage: "checkmark")
+                    } else {
+                        Text(profile.name)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "person.crop.rectangle.stack")
+                .padding()
+        }
     }
 }
