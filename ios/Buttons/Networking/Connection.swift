@@ -331,7 +331,7 @@ final class DesktopConnection: NSObject {
             for change in push.changes {
                 isActiveByButtonId[change.buttonID] = change.isActive
             }
-        case .pairRequest, .buttonPress, .none:
+        case .pairRequest, .buttonPress, .profileSwitch, .none:
             break  // desktop never sends these to mobile
         }
     }

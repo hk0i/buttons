@@ -16,9 +16,8 @@ depends on it (that's roadmap step 7, and step 12 for Android). Run
 `cargo test` / `swift test` / `gradle test` in each to verify.
 
 **Wire envelope messages** (`pair_request`, `config_sync`, `button_press`,
-`action_result`, `state_push`) live in `wire.proto`, designed at steps 7-9a
-alongside the real connection code. (`profile_switch` is step 10, not
-designed yet.)
+`action_result`, `state_push`, `profile_switch`) live in `wire.proto`,
+designed at steps 7-10 alongside the real connection code.
 
 This directory is also the home for the **normative wire-protocol
 specification** — the message catalog, field shapes, and pairing sequence.

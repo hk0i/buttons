@@ -15,8 +15,8 @@
 // design rationale, the pairing sequence, and the deliberate findings this
 // schema produced.
 //
-// profile_switch (roadmap step 10) is not here yet — the Envelope oneof
-// adding a case later for it is non-breaking.
+// profile_switch (roadmap step 10) added here — see
+// docs/slices/10. Profile Switch.spec.md.
 
 import SwiftProtobuf
 
@@ -89,6 +89,15 @@ nonisolated struct Buttons_Envelope: Sendable {
     set {message = .statePush(newValue)}
   }
 
+  /// M→D only this slice — see slice 10 spec, Scope → Out #1
+  var profileSwitch: Buttons_ProfileSwitch {
+    get {
+      if case .profileSwitch(let v)? = message {return v}
+      return Buttons_ProfileSwitch()
+    }
+    set {message = .profileSwitch(newValue)}
+  }
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   nonisolated enum OneOf_Message: Equatable, Sendable {
@@ -99,6 +108,8 @@ nonisolated struct Buttons_Envelope: Sendable {
     case actionResult(Buttons_ActionResult)
     /// unsolicited D→M, batched — see slice 09a
     case statePush(Buttons_StatePush)
+    /// M→D only this slice — see slice 10 spec, Scope → Out #1
+    case profileSwitch(Buttons_ProfileSwitch)
 
   }
 
@@ -245,13 +256,25 @@ nonisolated struct Buttons_StateChange: Sendable {
   init() {}
 }
 
+nonisolated struct Buttons_ProfileSwitch: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  var activeProfileID: String = String()
+
+  var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate nonisolated let _protobuf_package = "buttons"
 
 nonisolated extension Buttons_Envelope: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".Envelope"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}protocol_version\0\u{3}pair_request\0\u{3}pair_response\0\u{3}config_sync\0\u{3}button_press\0\u{3}action_result\0\u{3}state_push\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}protocol_version\0\u{3}pair_request\0\u{3}pair_response\0\u{3}config_sync\0\u{3}button_press\0\u{3}action_result\0\u{3}state_push\0\u{3}profile_switch\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -338,6 +361,19 @@ nonisolated extension Buttons_Envelope: SwiftProtobuf.Message, SwiftProtobuf._Me
           self.message = .statePush(v)
         }
       }()
+      case 8: try {
+        var v: Buttons_ProfileSwitch?
+        var hadOneofValue = false
+        if let current = self.message {
+          hadOneofValue = true
+          if case .profileSwitch(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.message = .profileSwitch(v)
+        }
+      }()
       default: break
       }
     }
@@ -375,6 +411,10 @@ nonisolated extension Buttons_Envelope: SwiftProtobuf.Message, SwiftProtobuf._Me
     case .statePush?: try {
       guard case .statePush(let v)? = self.message else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
+    }()
+    case .profileSwitch?: try {
+      guard case .profileSwitch(let v)? = self.message else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 8)
     }()
     case nil: break
     }
@@ -631,6 +671,36 @@ nonisolated extension Buttons_StateChange: SwiftProtobuf.Message, SwiftProtobuf.
   static func ==(lhs: Buttons_StateChange, rhs: Buttons_StateChange) -> Bool {
     if lhs.buttonID != rhs.buttonID {return false}
     if lhs.isActive != rhs.isActive {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+nonisolated extension Buttons_ProfileSwitch: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  static let protoMessageName: String = _protobuf_package + ".ProfileSwitch"
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}active_profile_id\0")
+
+  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.activeProfileID) }()
+      default: break
+      }
+    }
+  }
+
+  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.activeProfileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.activeProfileID, fieldNumber: 1)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  static func ==(lhs: Buttons_ProfileSwitch, rhs: Buttons_ProfileSwitch) -> Bool {
+    if lhs.activeProfileID != rhs.activeProfileID {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

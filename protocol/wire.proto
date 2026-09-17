@@ -5,8 +5,8 @@
 // design rationale, the pairing sequence, and the deliberate findings this
 // schema produced.
 //
-// profile_switch (roadmap step 10) is not here yet — the Envelope oneof
-// adding a case later for it is non-breaking.
+// profile_switch (roadmap step 10) added here — see
+// docs/slices/10. Profile Switch.spec.md.
 
 syntax = "proto3";
 package buttons;
@@ -24,6 +24,8 @@ message Envelope {
     ActionResult action_result = 6;
     // unsolicited D→M, batched — see slice 09a
     StatePush state_push = 7;
+    // M→D only this slice — see slice 10 spec, Scope → Out #1
+    ProfileSwitch profile_switch = 8;
   }
 }
 
@@ -69,4 +71,8 @@ message StatePush {
 message StateChange {
   string button_id = 1;
   bool is_active = 2;
+}
+
+message ProfileSwitch {
+  string active_profile_id = 1;
 }
