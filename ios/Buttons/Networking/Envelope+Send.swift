@@ -24,4 +24,8 @@ extension Buttons_Envelope {
     static func buttonPress(_ buttonId: String) -> Buttons_Envelope {
         .make { $0.message = .buttonPress(.with { $0.buttonID = buttonId }) }
     }
+
+    static func profileSwitch(to id: String) -> Buttons_Envelope {
+        .make { $0.message = .profileSwitch(.with { $0.activeProfileID = id }) }
+    }
 }
