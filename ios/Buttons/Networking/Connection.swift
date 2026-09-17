@@ -205,24 +205,23 @@ final class DesktopConnection: NSObject {
 
     private func sendPairRequest() {
         guard let token = pendingToken else { return }
-        var envelope = Buttons_Envelope()
-        envelope.protocolVersion = "1"
-        var pairRequest = Buttons_PairRequest()
-        pairRequest.token = token
-        envelope.message = .pairRequest(pairRequest)
-        send(envelope)
+        send(.pairRequest(token: token))
     }
 
     /// Sends a `ButtonPress` for the tapped button's id. Fire-and-forget —
     /// the result arrives asynchronously via `lastActionResult`, matched
     /// by `button_id` on the caller's side (`PageGrid`).
     func pressButton(_ buttonId: String) {
-        var envelope = Buttons_Envelope()
-        envelope.protocolVersion = "1"
-        var buttonPress = Buttons_ButtonPress()
-        buttonPress.buttonID = buttonId
-        envelope.message = .buttonPress(buttonPress)
-        send(envelope)
+        // A real button id is never empty (desktop-generated
+        // crypto.randomUUID()) — this only guards against a corrupted
+        // persisted buttons.json re-serving the same bad id on every
+        // relaunch, which a crash here would turn into a crash loop
+        // instead of a recoverable no-op.
+        guard !buttonId.isEmpty else {
+            print("DesktopConnection: ignoring pressButton with empty button id")
+            return
+        }
+        send(.buttonPress(buttonId))
     }
 
     private func send(_ envelope: Buttons_Envelope) {
