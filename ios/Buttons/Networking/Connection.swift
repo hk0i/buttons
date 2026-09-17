@@ -224,6 +224,17 @@ final class DesktopConnection: NSObject {
         send(.buttonPress(buttonId))
     }
 
+    /// Requests a Profile switch. Fire-and-forget, M→D only this slice —
+    /// see slice 10 spec, Scope → Out #1.
+    func requestProfileSwitch(to id: String) {
+        // Same reasoning as pressButton's guard above.
+        guard !id.isEmpty else {
+            print("DesktopConnection: ignoring profileSwitch with empty profile id")
+            return
+        }
+        send(.profileSwitch(to: id))
+    }
+
     private func send(_ envelope: Buttons_Envelope) {
         do {
             let json = try envelope.jsonString()
