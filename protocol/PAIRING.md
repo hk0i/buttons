@@ -53,14 +53,14 @@ malformed or unauthenticated connection attempt. From the same machine as
 the desktop, connect to loopback (the server binds `0.0.0.0`, so it
 answers on `127.0.0.1` too, no LAN IP needed):
 
-```
+```bash
 websocat ws://127.0.0.1:47821
 ```
 
 Envelopes on the wire are canonical proto3 JSON (EDD §5.2) — the `oneof`
 case name is a top-level key, **not** nested under a `message` wrapper:
 
-```
+```json
 {"protocolVersion":"1","pairRequest":{"token":"<value>"}}
 ```
 
@@ -111,7 +111,7 @@ exist). No QR, no camera, no fresh one-time token — reuse the desktop's
 own persisted `auth_token`, which `Pairing::validate`'s reconnect path
 already accepts:
 
-```
+```bash
 cat "$HOME/Library/Application Support/gg.pekk.buttons/device.json"
 ```
 
@@ -122,14 +122,14 @@ real phone/simulator afterward if you want it live again.
 1. **Open a FIFO-backed connection** — same shape as "Faking the desktop
    side" below, needed because a plain `websocat` invocation only pipes
    stdin once and this test sends more than one message:
-   ```
+   ```bash
    mkfifo ws_in
    exec 3<> ws_in
    websocat ws://127.0.0.1:47821 <&3 > ws_out.log 2>&1 &
    ```
 2. **Authenticate with the persisted token** (`device.json`'s
    `paired.auth_token`, not a QR's one-time token):
-   ```
+   ```bash
    echo '{"protocolVersion":"1","pairRequest":{"token":"<paired.auth_token>"}}' > ws_in
    ```
    `ws_out.log` should show `pairResponse{ok:true}` followed by a full
@@ -137,7 +137,7 @@ real phone/simulator afterward if you want it live again.
    from.
 3. **Send whatever M→D message is under test**, e.g. a `profile_switch`
    naming an id that doesn't exist in any synced Profile:
-   ```
+   ```bash
    echo '{"protocolVersion":"1","profileSwitch":{"activeProfileId":"does-not-exist-1234"}}' > ws_in
    ```
    Check the result against `buttons.json` on disk (`activeProfileId`
@@ -169,17 +169,23 @@ replaces whatever `device_id`/`auth_token` mobile's Keychain currently
 holds. After this test, restart the real desktop app and re-scan its
 real QR to restore normal pairing — don't skip this.
 
-1. **Find your Mac's LAN IP** (must be reachable from the phone's WiFi;
-   `127.0.0.1` won't work here since the phone is a separate device):
-   ```
-   ipconfig getifaddr en0   # or en1/en2 — whichever interface has your LAN IP
+1. **Find the desktop machine's LAN IP** (must be reachable from the
+   phone's WiFi; `127.0.0.1` won't work here since the phone is a
+   separate device). macOS only below — desktop dev happens on macOS
+   exclusively today (Tauri targets Windows/Linux too per the roadmap's
+   packaging step, but this procedure hasn't been run or adapted for
+   either; fix it for real when that's actually needed, not speculatively
+   here):
+   ```bash
+   # or en1/en2 — whichever interface has your LAN IP
+   ipconfig getifaddr en0
    ```
 2. **Build a fresh-pair QR** pointing at a `websocat` server instead of
    the real desktop. `device_id`/token can be any string — this bypasses
    `Pairing::validate` entirely, since `websocat` isn't running desktop's
    real validation code:
-   ```
-   qrencode -o fake-desktop.png -s 10 "fake-device 10.10.10.152 47822 fake-token"
+   ```bash
+   qrencode -o fake-desktop.png -s 10 "fake-device 192.168.1.42 47822 fake-token"
    ```
    Display `fake-desktop.png` somewhere the phone's camera can scan it
    (a second screen, not the phone itself).
@@ -188,10 +194,11 @@ real QR to restore normal pairing — don't skip this.
    `websocat -s <addr>` alone only pipes stdin once — a FIFO kept open on
    a spare file descriptor lets separate shell commands append to it
    without closing the pipe):
-   ```
+   ```bash
    mkfifo ws_in
-   exec 3<> ws_in                         # open read-write so it doesn't block
-   websocat -s 10.10.10.152:47822 <&3 > ws_out.log 2>&1 &
+   # open read-write so it doesn't block
+   exec 3<> ws_in
+   websocat -s 192.168.1.42:47822 <&3 > ws_out.log 2>&1 &
    ```
 4. **On the phone**: get to `PairingView` (stop the real desktop app so
    the existing connection drops), tap "Scan QR Code," scan
@@ -200,14 +207,14 @@ real QR to restore normal pairing — don't skip this.
    responses into the FIFO, one JSON line each (canonical proto3 JSON,
    same shape as the client-side section above — oneof case as a
    top-level key):
-   ```
+   ```bash
    echo '{"protocolVersion":"1","pairResponse":{"ok":true,"authToken":"fake-token"}}' > ws_in
    echo '{"protocolVersion":"1","configSync":{"config":{"profiles":[{"id":"p1","name":"Test","pages":[{"id":"pg1","buttons":[{"id":"btnA","label":"A","switchContent":{"off":{"label":"Off A"},"on":{"label":"On A"}}},{"id":"btnB","label":"B","switchContent":{"off":{"label":"Off B"},"on":{"label":"On B"}}}]}]}],"activeProfileId":"p1"}}}' > ws_in
    ```
    Mobile shows the two Switch buttons once `ConfigSync` lands. Now send
    whatever D→M message is actually under test, e.g. a 2-entry
    `state_push`:
-   ```
+   ```bash
    echo '{"protocolVersion":"1","statePush":{"changes":[{"buttonId":"btnA","isActive":true},{"buttonId":"btnB","isActive":true}]}}' > ws_in
    ```
 6. **Beat the 10s `pairTimeout`** — `DesktopConnection.connect(...)`
