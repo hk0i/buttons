@@ -1,6 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { Button, Config, Page, Profile } from "$lib/types/button";
 import { getLastPageId, setLastPageId } from "$lib/stores/navState";
+
+// Matches server.rs's ACTIVE_PROFILE_CHANGED_EVENT constant.
+const ACTIVE_PROFILE_CHANGED_EVENT = "active-profile-changed";
 
 // Matches the original Stream Deck's own Page cap — kept simple rather than
 // building a navigation UI that scales past what's actually usable to swipe
@@ -17,6 +21,7 @@ class ConfigStore {
   // last, and is deliberately not persisted.
   currentPageId = $state<string | null>(null);
   folderStack = $state<string[]>([]);
+  private unlisten: UnlistenFn | null = null;
 
   get activeProfile(): Profile | null {
     if (!this.config) return null;
@@ -79,6 +84,13 @@ class ConfigStore {
     this.config = await invoke<Config>("get_config");
     this.currentPageId = this.pageIdFor(this.activeProfile);
     this.folderStack = [];
+    // Guard against a second load() call stacking duplicate listeners —
+    // same shape as switchStatesStore.
+    if (!this.unlisten) {
+      this.unlisten = await listen<string>(ACTIVE_PROFILE_CHANGED_EVENT, (event) => {
+        this.applyActiveProfile(event.payload);
+      });
+    }
   }
 
   selectPage(pageId: string) {
@@ -91,10 +103,19 @@ class ConfigStore {
   // to that Profile's first Page, not another level of the folder stack.
   async switchProfile(id: string) {
     if (!this.config) return;
+    this.applyActiveProfile(id);
+    await this.persist();
+  }
+
+  // The view-state half of switchProfile, shared with the
+  // active-profile-changed listener above — that path already persisted
+  // server-side (a mobile-requested profile_switch), so it applies this
+  // without calling persist() again.
+  private applyActiveProfile(id: string) {
+    if (!this.config) return;
     this.config.activeProfileId = id;
     this.currentPageId = this.pageIdFor(this.activeProfile);
     this.folderStack = [];
-    await this.persist();
   }
 
   async createProfile(name: string) {
