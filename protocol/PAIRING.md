@@ -100,6 +100,61 @@ from …` either — that line comes only from the post-authentication loop,
 so seeing it during one of these attempts would mean the payload
 authenticated when it shouldn't have.
 
+## Faking mobile with a persisted `auth_token`
+
+The section above uses a single-shot `websocat` invocation to test
+*rejected* handshakes — one frame, then the connection closes. This is
+for the opposite case: a real, authenticated session against the real
+desktop, to send an M→D message no real UI can produce on demand (e.g.
+slice 10 DoD 4's `profile_switch` naming a Profile id that doesn't
+exist). No QR, no camera, no fresh one-time token — reuse the desktop's
+own persisted `auth_token`, which `Pairing::validate`'s reconnect path
+already accepts:
+
+```
+cat "$HOME/Library/Application Support/gg.pekk.buttons/device.json"
+```
+
+**Caveat — this evicts whatever device currently holds the connection
+slot** (§ Implementation Notes, "Single-connection slot"). Reconnect your
+real phone/simulator afterward if you want it live again.
+
+1. **Open a FIFO-backed connection** — same shape as "Faking the desktop
+   side" below, needed because a plain `websocat` invocation only pipes
+   stdin once and this test sends more than one message:
+   ```
+   mkfifo ws_in
+   exec 3<> ws_in
+   websocat ws://127.0.0.1:47821 <&3 > ws_out.log 2>&1 &
+   ```
+2. **Authenticate with the persisted token** (`device.json`'s
+   `paired.auth_token`, not a QR's one-time token):
+   ```
+   echo '{"protocolVersion":"1","pairRequest":{"token":"<paired.auth_token>"}}' > ws_in
+   ```
+   `ws_out.log` should show `pairResponse{ok:true}` followed by a full
+   `configSync` — real Profile/Page/Button ids to build the next message
+   from.
+3. **Send whatever M→D message is under test**, e.g. a `profile_switch`
+   naming an id that doesn't exist in any synced Profile:
+   ```
+   echo '{"protocolVersion":"1","profileSwitch":{"activeProfileId":"does-not-exist-1234"}}' > ws_in
+   ```
+   Check the result against `buttons.json` on disk (`activeProfileId`
+   unchanged for a bogus id) rather than only the desktop console — file
+   state doesn't depend on scrolling back through a running `tauri dev`
+   terminal.
+4. **Prove the connection survived** by sending a real id right after, on
+   the same connection, and confirming `buttons.json` changed to it —
+   this is what actually shows a bad message didn't kill the handler,
+   not just that no error printed.
+5. **Clean up**: kill the `websocat` process, and if the message you sent
+   changed real state (like the `profileSwitch` above), switch back
+   manually before reconnecting your real device.
+
+Used to verify slice 10 DoD 4 (`does-not-exist-1234` dropped, real id
+right after still worked) — see `docs/slices/10. Profile Switch.spec.md`.
+
 ## Faking the desktop side with `websocat`
 
 The section above uses `websocat` as a stand-in *mobile* client against a
