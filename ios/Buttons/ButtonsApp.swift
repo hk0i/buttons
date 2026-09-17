@@ -113,6 +113,11 @@ private struct ProfileSwitcherMenu: View {
     let config: Buttons_Config
     let connection: DesktopConnection
 
+    private var activeProfileName: String {
+        config.profiles.first(where: { $0.id == config.activeProfileID })?.name
+            ?? config.profiles.first?.name ?? ""
+    }
+
     var body: some View {
         Menu {
             ForEach(config.profiles, id: \.id) { profile in
@@ -127,7 +132,11 @@ private struct ProfileSwitcherMenu: View {
                 }
             }
         } label: {
-            Image(systemName: "person.crop.rectangle.stack")
+            // Name-as-trigger — just discoverability for this slice's own
+            // feature. Real top-bar chrome (centering, consistent header
+            // styling) waits for the 11a polish gate.
+            Label(activeProfileName, systemImage: "chevron.up.chevron.down")
+                .labelStyle(.titleAndIcon)
                 .padding()
         }
     }
