@@ -34,9 +34,8 @@ impl From<&config::Profile> for buttons::Profile {
             id: p.id.clone(),
             name: p.name.clone(),
             pages: p.pages.iter().map(buttons::Page::from).collect(),
-            // config::Platform never crosses to the wire directly (no
-            // matching enum there — see docs/slices/10a spec,
-            // Implementation Notes #1); wire_key() is the only bridge.
+            // config::Platform has no wire counterpart — wire_key() is
+            // the only bridge.
             associated_app_by_platform: p
                 .associated_app_by_platform
                 .iter()

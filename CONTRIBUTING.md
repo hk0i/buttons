@@ -335,8 +335,23 @@ comments, which this doesn't constrain.
    Decide names during doc planning; when a better name surfaces mid-
    implementation instead, change it in code and update the spec/EDD
    retroactively rather than stranding the reasoning in a code comment.
-5. Link symbol names with backticks (`` `TypeName` ``) — Swift-DocC and
-   rustdoc both turn these into jump-links once docs are actually built.
+5. **Swift-DocC**: link symbol names with backticks (`` `TypeName` ``) —
+   DocC resolves code-voice spans against known symbols automatically.
+   **Rust**: backticks alone are inline-code styling only, not a link —
+   verified 2026-09-19, `cargo doc` on a two-item test crate: a bare
+   `` `Foo` `` reference rendered as `<code>Foo</code>`, no `<a>`, while
+   `` [`Foo`] `` rendered `<a href="struct.Foo.html">`. Use the bracket
+   form (`` [`TypeName`] ``, or `` [`method`](Type::method) `` for a
+   method) for anything meant to actually jump — this only applies inside
+   a `///`/`//!` doc comment; a `//` comment is never scanned by rustdoc,
+   so brackets there are just literal text (use backticks for styling
+   only). Never phrase a cross-reference positionally ("above," "below,"
+   "the previous function") — position in a file isn't stable across
+   edits or reorderings, and a bracket link is either wrong immediately
+   (nothing there yet) or silently stale later (the referenced item
+   moved); name the item and let the language's link mechanism (or, for a
+   `//` comment with no live link, a stated name with no position claim)
+   carry the reference instead.
 6. If the summary line explains the function better than its name does,
    rename the function and shorten (or delete) the summary. A summary that
    merely restates the identifier is dead weight; a summary that's *more

@@ -11,12 +11,10 @@ pub struct Config {
     pub active_profile_id: String,
 }
 
-// Closed set, application-side only: the wire schema (buttons.proto) has
-// no matching enum — proto3 map keys must be a scalar type, so the wire
-// map is string-keyed and this enum never crosses that boundary directly
-// (see docs/slices/10a. Auto Profile Switch.spec.md, Implementation Notes
-// #1). Only `MacOs` this slice — `Windows`/`Linux` variants wait for the
-// code that constructs them, their own future slices.
+// No matching enum on the wire — proto3 map keys must be a scalar type —
+// so this type never crosses that boundary directly; `wire_key()` is the
+// only bridge. Only `MacOs` this slice; `Windows`/`Linux` wait for the
+// code that constructs them.
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum Platform {
@@ -24,10 +22,9 @@ pub enum Platform {
 }
 
 impl Platform {
-    /// The wire map's key string for this platform (`proto.rs`'s
-    /// `From<&config::Profile>`) — kept in sync by convention with
-    /// `#[serde(rename_all = "lowercase")]` above, not a shared constant;
-    /// same informal coupling `MediaKeyKind`'s wire/app split already has.
+    // Kept in sync with `Platform`'s `#[serde(rename_all = "lowercase")]`
+    // attribute by convention, not a shared constant — same informal
+    // coupling `MediaKeyKind`'s wire/app split already has.
     pub fn wire_key(&self) -> &'static str {
         match self {
             Platform::MacOs => "macos",

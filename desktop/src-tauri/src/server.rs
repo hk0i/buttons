@@ -54,12 +54,10 @@ pub type StatePushTx = broadcast::Sender<Vec<StateChange>>;
 /// 09c spec, § Interface Note 1.
 pub type ConfigChangedTx = broadcast::Sender<()>;
 
-/// Carries the new `active_profile_id` after any successful switch —
-/// manual (`handle_profile_switch`) or auto (`focus_watcher`, 10a) alike.
-/// Broadcast, not unicast, same "correct unmodified past N=1" reasoning as
-/// `StatePushTx`. The direct D→M announce slice 10 deferred (Scope → Out
-/// #1) — unlike a `config_sync`, this skips 09c's debounce entirely. See
-/// docs/slices/10a. Auto Profile Switch.spec.md, § Interface.
+/// Carries the new `active_profile_id` after any successful switch.
+// Broadcast, not unicast, same "correct unmodified past N=1" reasoning as
+// `StatePushTx`. Skips 09c's debounce entirely, unlike `config_sync` —
+// see docs/slices/10a. Auto Profile Switch.spec.md, § Interface.
 pub type ProfileSwitchTx = broadcast::Sender<String>;
 
 /// Fired after any successful flip (a real `ButtonPress` here, or the
@@ -307,8 +305,8 @@ async fn handle_connection(
                 // sender outlives the app; unreachable in practice
                 Err(broadcast::error::RecvError::Closed) => {}
             },
-            // D→M announce (10a) — same "drop, don't block" precedent as
-            // state_push_rx above: a lagging receiver misses an
+            // D→M announce (10a), same "drop, don't block" reasoning
+            // state_push_rx's own arm uses: a lagging receiver misses an
             // intermediate switch, but the next config_sync (09c) always
             // carries the true current active_profile_id regardless.
             switch = profile_switch_rx.recv() => match switch {
@@ -402,8 +400,6 @@ fn state_push_envelope(changes: Vec<StateChange>) -> buttons::Envelope {
     }
 }
 
-/// The D→M announce (10a) — same `ProfileSwitch` message slice 10's M→D
-/// request uses (EDD Open Question 3: one shape, either direction).
 fn profile_switch_envelope(active_profile_id: String) -> buttons::Envelope {
     buttons::Envelope {
         protocol_version: pairing::PROTOCOL_VERSION.to_string(),
@@ -458,11 +454,9 @@ async fn handle_client_message(
     }
 }
 
-/// A mobile-requested Profile switch (slice 10). Thin wrapper — all the
-/// actual switch-and-persist logic is shared with `focus_watcher`'s
-/// auto-switch trigger (10a) via `apply_profile_switch`, so there's
-/// exactly one place "how a switch happens" lives. See docs/slices/10a.
-/// Auto Profile Switch.spec.md, § Interface, Implementation Notes #4.
+// Thin wrapper — the actual switch-and-persist logic lives in
+// `apply_profile_switch`, shared with the OS-focus watcher's auto-switch
+// trigger (10a).
 async fn handle_profile_switch(
     switch: buttons::ProfileSwitch,
     config_path: &Path,
@@ -480,16 +474,11 @@ async fn handle_profile_switch(
     .await;
 }
 
-/// Validates `id` against `Config.profiles`, persists it as
-/// `active_profile_id`, and tells both the desktop frontend (near-instant
-/// Tauri event) and mobile (near-instant `ProfileSwitchTx` broadcast,
-/// skipping 09c's debounce) — the one place either a manual mobile
-/// request (`handle_profile_switch` above) or `focus_watcher`'s
-/// auto-switch (10a) actually applies a switch. Unknown id: logged and
-/// dropped, no crash-loop risk from a corrupted persisted `buttons.json`
-/// re-serving the same bad id every relaunch (slice 10 spec, §
-/// Implementation Notes #1). Already-active id: silent no-op — see
-/// docs/slices/10a. Auto Profile Switch.spec.md, § Interface note 3.
+// The one place either `handle_profile_switch` (manual) or the OS-focus
+// watcher (10a, auto) applies a switch. Unknown id: logged and dropped,
+// not a crash — a corrupted persisted buttons.json could otherwise
+// crash-loop on relaunch. Already-active id: silent no-op, so a
+// redundant request never rewrites the file or re-broadcasts.
 async fn apply_profile_switch(
     id: String,
     config_path: &Path,
