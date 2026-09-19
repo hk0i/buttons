@@ -38,8 +38,6 @@ pub fn spawn(
         let workspace = NSWorkspace::sharedWorkspace();
         let center = workspace.notificationCenter();
         let block = block2::RcBlock::new(move |notification: NonNull<NSNotification>| {
-            // Runs on the main thread — must stay cheap; the debounce
-            // task does the real work, not this callback.
             if let Some(bundle_id) = bundle_id_from_notification(notification) {
                 let _ = raw_tx.send(bundle_id);
             }
@@ -55,10 +53,6 @@ pub fn spawn(
     }
 
     tauri::async_runtime::spawn(async move {
-        // Resets the settle window on each newer event until the sleep
-        // wins uninterrupted — the sender is intentionally leaked in
-        // `spawn`, so `None` (channel closed) is unreachable in practice,
-        // not a real exit condition.
         while let Some(mut pending) = raw_rx.recv().await {
             loop {
                 tokio::select! {
@@ -76,9 +70,6 @@ pub fn spawn(
     });
 }
 
-// SAFETY: called synchronously by the notification-observer block in
-// `spawn`, on the main thread that posted the notification, with a valid
-// pointer for the callback's duration.
 unsafe fn bundle_id_from_notification(notification: NonNull<NSNotification>) -> Option<String> {
     let notification = notification.as_ref();
     let user_info = notification.userInfo()?;
