@@ -15,7 +15,7 @@
   // docs/slices/04a. ConfirmDialog.spec.md.
   let editing = $state<"create" | "rename" | null>(null);
   let draftName = $state("");
-  let autoSwitchSupported = $state(false);
+  let isAutoSwitchSupported = $state(false);
   let runningApps = $state<RunningApp[]>([]);
   let currentAssociation = $state<string | null>(null);
 
@@ -24,15 +24,15 @@
   }
 
   $effect(() => {
-    invoke<boolean>("auto_switch_supported").then((supported) => {
-      autoSwitchSupported = supported;
+    invoke<boolean>("is_auto_switch_supported").then((supported) => {
+      isAutoSwitchSupported = supported;
       if (supported) refreshRunningApps();
     });
   });
 
   $effect(() => {
     const profileId = configStore.activeProfile?.id;
-    if (!profileId || !autoSwitchSupported) {
+    if (!profileId || !isAutoSwitchSupported) {
       currentAssociation = null;
       return;
     }
@@ -121,7 +121,7 @@
         {/each}
       </select>
 
-      {#if autoSwitchSupported && configStore.activeProfile}
+      {#if isAutoSwitchSupported && configStore.activeProfile}
         <select
           id="app-assoc-select"
           value={currentAssociation ?? ""}

@@ -65,7 +65,7 @@ fn save_config(
 }
 
 #[tauri::command]
-fn auto_switch_supported() -> bool {
+fn is_auto_switch_supported() -> bool {
     config::Platform::current().is_some()
 }
 
@@ -270,7 +270,7 @@ pub fn run() {
             get_switch_states,
             test_button,
             list_running_apps,
-            auto_switch_supported,
+            is_auto_switch_supported,
             get_app_association,
             set_app_association
         ])
