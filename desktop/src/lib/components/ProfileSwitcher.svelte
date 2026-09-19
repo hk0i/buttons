@@ -13,10 +13,17 @@
   // are inline UI rather than a blocking dialog. Delete, which is a yes/no,
   // routes through the shared ConfirmDialog instead — see
   // docs/slices/04a. ConfirmDialog.spec.md.
-  let editing = $state<"create" | "rename" | "app-assoc" | null>(null);
+  let editing = $state<"create" | "rename" | null>(null);
   let draftName = $state("");
-  let draftBundleId = $state("");
   let runningApps = $state<RunningApp[]>([]);
+
+  async function refreshRunningApps() {
+    runningApps = await invoke<RunningApp[]>("list_running_apps");
+  }
+
+  $effect(() => {
+    refreshRunningApps();
+  });
 
   function startCreate() {
     editing = "create";
@@ -30,18 +37,9 @@
     draftName = profile.name;
   }
 
-  async function startAppAssoc() {
-    const profile = configStore.activeProfile;
-    if (!profile) return;
-    editing = "app-assoc";
-    draftBundleId = profile.associatedAppByPlatform.macos ?? "";
-    runningApps = await invoke<RunningApp[]>("list_running_apps");
-  }
-
   function cancelEdit() {
     editing = null;
     draftName = "";
-    draftBundleId = "";
   }
 
   function confirmEdit() {
@@ -53,12 +51,6 @@
       const profile = configStore.activeProfile;
       if (profile) configStore.renameProfile(profile.id, name);
     }
-    cancelEdit();
-  }
-
-  function confirmAppAssoc() {
-    const profile = configStore.activeProfile;
-    if (profile) configStore.setMacAppAssociation(profile.id, draftBundleId || null);
     cancelEdit();
   }
 
@@ -80,61 +72,84 @@
 </script>
 
 <div class="profile-switcher">
-  {#if editing === "create" || editing === "rename"}
-    <input
-      type="text"
-      bind:value={draftName}
-      placeholder="Profile name"
-      use:focusOnMount
-      onkeydown={(e) => {
-        if (e.key === "Enter") confirmEdit();
-        else if (e.key === "Escape") cancelEdit();
-      }}
-    />
-    <button type="button" onclick={confirmEdit} title="Confirm">✓</button>
-    <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
-  {:else if editing === "app-assoc"}
-    <select aria-label="App association" bind:value={draftBundleId}>
-      <option value="">None</option>
-      {#each runningApps as app (app.bundleId)}
-        <option value={app.bundleId}>{app.name}</option>
-      {/each}
-      {#if draftBundleId && !runningApps.some((a) => a.bundleId === draftBundleId)}
-        <option value={draftBundleId}>{draftBundleId}</option>
-      {/if}
-    </select>
-    <button type="button" onclick={confirmAppAssoc} title="Confirm">✓</button>
-    <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
-  {:else}
-    <select
-      aria-label="Active profile"
-      value={configStore.activeProfile?.id}
-      onchange={(e) => configStore.switchProfile(e.currentTarget.value)}
-    >
-      {#each configStore.config?.profiles ?? [] as profile (profile.id)}
-        <option value={profile.id}>{profile.name}</option>
-      {/each}
-    </select>
-    <button type="button" onclick={startCreate} title="New profile">+</button>
-    <button type="button" onclick={startRename} title="Rename profile">✎</button>
-    <button type="button" onclick={startAppAssoc} title="Set app association">🖥️</button>
-    <button
-      type="button"
-      class="danger"
-      onclick={deleteProfile}
-      disabled={(configStore.config?.profiles.length ?? 0) <= 1}
-      title="Delete profile"
-    >
-      ×
-    </button>
+  <div class="row">
+    {#if editing}
+      <input
+        type="text"
+        bind:value={draftName}
+        placeholder="Profile name"
+        use:focusOnMount
+        onkeydown={(e) => {
+          if (e.key === "Enter") confirmEdit();
+          else if (e.key === "Escape") cancelEdit();
+        }}
+      />
+      <button type="button" onclick={confirmEdit} title="Confirm">✓</button>
+      <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
+    {:else}
+      <select
+        aria-label="Active profile"
+        value={configStore.activeProfile?.id}
+        onchange={(e) => configStore.switchProfile(e.currentTarget.value)}
+      >
+        {#each configStore.config?.profiles ?? [] as profile (profile.id)}
+          <option value={profile.id}>{profile.name}</option>
+        {/each}
+      </select>
+      <button type="button" onclick={startCreate} title="New profile">+</button>
+      <button type="button" onclick={startRename} title="Rename profile">✎</button>
+      <button
+        type="button"
+        class="danger"
+        onclick={deleteProfile}
+        disabled={(configStore.config?.profiles.length ?? 0) <= 1}
+        title="Delete profile"
+      >
+        ×
+      </button>
+    {/if}
+  </div>
+  {#if configStore.activeProfile}
+    {@const activeProfile = configStore.activeProfile}
+    {@const associatedBundleId = activeProfile.associatedAppByPlatform.macos ?? ""}
+    <div class="row">
+      <label for="app-assoc-select">Auto-switch app:</label>
+      <select
+        id="app-assoc-select"
+        value={associatedBundleId}
+        onfocus={refreshRunningApps}
+        onchange={(e) => configStore.setMacAppAssociation(activeProfile.id, e.currentTarget.value || null)}
+      >
+        <option value="">None</option>
+        {#each runningApps as app (app.bundleId)}
+          <option value={app.bundleId}>{app.name}</option>
+        {/each}
+        {#if associatedBundleId && !runningApps.some((a) => a.bundleId === associatedBundleId)}
+          <option value={associatedBundleId}>{associatedBundleId}</option>
+        {/if}
+      </select>
+    </div>
   {/if}
 </div>
 
 <style>
   .profile-switcher {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .row {
+    display: flex;
     align-items: center;
     gap: 6px;
+  }
+
+  label {
+    flex-shrink: 0;
+    color: var(--neutral-300);
+    font-family: var(--font-body);
+    font-size: 12px;
   }
 
   select,
