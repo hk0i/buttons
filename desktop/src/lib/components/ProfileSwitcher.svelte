@@ -96,6 +96,27 @@
           <option value={profile.id}>{profile.name}</option>
         {/each}
       </select>
+
+      {#if configStore.activeProfile}
+        {@const activeProfile = configStore.activeProfile}
+        {@const associatedBundleId = activeProfile.associatedAppByPlatform.macos ?? ""}
+        <select
+          id="app-assoc-select"
+          value={associatedBundleId}
+          onfocus={refreshRunningApps}
+          onchange={(e) => configStore.setMacAppAssociation(activeProfile.id, e.currentTarget.value || null)}
+        >
+          <option value="" disabled>Associate with running application...</option>
+          <option value="">None</option>
+          {#each runningApps as app (app.bundleId)}
+            <option value={app.bundleId}>{app.name}</option>
+          {/each}
+          {#if associatedBundleId && !runningApps.some((a) => a.bundleId === associatedBundleId)}
+            <option value={associatedBundleId}>{associatedBundleId}</option>
+          {/if}
+        </select>
+      {/if}
+
       <button type="button" onclick={startCreate} title="New profile">+</button>
       <button type="button" onclick={startRename} title="Rename profile">✎</button>
       <button
@@ -109,27 +130,6 @@
       </button>
     {/if}
   </div>
-  {#if configStore.activeProfile}
-    {@const activeProfile = configStore.activeProfile}
-    {@const associatedBundleId = activeProfile.associatedAppByPlatform.macos ?? ""}
-    <div class="row">
-      <label for="app-assoc-select">Auto-switch app:</label>
-      <select
-        id="app-assoc-select"
-        value={associatedBundleId}
-        onfocus={refreshRunningApps}
-        onchange={(e) => configStore.setMacAppAssociation(activeProfile.id, e.currentTarget.value || null)}
-      >
-        <option value="">None</option>
-        {#each runningApps as app (app.bundleId)}
-          <option value={app.bundleId}>{app.name}</option>
-        {/each}
-        {#if associatedBundleId && !runningApps.some((a) => a.bundleId === associatedBundleId)}
-          <option value={associatedBundleId}>{associatedBundleId}</option>
-        {/if}
-      </select>
-    </div>
-  {/if}
 </div>
 
 <style>
@@ -143,13 +143,6 @@
     display: flex;
     align-items: center;
     gap: 6px;
-  }
-
-  label {
-    flex-shrink: 0;
-    color: var(--neutral-300);
-    font-family: var(--font-body);
-    font-size: 12px;
   }
 
   select,

@@ -142,11 +142,11 @@
   }
 
   /* Cap the switcher's width so it sits as a control beside the title rather
-     than stretching the whole window (its <select> is flex:1 internally).
-     min-width:0 lets it shrink below content width at narrow windows so the
-     header never overflows. */
+     than stretching the whole window (its two <select>s are flex:1
+     internally, sharing this width). min-width:0 lets it shrink below
+     content width at narrow windows so the header never overflows. */
   .header-profile {
-    flex: 0 1 320px;
+    flex: 0 1 440px;
     min-width: 0;
   }
 
