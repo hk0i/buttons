@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -11,12 +11,42 @@ pub struct Config {
     pub active_profile_id: String,
 }
 
+// Closed set, application-side only: the wire schema (buttons.proto) has
+// no matching enum — proto3 map keys must be a scalar type, so the wire
+// map is string-keyed and this enum never crosses that boundary directly
+// (see docs/slices/10a. Auto Profile Switch.spec.md, Implementation Notes
+// #1). Only `MacOs` this slice — `Windows`/`Linux` variants wait for the
+// code that constructs them, their own future slices.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum Platform {
+    MacOs,
+}
+
+impl Platform {
+    /// The wire map's key string for this platform (`proto.rs`'s
+    /// `From<&config::Profile>`) — kept in sync by convention with
+    /// `#[serde(rename_all = "lowercase")]` above, not a shared constant;
+    /// same informal coupling `MediaKeyKind`'s wire/app split already has.
+    pub fn wire_key(&self) -> &'static str {
+        match self {
+            Platform::MacOs => "macos",
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Profile {
     pub id: String,
     pub name: String,
     pub pages: Vec<Page>,
+    // `#[serde(default)]`: profiles persisted before this slice have no
+    // such key in buttons.json at all, not just an empty one — without
+    // this, load_config would fail to deserialize every pre-existing
+    // config on disk.
+    #[serde(default)]
+    pub associated_app_by_platform: BTreeMap<Platform, String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -169,6 +199,7 @@ fn default_config() -> Config {
                 name: None,
                 buttons: Vec::new(),
             }],
+            associated_app_by_platform: BTreeMap::new(),
         }],
         active_profile_id: profile_id,
     }
