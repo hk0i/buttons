@@ -111,6 +111,30 @@ struct PairingQr {
     payload: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RunningApp {
+    bundle_id: String,
+    name: String,
+}
+
+/// The picker's data source for a Profile's macOS app association (10a) —
+/// empty on any other platform, since only the macOS watcher exists so far.
+#[tauri::command]
+fn list_running_apps() -> Vec<RunningApp> {
+    #[cfg(target_os = "macos")]
+    {
+        focus_watcher::running_apps()
+            .into_iter()
+            .map(|(bundle_id, name)| RunningApp { bundle_id, name })
+            .collect()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Vec::new()
+    }
+}
+
 /// Issues a fresh one-time pairing token and renders it as an SVG QR —
 /// server-side (`qrcode` crate), no client-side QR library. Called each
 /// time the pairing view (re)opens; the previous token is invalidated the
@@ -196,7 +220,8 @@ pub fn run() {
             run_actions,
             get_pairing_qr,
             get_switch_states,
-            test_button
+            test_button,
+            list_running_apps
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

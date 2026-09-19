@@ -4,7 +4,7 @@ use crate::config::{self, Platform};
 use crate::server::{apply_profile_switch, ProfileSwitchTx};
 use objc2::rc::Retained;
 use objc2_app_kit::{
-    NSRunningApplication, NSWorkspace, NSWorkspaceApplicationKey,
+    NSApplicationActivationPolicy, NSRunningApplication, NSWorkspace, NSWorkspaceApplicationKey,
     NSWorkspaceDidActivateApplicationNotification,
 };
 use objc2_foundation::NSNotification;
@@ -87,6 +87,26 @@ unsafe fn bundle_id_from_notification(notification: NonNull<NSNotification>) -> 
     let running_app = user_info.objectForKey(&*NSWorkspaceApplicationKey)?;
     let running_app: Retained<NSRunningApplication> = running_app.downcast().ok()?;
     running_app.bundleIdentifier().map(|s| s.to_string())
+}
+
+// Regular activation policy = Dock/Cmd+Tab-visible — filters out
+// background agents and daemons, which have nothing a user would
+// recognize to pick from and often no bundle id to associate at all.
+pub fn running_apps() -> Vec<(String, String)> {
+    let workspace = NSWorkspace::sharedWorkspace();
+    workspace
+        .runningApplications()
+        .iter()
+        .filter(|app| app.activationPolicy() == NSApplicationActivationPolicy::Regular)
+        .filter_map(|app| {
+            let bundle_id = app.bundleIdentifier()?.to_string();
+            let name = app
+                .localizedName()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| bundle_id.clone());
+            Some((bundle_id, name))
+        })
+        .collect()
 }
 
 // Loads fresh, not a cached snapshot — same "an edit made on desktop must
