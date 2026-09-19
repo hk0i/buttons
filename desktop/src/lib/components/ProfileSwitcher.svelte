@@ -15,15 +15,39 @@
   // docs/slices/04a. ConfirmDialog.spec.md.
   let editing = $state<"create" | "rename" | null>(null);
   let draftName = $state("");
+  let autoSwitchSupported = $state(false);
   let runningApps = $state<RunningApp[]>([]);
+  let currentAssociation = $state<string | null>(null);
 
   async function refreshRunningApps() {
     runningApps = await invoke<RunningApp[]>("list_running_apps");
   }
 
   $effect(() => {
-    refreshRunningApps();
+    invoke<boolean>("auto_switch_supported").then((supported) => {
+      autoSwitchSupported = supported;
+      if (supported) refreshRunningApps();
+    });
   });
+
+  $effect(() => {
+    const profileId = configStore.activeProfile?.id;
+    if (!profileId || !autoSwitchSupported) {
+      currentAssociation = null;
+      return;
+    }
+    invoke<string | null>("get_app_association", { profileId }).then((bundleId) => {
+      currentAssociation = bundleId;
+    });
+  });
+
+  async function onAppAssocChange(e: Event & { currentTarget: HTMLSelectElement }) {
+    const profileId = configStore.activeProfile?.id;
+    if (!profileId) return;
+    const bundleId = e.currentTarget.value || null;
+    await invoke("set_app_association", { profileId, bundleId });
+    currentAssociation = bundleId;
+  }
 
   function startCreate() {
     editing = "create";
@@ -97,22 +121,20 @@
         {/each}
       </select>
 
-      {#if configStore.activeProfile}
-        {@const activeProfile = configStore.activeProfile}
-        {@const associatedBundleId = activeProfile.associatedAppByPlatform.macos ?? ""}
+      {#if autoSwitchSupported && configStore.activeProfile}
         <select
           id="app-assoc-select"
-          value={associatedBundleId}
+          value={currentAssociation ?? ""}
           onfocus={refreshRunningApps}
-          onchange={(e) => configStore.setMacAppAssociation(activeProfile.id, e.currentTarget.value || null)}
+          onchange={onAppAssocChange}
         >
           <option value="" disabled>Associate with running application...</option>
           <option value="">None</option>
           {#each runningApps as app (app.bundleId)}
             <option value={app.bundleId}>{app.name}</option>
           {/each}
-          {#if associatedBundleId && !runningApps.some((a) => a.bundleId === associatedBundleId)}
-            <option value={associatedBundleId}>{associatedBundleId}</option>
+          {#if currentAssociation && !runningApps.some((a) => a.bundleId === currentAssociation)}
+            <option value={currentAssociation}>{currentAssociation}</option>
           {/if}
         </select>
       {/if}

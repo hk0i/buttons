@@ -65,6 +65,54 @@ fn save_config(
 }
 
 #[tauri::command]
+fn auto_switch_supported() -> bool {
+    config::Platform::current().is_some()
+}
+
+#[tauri::command]
+fn get_app_association(app: tauri::AppHandle, profile_id: String) -> Result<Option<String>, String> {
+    let Some(platform) = config::Platform::current() else {
+        return Ok(None);
+    };
+    let config = config::load_config(&config_path(&app)?)?;
+    Ok(config
+        .profiles
+        .iter()
+        .find(|p| p.id == profile_id)
+        .and_then(|p| p.associated_app_by_platform.get(&platform).cloned()))
+}
+
+#[tauri::command]
+fn set_app_association(
+    app: tauri::AppHandle,
+    profile_id: String,
+    bundle_id: Option<String>,
+    dirty_tx: tauri::State<ConfigDirtyTx>,
+) -> Result<(), String> {
+    let Some(platform) = config::Platform::current() else {
+        return Err("auto-switch not supported on this platform".to_string());
+    };
+    let path = config_path(&app)?;
+    let mut config = config::load_config(&path)?;
+    let profile = config
+        .profiles
+        .iter_mut()
+        .find(|p| p.id == profile_id)
+        .ok_or_else(|| "profile not found".to_string())?;
+    match bundle_id {
+        Some(id) => {
+            profile.associated_app_by_platform.insert(platform, id);
+        }
+        None => {
+            profile.associated_app_by_platform.remove(&platform);
+        }
+    }
+    config::save_config(&path, &config)?;
+    let _ = dirty_tx.send(config);
+    Ok(())
+}
+
+#[tauri::command]
 fn run_actions(actions: Vec<Action>) -> Result<(), String> {
     actions::run(&actions)
 }
@@ -221,7 +269,10 @@ pub fn run() {
             get_pairing_qr,
             get_switch_states,
             test_button,
-            list_running_apps
+            list_running_apps,
+            auto_switch_supported,
+            get_app_association,
+            set_app_association
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -24,6 +24,16 @@ impl Platform {
             Platform::Other(s) => s.as_str(),
         }
     }
+
+    #[cfg(target_os = "macos")]
+    pub fn current() -> Option<Platform> {
+        Some(Platform::MacOs)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub fn current() -> Option<Platform> {
+        None
+    }
 }
 
 impl Serialize for Platform {

@@ -7,7 +7,6 @@ export interface Profile {
   id: string;
   name: string;
   pages: Page[];
-  associatedAppByPlatform: Partial<Record<"macos" | "windows", string>>;
 }
 
 export interface Page {
