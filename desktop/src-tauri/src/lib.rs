@@ -1,6 +1,8 @@
 mod actions;
 mod config;
 mod config_sync_debounce;
+#[cfg(target_os = "macos")]
+mod focus_watcher;
 mod pairing;
 mod proto;
 mod server;
@@ -168,6 +170,13 @@ pub fn run() {
                 dirty_rx,
                 config_changed_tx.clone(),
             ));
+            #[cfg(target_os = "macos")]
+            focus_watcher::spawn(
+                config_path.clone(),
+                dirty_tx.clone(),
+                profile_switch_tx.clone(),
+                handle.clone(),
+            );
             tauri::async_runtime::spawn(server::run(
                 pairing,
                 config_path,

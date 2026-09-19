@@ -479,7 +479,7 @@ async fn handle_profile_switch(
 // not a crash — a corrupted persisted buttons.json could otherwise
 // crash-loop on relaunch. Already-active id: silent no-op, so a
 // redundant request never rewrites the file or re-broadcasts.
-async fn apply_profile_switch(
+pub(crate) async fn apply_profile_switch(
     id: String,
     config_path: &Path,
     dirty_tx: &crate::ConfigDirtyTx,
