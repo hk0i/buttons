@@ -124,6 +124,7 @@ class ConfigStore {
       id: crypto.randomUUID(),
       name,
       pages: [{ id: crypto.randomUUID(), name: undefined, buttons: [] }],
+      associatedAppByPlatform: {},
     };
     this.config.profiles.push(profile);
     await this.switchProfile(profile.id);
@@ -133,6 +134,18 @@ class ConfigStore {
     const profile = this.config?.profiles.find((p) => p.id === id);
     if (!profile) return;
     profile.name = name;
+    await this.persist();
+  }
+
+  async setMacAppAssociation(id: string, bundleId: string | null) {
+    const profile = this.config?.profiles.find((p) => p.id === id);
+    if (!profile) return;
+    if (bundleId) {
+      profile.associatedAppByPlatform = { ...profile.associatedAppByPlatform, macos: bundleId };
+    } else {
+      const { macos, ...rest } = profile.associatedAppByPlatform;
+      profile.associatedAppByPlatform = rest;
+    }
     await this.persist();
   }
 

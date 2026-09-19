@@ -1,14 +1,22 @@
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/core";
   import { configStore } from "$lib/stores/config.svelte";
   import { confirm } from "$lib/stores/confirm.svelte";
+
+  interface RunningApp {
+    bundleId: string;
+    name: string;
+  }
 
   // window.prompt() doesn't render in Tauri's WKWebView (needs a native panel
   // delegate the host isn't wiring up), so the create/rename name inputs below
   // are inline UI rather than a blocking dialog. Delete, which is a yes/no,
   // routes through the shared ConfirmDialog instead — see
   // docs/slices/04a. ConfirmDialog.spec.md.
-  let editing = $state<"create" | "rename" | null>(null);
+  let editing = $state<"create" | "rename" | "app-assoc" | null>(null);
   let draftName = $state("");
+  let draftBundleId = $state("");
+  let runningApps = $state<RunningApp[]>([]);
 
   function startCreate() {
     editing = "create";
@@ -22,9 +30,18 @@
     draftName = profile.name;
   }
 
+  async function startAppAssoc() {
+    const profile = configStore.activeProfile;
+    if (!profile) return;
+    editing = "app-assoc";
+    draftBundleId = profile.associatedAppByPlatform.macos ?? "";
+    runningApps = await invoke<RunningApp[]>("list_running_apps");
+  }
+
   function cancelEdit() {
     editing = null;
     draftName = "";
+    draftBundleId = "";
   }
 
   function confirmEdit() {
@@ -36,6 +53,12 @@
       const profile = configStore.activeProfile;
       if (profile) configStore.renameProfile(profile.id, name);
     }
+    cancelEdit();
+  }
+
+  function confirmAppAssoc() {
+    const profile = configStore.activeProfile;
+    if (profile) configStore.setMacAppAssociation(profile.id, draftBundleId || null);
     cancelEdit();
   }
 
@@ -57,7 +80,7 @@
 </script>
 
 <div class="profile-switcher">
-  {#if editing}
+  {#if editing === "create" || editing === "rename"}
     <input
       type="text"
       bind:value={draftName}
@@ -69,6 +92,18 @@
       }}
     />
     <button type="button" onclick={confirmEdit} title="Confirm">✓</button>
+    <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
+  {:else if editing === "app-assoc"}
+    <select aria-label="App association" bind:value={draftBundleId}>
+      <option value="">None</option>
+      {#each runningApps as app (app.bundleId)}
+        <option value={app.bundleId}>{app.name}</option>
+      {/each}
+      {#if draftBundleId && !runningApps.some((a) => a.bundleId === draftBundleId)}
+        <option value={draftBundleId}>{draftBundleId}</option>
+      {/if}
+    </select>
+    <button type="button" onclick={confirmAppAssoc} title="Confirm">✓</button>
     <button type="button" onclick={cancelEdit} title="Cancel">✕</button>
   {:else}
     <select
@@ -82,6 +117,7 @@
     </select>
     <button type="button" onclick={startCreate} title="New profile">+</button>
     <button type="button" onclick={startRename} title="Rename profile">✎</button>
+    <button type="button" onclick={startAppAssoc} title="Set app association">🖥️</button>
     <button
       type="button"
       class="danger"
