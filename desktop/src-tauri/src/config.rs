@@ -11,24 +11,34 @@ pub struct Config {
     pub active_profile_id: String,
 }
 
-// No matching enum on the wire — proto3 map keys must be a scalar type —
-// so this type never crosses that boundary directly; `wire_key()` is the
-// only bridge. Only `MacOs` this slice; `Windows`/`Linux` wait for the
-// code that constructs them.
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Platform {
     MacOs,
+    Other(String),
 }
 
 impl Platform {
-    // Kept in sync with `Platform`'s `#[serde(rename_all = "lowercase")]`
-    // attribute by convention, not a shared constant — same informal
-    // coupling `MediaKeyKind`'s wire/app split already has.
-    pub fn wire_key(&self) -> &'static str {
+    pub fn wire_key(&self) -> &str {
         match self {
             Platform::MacOs => "macos",
+            Platform::Other(s) => s.as_str(),
         }
+    }
+}
+
+impl Serialize for Platform {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.wire_key())
+    }
+}
+
+impl<'de> Deserialize<'de> for Platform {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Ok(match s.as_str() {
+            "macos" => Platform::MacOs,
+            _ => Platform::Other(s),
+        })
     }
 }
 
@@ -38,10 +48,6 @@ pub struct Profile {
     pub id: String,
     pub name: String,
     pub pages: Vec<Page>,
-    // `#[serde(default)]`: profiles persisted before this slice have no
-    // such key in buttons.json at all, not just an empty one — without
-    // this, load_config would fail to deserialize every pre-existing
-    // config on disk.
     #[serde(default)]
     pub associated_app_by_platform: BTreeMap<Platform, String>,
 }
@@ -207,10 +213,50 @@ pub fn load_config(config_path: &Path) -> Result<Config, String> {
         return Ok(default_config());
     }
     let data = fs::read_to_string(config_path).map_err(|e| e.to_string())?;
-    serde_json::from_str(&data).map_err(|e| e.to_string())
+    let config: Config = serde_json::from_str(&data).map_err(|e| e.to_string())?;
+    for profile in &config.profiles {
+        for platform in profile.associated_app_by_platform.keys() {
+            if let Platform::Other(unrecognized) = platform {
+                eprintln!(
+                    "config: unrecognized platform key {unrecognized:?} in profile {}",
+                    profile.id
+                );
+            }
+        }
+    }
+    Ok(config)
 }
 
 pub fn save_config(config_path: &Path, config: &Config) -> Result<(), String> {
     let data = serde_json::to_string_pretty(config).map_err(|e| e.to_string())?;
     fs::write(config_path, data).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn two_distinct_unknown_platform_keys_both_survive() {
+        let json = r#"{
+            "profiles": [{
+                "id": "p1",
+                "name": "Test",
+                "pages": [],
+                "associatedAppByPlatform": {"macos": "com.x", "fake_platform_1": "y.exe", "fake_platform_2": "z"}
+            }],
+            "activeProfileId": "p1"
+        }"#;
+        let config: Config = serde_json::from_str(json).unwrap();
+        let map = &config.profiles[0].associated_app_by_platform;
+        assert_eq!(map.len(), 3);
+        assert_eq!(map.get(&Platform::MacOs).unwrap(), "com.x");
+        assert_eq!(map.get(&Platform::Other("fake_platform_1".to_string())).unwrap(), "y.exe");
+        assert_eq!(map.get(&Platform::Other("fake_platform_2".to_string())).unwrap(), "z");
+        let round_tripped: serde_json::Value = serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+        let out_map = &round_tripped["profiles"][0]["associatedAppByPlatform"];
+        assert_eq!(out_map["macos"], "com.x");
+        assert_eq!(out_map["fake_platform_1"], "y.exe");
+        assert_eq!(out_map["fake_platform_2"], "z");
+    }
 }

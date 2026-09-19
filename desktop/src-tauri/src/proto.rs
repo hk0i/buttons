@@ -34,8 +34,6 @@ impl From<&config::Profile> for buttons::Profile {
             id: p.id.clone(),
             name: p.name.clone(),
             pages: p.pages.iter().map(buttons::Page::from).collect(),
-            // config::Platform has no wire counterpart — wire_key() is
-            // the only bridge.
             associated_app_by_platform: p
                 .associated_app_by_platform
                 .iter()
