@@ -103,6 +103,12 @@ nonisolated struct Buttons_Profile: Sendable {
 
   var pages: [Buttons_Page] = []
 
+  /// Platform-native app identifier per platform this Profile auto-switches
+  /// for, keyed by lowercase platform name ("macos", "windows" later).
+  /// Absent key = no association for that platform. See
+  /// docs/slices/10a. Auto Profile Switch.spec.md.
+  var associatedAppByPlatform: Dictionary<String,String> = [:]
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
@@ -439,7 +445,7 @@ nonisolated extension Buttons_Config: SwiftProtobuf.Message, SwiftProtobuf._Mess
 
 nonisolated extension Buttons_Profile: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".Profile"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}pages\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}id\0\u{1}name\0\u{1}pages\0\u{3}associated_app_by_platform\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -450,6 +456,7 @@ nonisolated extension Buttons_Profile: SwiftProtobuf.Message, SwiftProtobuf._Mes
       case 1: try { try decoder.decodeSingularStringField(value: &self.id) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
       case 3: try { try decoder.decodeRepeatedMessageField(value: &self.pages) }()
+      case 4: try { try decoder.decodeMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: &self.associatedAppByPlatform) }()
       default: break
       }
     }
@@ -465,6 +472,9 @@ nonisolated extension Buttons_Profile: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if !self.pages.isEmpty {
       try visitor.visitRepeatedMessageField(value: self.pages, fieldNumber: 3)
     }
+    if !self.associatedAppByPlatform.isEmpty {
+      try visitor.visitMapField(fieldType: SwiftProtobuf._ProtobufMap<SwiftProtobuf.ProtobufString,SwiftProtobuf.ProtobufString>.self, value: self.associatedAppByPlatform, fieldNumber: 4)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -472,6 +482,7 @@ nonisolated extension Buttons_Profile: SwiftProtobuf.Message, SwiftProtobuf._Mes
     if lhs.id != rhs.id {return false}
     if lhs.name != rhs.name {return false}
     if lhs.pages != rhs.pages {return false}
+    if lhs.associatedAppByPlatform != rhs.associatedAppByPlatform {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

@@ -22,6 +22,11 @@ message Profile {
   string id = 1;
   string name = 2;
   repeated Page pages = 3;
+  // Platform-native app identifier per platform this Profile auto-switches
+  // for, keyed by lowercase platform name ("macos", "windows" later).
+  // Absent key = no association for that platform. See
+  // docs/slices/10a. Auto Profile Switch.spec.md.
+  map<string, string> associated_app_by_platform = 4;
 }
 
 message Page {

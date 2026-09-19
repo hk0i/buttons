@@ -34,6 +34,10 @@ impl From<&config::Profile> for buttons::Profile {
             id: p.id.clone(),
             name: p.name.clone(),
             pages: p.pages.iter().map(buttons::Page::from).collect(),
+            // Empty until slice 10a's own config.rs/Platform wiring lands —
+            // see docs/slices/10a. Auto Profile Switch.spec.md, Files to
+            // Touch #3/#4. This field alone is schema-only this step.
+            associated_app_by_platform: Default::default(),
         }
     }
 }
