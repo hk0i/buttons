@@ -154,6 +154,12 @@ pub fn run() {
             // Receiver dropped immediately, same as state_push_tx above;
             // config_sync_debounce::run holds the only sender.
             let (config_changed_tx, _): (server::ConfigChangedTx, _) = broadcast::channel(16);
+            // Receiver dropped immediately, same as the two above — the
+            // D→M profile_switch announce (10a), fed by
+            // apply_profile_switch on any successful switch, manual or
+            // auto. See docs/slices/10a. Auto Profile Switch.spec.md, §
+            // Interface.
+            let (profile_switch_tx, _): (server::ProfileSwitchTx, _) = broadcast::channel(16);
             // save_config sends on this after a write; server::run's own
             // clone lets a mobile-requested profile_switch feed it too —
             // see slice 10 spec, § Interface.
@@ -172,6 +178,7 @@ pub fn run() {
                 state_push_tx,
                 config_changed_tx,
                 dirty_tx,
+                profile_switch_tx,
                 handle.clone(),
             ));
             Ok(())

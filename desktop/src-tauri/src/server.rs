@@ -54,6 +54,14 @@ pub type StatePushTx = broadcast::Sender<Vec<StateChange>>;
 /// 09c spec, § Interface Note 1.
 pub type ConfigChangedTx = broadcast::Sender<()>;
 
+/// Carries the new `active_profile_id` after any successful switch —
+/// manual (`handle_profile_switch`) or auto (`focus_watcher`, 10a) alike.
+/// Broadcast, not unicast, same "correct unmodified past N=1" reasoning as
+/// `StatePushTx`. The direct D→M announce slice 10 deferred (Scope → Out
+/// #1) — unlike a `config_sync`, this skips 09c's debounce entirely. See
+/// docs/slices/10a. Auto Profile Switch.spec.md, § Interface.
+pub type ProfileSwitchTx = broadcast::Sender<String>;
+
 /// Fired after any successful flip (a real `ButtonPress` here, or the
 /// editor's `Test` button in `lib.rs` — both go through `execute_press`),
 /// carrying the full current map. Desktop's own preview grid
@@ -106,6 +114,7 @@ pub async fn run(
     state_push_tx: StatePushTx,
     config_changed_tx: ConfigChangedTx,
     dirty_tx: crate::ConfigDirtyTx,
+    profile_switch_tx: ProfileSwitchTx,
     app: tauri::AppHandle,
 ) {
     let device_id = pairing.device_id();
@@ -139,6 +148,7 @@ pub async fn run(
                     state_push_tx.clone(),
                     config_changed_tx.clone(),
                     dirty_tx.clone(),
+                    profile_switch_tx.clone(),
                     app.clone(),
                     Arc::clone(&slot),
                 ));
@@ -158,6 +168,7 @@ async fn handle_connection(
     state_push_tx: StatePushTx,
     config_changed_tx: ConfigChangedTx,
     dirty_tx: crate::ConfigDirtyTx,
+    profile_switch_tx: ProfileSwitchTx,
     app: tauri::AppHandle,
     slot: ConnSlot,
 ) {
@@ -247,6 +258,7 @@ async fn handle_connection(
 
     let mut state_push_rx = state_push_tx.subscribe();
     let mut config_changed_rx = config_changed_tx.subscribe();
+    let mut profile_switch_rx = profile_switch_tx.subscribe();
 
     loop {
         tokio::select! {
@@ -260,6 +272,7 @@ async fn handle_connection(
                         &switch_states,
                         &state_push_tx,
                         &dirty_tx,
+                        &profile_switch_tx,
                         &app,
                     )
                     .await
@@ -287,6 +300,20 @@ async fn handle_connection(
             changes = state_push_rx.recv() => match changes {
                 Ok(changes) => {
                     if send_envelope(&mut ws, state_push_envelope(changes)).await.is_err() {
+                        break;
+                    }
+                }
+                Err(broadcast::error::RecvError::Lagged(_)) => {}
+                // sender outlives the app; unreachable in practice
+                Err(broadcast::error::RecvError::Closed) => {}
+            },
+            // D→M announce (10a) — same "drop, don't block" precedent as
+            // state_push_rx above: a lagging receiver misses an
+            // intermediate switch, but the next config_sync (09c) always
+            // carries the true current active_profile_id regardless.
+            switch = profile_switch_rx.recv() => match switch {
+                Ok(active_profile_id) => {
+                    if send_envelope(&mut ws, profile_switch_envelope(active_profile_id)).await.is_err() {
                         break;
                     }
                 }
@@ -375,6 +402,17 @@ fn state_push_envelope(changes: Vec<StateChange>) -> buttons::Envelope {
     }
 }
 
+/// The D→M announce (10a) — same `ProfileSwitch` message slice 10's M→D
+/// request uses (EDD Open Question 3: one shape, either direction).
+fn profile_switch_envelope(active_profile_id: String) -> buttons::Envelope {
+    buttons::Envelope {
+        protocol_version: pairing::PROTOCOL_VERSION.to_string(),
+        message: Some(buttons::envelope::Message::ProfileSwitch(
+            buttons::ProfileSwitch { active_profile_id },
+        )),
+    }
+}
+
 /// Parses one incoming text frame as an `Envelope` and, if it's a
 /// Parses one client-initiated frame and routes it by oneof case.
 /// Malformed JSON or an unhandled variant is logged and dropped — no
@@ -387,6 +425,7 @@ async fn handle_client_message(
     switch_states: &SwitchStates,
     state_push_tx: &StatePushTx,
     dirty_tx: &crate::ConfigDirtyTx,
+    profile_switch_tx: &ProfileSwitchTx,
     app: &tauri::AppHandle,
 ) -> Option<buttons::Envelope> {
     let envelope: buttons::Envelope = match serde_json::from_str(text) {
@@ -410,7 +449,7 @@ async fn handle_client_message(
             Some(action_result(&press.button_id, result))
         }
         Some(buttons::envelope::Message::ProfileSwitch(switch)) => {
-            handle_profile_switch(switch, config_path, dirty_tx, app).await;
+            handle_profile_switch(switch, config_path, dirty_tx, profile_switch_tx, app).await;
             // no reply envelope — see slice 10 spec, Scope → Out #4
             None
         }
@@ -419,36 +458,67 @@ async fn handle_client_message(
     }
 }
 
-/// A mobile-requested Profile switch. Unknown id: logged and dropped, no
-/// crash-loop risk from a corrupted persisted `buttons.json` re-serving
-/// the same bad id every relaunch. See slice 10 spec, § Implementation
-/// Notes #1.
+/// A mobile-requested Profile switch (slice 10). Thin wrapper — all the
+/// actual switch-and-persist logic is shared with `focus_watcher`'s
+/// auto-switch trigger (10a) via `apply_profile_switch`, so there's
+/// exactly one place "how a switch happens" lives. See docs/slices/10a.
+/// Auto Profile Switch.spec.md, § Interface, Implementation Notes #4.
 async fn handle_profile_switch(
     switch: buttons::ProfileSwitch,
     config_path: &Path,
     dirty_tx: &crate::ConfigDirtyTx,
+    profile_switch_tx: &ProfileSwitchTx,
     app: &tauri::AppHandle,
 ) {
+    let _ = apply_profile_switch(
+        switch.active_profile_id,
+        config_path,
+        dirty_tx,
+        profile_switch_tx,
+        app,
+    )
+    .await;
+}
+
+/// Validates `id` against `Config.profiles`, persists it as
+/// `active_profile_id`, and tells both the desktop frontend (near-instant
+/// Tauri event) and mobile (near-instant `ProfileSwitchTx` broadcast,
+/// skipping 09c's debounce) — the one place either a manual mobile
+/// request (`handle_profile_switch` above) or `focus_watcher`'s
+/// auto-switch (10a) actually applies a switch. Unknown id: logged and
+/// dropped, no crash-loop risk from a corrupted persisted `buttons.json`
+/// re-serving the same bad id every relaunch (slice 10 spec, §
+/// Implementation Notes #1). Already-active id: silent no-op — see
+/// docs/slices/10a. Auto Profile Switch.spec.md, § Interface note 3.
+async fn apply_profile_switch(
+    id: String,
+    config_path: &Path,
+    dirty_tx: &crate::ConfigDirtyTx,
+    profile_switch_tx: &ProfileSwitchTx,
+    app: &tauri::AppHandle,
+) -> Result<(), ()> {
     let Ok(mut config) = config::load_config(config_path) else {
         eprintln!("[{}] server: profile_switch: failed to load config", log_time());
-        return;
+        return Err(());
     };
-    if !config.profiles.iter().any(|p| p.id == switch.active_profile_id) {
-        eprintln!(
-            "[{}] server: profile_switch to unknown id {}, dropped",
-            log_time(),
-            switch.active_profile_id
-        );
-        return;
+    if config.active_profile_id == id {
+        return Ok(());
     }
-    config.active_profile_id = switch.active_profile_id.clone();
+    if !config.profiles.iter().any(|p| p.id == id) {
+        eprintln!("[{}] server: profile_switch to unknown id {}, dropped", log_time(), id);
+        return Err(());
+    }
+    config.active_profile_id = id.clone();
     if config::save_config(config_path, &config).is_err() {
         eprintln!("[{}] server: profile_switch: failed to save config", log_time());
-        return;
+        return Err(());
     }
     // feeds 09c's debounce → config_sync to mobile
     let _ = dirty_tx.send(config);
-    let _ = app.emit(ACTIVE_PROFILE_CHANGED_EVENT, switch.active_profile_id);
+    let _ = app.emit(ACTIVE_PROFILE_CHANGED_EVENT, id.clone());
+    // direct announce, doesn't wait on 09c's debounce
+    let _ = profile_switch_tx.send(id);
+    Ok(())
 }
 
 /// What pressing `button_id` does, right now — the one function a real
