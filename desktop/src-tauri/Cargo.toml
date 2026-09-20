@@ -36,6 +36,7 @@ futures-util = "0.3.34"
 qrcode = "0.14.1"
 uuid = { version = "1", features = ["v4"] }
 chrono = "0.4.45"
+hostname = "0.4.1"
 
 # focus_watcher.rs (10a) — pinned to the same versions Tauri's own macOS
 # backend already resolves (see Cargo.lock) to avoid a second copy of the

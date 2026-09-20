@@ -25,12 +25,35 @@ pub struct PairedSlot {
     pub paired_at: String,
 }
 
+/// Bonjour's own instance-label limit — see
+/// docs/slices/07c. Desktop Device Name.spec.md, Scope → In item 2.
+/// Enforced here at the point of writing, not discovered later as a
+/// silent truncation elsewhere.
+const DEVICE_NAME_MAX_BYTES: usize = 63;
+
 /// On-disk shape of `device.json` — this desktop's identity plus its
 /// current pairing credential, if any.
 #[derive(Serialize, Deserialize)]
 struct DeviceFile {
     device_id: String,
+    /// Independent of `paired` — a name exists whether or not anything
+    /// is paired yet. Defaults to the machine hostname on first launch,
+    /// overridable via desktop settings.
+    device_name: String,
     paired: Option<PairedSlot>,
+}
+
+/// Truncates to at most `DEVICE_NAME_MAX_BYTES` UTF-8 bytes without
+/// splitting a multi-byte codepoint.
+fn truncate_device_name(name: &str) -> String {
+    if name.len() <= DEVICE_NAME_MAX_BYTES {
+        return name.to_string();
+    }
+    let mut end = DEVICE_NAME_MAX_BYTES;
+    while !name.is_char_boundary(end) {
+        end -= 1;
+    }
+    name[..end].to_string()
 }
 
 struct OneTimeToken {
@@ -57,6 +80,12 @@ impl Pairing {
         } else {
             let fresh = DeviceFile {
                 device_id: Uuid::new_v4().to_string(),
+                device_name: truncate_device_name(
+                    &hostname::get()
+                        .ok()
+                        .and_then(|h| h.into_string().ok())
+                        .unwrap_or_else(|| "Buttons Desktop".to_string()),
+                ),
                 paired: None,
             };
             let data = serde_json::to_string_pretty(&fresh).map_err(|e| e.to_string())?;
@@ -72,6 +101,20 @@ impl Pairing {
 
     pub fn device_id(&self) -> String {
         self.device.lock().unwrap().device_id.clone()
+    }
+
+    pub fn device_name(&self) -> String {
+        self.device.lock().unwrap().device_name.clone()
+    }
+
+    /// Persists a new name, capped at `DEVICE_NAME_MAX_BYTES`. `device_id`
+    /// is untouched — renaming never affects reconnect matching.
+    pub fn set_device_name(&self, name: String) -> Result<(), String> {
+        let name = truncate_device_name(&name);
+        let mut device = self.device.lock().unwrap();
+        device.device_name = name;
+        let data = serde_json::to_string_pretty(&*device).map_err(|e| e.to_string())?;
+        fs::write(&self.device_path, data).map_err(|e| e.to_string())
     }
 
     /// Issues a fresh one-time token, discarding whatever was live before
@@ -225,5 +268,36 @@ mod tests {
     fn protocol_version_check() {
         assert!(check_protocol_version(PROTOCOL_VERSION));
         assert!(!check_protocol_version("2"));
+    }
+
+    #[test]
+    fn fresh_device_defaults_to_a_nonempty_name() {
+        let path = temp_device_path("default-name");
+        let p = Pairing::load_or_create(path.clone()).unwrap();
+        assert!(!p.device_name().is_empty());
+        fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn set_device_name_persists_across_reload() {
+        let path = temp_device_path("rename");
+        {
+            let p = Pairing::load_or_create(path.clone()).unwrap();
+            p.set_device_name("Greg's Mac Mini".to_string()).unwrap();
+        }
+        let reloaded = Pairing::load_or_create(path.clone()).unwrap();
+        assert_eq!(reloaded.device_name(), "Greg's Mac Mini");
+        fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn set_device_name_truncates_at_63_bytes_without_splitting_a_codepoint() {
+        let path = temp_device_path("truncate");
+        let p = Pairing::load_or_create(path.clone()).unwrap();
+        // multi-byte codepoints throughout, well past the 63-byte cap
+        let long_name: String = std::iter::repeat('🎉').take(40).collect();
+        p.set_device_name(long_name).unwrap();
+        assert!(p.device_name().len() <= DEVICE_NAME_MAX_BYTES);
+        fs::remove_file(&path).ok();
     }
 }

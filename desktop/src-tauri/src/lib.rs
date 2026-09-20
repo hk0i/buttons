@@ -220,6 +220,19 @@ fn get_pairing_qr(pairing: tauri::State<Arc<Pairing>>) -> Result<PairingQr, Stri
     Ok(PairingQr { svg, payload })
 }
 
+/// Current persisted device name, for a settings UI to populate its field.
+#[tauri::command]
+fn get_device_name(pairing: tauri::State<Arc<Pairing>>) -> String {
+    pairing.device_name()
+}
+
+/// Overrides the persisted device name — see
+/// docs/slices/07c. Desktop Device Name.spec.md, Scope → In item 2.
+#[tauri::command]
+fn set_device_name(pairing: tauri::State<Arc<Pairing>>, name: String) -> Result<(), String> {
+    pairing.set_device_name(name)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -284,6 +297,8 @@ pub fn run() {
             switch_profile,
             run_actions,
             get_pairing_qr,
+            get_device_name,
+            set_device_name,
             get_switch_states,
             test_button,
             list_running_apps,

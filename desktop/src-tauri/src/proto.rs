@@ -192,6 +192,7 @@ mod wire_json_tests {
                     ok: true,
                     auth_token: Some("secret".to_string()),
                     error: None,
+                    device_name: None,
                 },
             )),
         };
