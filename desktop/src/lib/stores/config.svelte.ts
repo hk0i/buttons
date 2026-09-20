@@ -107,6 +107,18 @@ class ConfigStore {
     await this.persist();
   }
 
+  // The dropdown's "switch to an already-existing profile" path — calls
+  // switch_profile directly instead of save_config, so the wire announce
+  // skips config_sync_debounce's 1s quiet period, same as the OS-focus
+  // watcher's auto-switch. Not for createProfile/deleteProfile, which
+  // persist a structural change to the profiles list itself and must go
+  // through switchProfile's full save_config instead.
+  async switchActiveProfile(id: string) {
+    if (!this.config) return;
+    this.applyActiveProfile(id);
+    await invoke("switch_profile", { id });
+  }
+
   // The view-state half of switchProfile, shared with the
   // active-profile-changed listener above — that path already persisted
   // server-side (a mobile-requested profile_switch), so it applies this

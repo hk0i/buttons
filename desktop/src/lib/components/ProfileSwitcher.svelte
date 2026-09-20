@@ -114,7 +114,7 @@
       <select
         aria-label="Active profile"
         value={configStore.activeProfile?.id}
-        onchange={(e) => configStore.switchProfile(e.currentTarget.value)}
+        onchange={(e) => configStore.switchActiveProfile(e.currentTarget.value)}
       >
         {#each configStore.config?.profiles ?? [] as profile (profile.id)}
           <option value={profile.id}>{profile.name}</option>

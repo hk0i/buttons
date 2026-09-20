@@ -67,6 +67,25 @@ fn save_config(
     Ok(())
 }
 
+/// The dropdown's "switch to an already-existing profile" path — shares
+/// `apply_profile_switch` with the OS-focus watcher's auto-switch (10a) and
+/// the mobile-initiated switch, so it gets the same undebounced wire
+/// announce instead of waiting on `config_sync_debounce`'s 1s quiet period.
+/// Not used by create/delete-then-switch, which persist a structural
+/// change to the profiles list itself via `save_config`.
+#[tauri::command]
+async fn switch_profile(
+    app: tauri::AppHandle,
+    id: String,
+    dirty_tx: tauri::State<'_, ConfigDirtyTx>,
+    profile_switch_tx: tauri::State<'_, server::ProfileSwitchTx>,
+) -> Result<(), String> {
+    let path = config_path(&app)?;
+    server::apply_profile_switch(id, &path, &dirty_tx, &profile_switch_tx, &app)
+        .await
+        .map_err(|_| "profile switch failed".to_string())
+}
+
 #[tauri::command]
 fn is_auto_switch_supported() -> bool {
     focus_watcher::is_supported()
@@ -229,6 +248,7 @@ pub fn run() {
             // config_changed_tx. The D→M profile_switch announce (10a) —
             // see docs/slices/10a. Auto Profile Switch.spec.md, § Interface.
             let (profile_switch_tx, _): (server::ProfileSwitchTx, _) = broadcast::channel(16);
+            app.manage(profile_switch_tx.clone());
             // save_config sends on this after a write; server::run's own
             // clone lets a mobile-requested profile_switch feed it too —
             // see slice 10 spec, § Interface.
@@ -261,6 +281,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_config,
             save_config,
+            switch_profile,
             run_actions,
             get_pairing_qr,
             get_switch_states,
