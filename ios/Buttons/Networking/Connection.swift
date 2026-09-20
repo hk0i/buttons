@@ -342,7 +342,9 @@ final class DesktopConnection: NSObject {
             for change in push.changes {
                 isActiveByButtonId[change.buttonID] = change.isActive
             }
-        case .pairRequest, .buttonPress, .profileSwitch, .none:
+        case .profileSwitch(let switchMsg):
+            configSync?.activeProfileID = switchMsg.activeProfileID
+        case .pairRequest, .buttonPress, .none:
             break  // desktop never sends these to mobile
         }
     }
