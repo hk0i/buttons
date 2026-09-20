@@ -1,7 +1,6 @@
 mod actions;
 mod config;
 mod config_sync_debounce;
-#[cfg(target_os = "macos")]
 mod focus_watcher;
 mod pairing;
 mod proto;
@@ -66,7 +65,7 @@ fn save_config(
 
 #[tauri::command]
 fn is_auto_switch_supported() -> bool {
-    config::Platform::current().is_some()
+    focus_watcher::is_supported()
 }
 
 #[tauri::command]
@@ -169,18 +168,12 @@ struct RunningApp {
 /// The picker's data source for a Profile's macOS app association (10a) —
 /// empty on any other platform, since only the macOS watcher exists so far.
 #[tauri::command]
-fn list_running_apps() -> Vec<RunningApp> {
-    #[cfg(target_os = "macos")]
-    {
-        focus_watcher::running_apps()
-            .into_iter()
-            .map(|(bundle_id, name)| RunningApp { bundle_id, name })
-            .collect()
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        Vec::new()
-    }
+async fn list_running_apps(app: tauri::AppHandle) -> Vec<RunningApp> {
+    focus_watcher::running_apps(app)
+        .await
+        .into_iter()
+        .map(|(bundle_id, name)| RunningApp { bundle_id, name })
+        .collect()
 }
 
 /// Issues a fresh one-time pairing token and renders it as an SVG QR —
@@ -242,7 +235,6 @@ pub fn run() {
                 dirty_rx,
                 config_changed_tx.clone(),
             ));
-            #[cfg(target_os = "macos")]
             focus_watcher::spawn(
                 config_path.clone(),
                 dirty_tx.clone(),
