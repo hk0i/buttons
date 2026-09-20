@@ -156,12 +156,25 @@ nonisolated struct Buttons_PairResponse: Sendable {
   /// Clears the value of `error`. Subsequent reads from it will return its default value.
   mutating func clearError() {self._error = nil}
 
+  /// present iff ok — see docs/slices/07c. Desktop Device Name.spec.md.
+  /// Sent on every successful pair/reconnect, not just the first, so a
+  /// desktop rename reaches mobile without a separate push mechanism.
+  var deviceName: String {
+    get {_deviceName ?? String()}
+    set {_deviceName = newValue}
+  }
+  /// Returns true if `deviceName` has been explicitly set.
+  var hasDeviceName: Bool {self._deviceName != nil}
+  /// Clears the value of `deviceName`. Subsequent reads from it will return its default value.
+  mutating func clearDeviceName() {self._deviceName = nil}
+
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
   init() {}
 
   fileprivate var _authToken: String? = nil
   fileprivate var _error: String? = nil
+  fileprivate var _deviceName: String? = nil
 }
 
 nonisolated struct Buttons_ConfigSync: Sendable {
@@ -461,7 +474,7 @@ nonisolated extension Buttons_PairRequest: SwiftProtobuf.Message, SwiftProtobuf.
 
 nonisolated extension Buttons_PairResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   static let protoMessageName: String = _protobuf_package + ".PairResponse"
-  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ok\0\u{3}auth_token\0\u{1}error\0")
+  static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}ok\0\u{3}auth_token\0\u{1}error\0\u{3}device_name\0")
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -472,6 +485,7 @@ nonisolated extension Buttons_PairResponse: SwiftProtobuf.Message, SwiftProtobuf
       case 1: try { try decoder.decodeSingularBoolField(value: &self.ok) }()
       case 2: try { try decoder.decodeSingularStringField(value: &self._authToken) }()
       case 3: try { try decoder.decodeSingularStringField(value: &self._error) }()
+      case 4: try { try decoder.decodeSingularStringField(value: &self._deviceName) }()
       default: break
       }
     }
@@ -491,6 +505,9 @@ nonisolated extension Buttons_PairResponse: SwiftProtobuf.Message, SwiftProtobuf
     try { if let v = self._error {
       try visitor.visitSingularStringField(value: v, fieldNumber: 3)
     } }()
+    try { if let v = self._deviceName {
+      try visitor.visitSingularStringField(value: v, fieldNumber: 4)
+    } }()
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -498,6 +515,7 @@ nonisolated extension Buttons_PairResponse: SwiftProtobuf.Message, SwiftProtobuf
     if lhs.ok != rhs.ok {return false}
     if lhs._authToken != rhs._authToken {return false}
     if lhs._error != rhs._error {return false}
+    if lhs._deviceName != rhs._deviceName {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

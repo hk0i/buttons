@@ -40,6 +40,10 @@ message PairResponse {
   optional string auth_token = 2;
   // present iff !ok
   optional string error = 3;
+  // present iff ok — see docs/slices/07c. Desktop Device Name.spec.md.
+  // Sent on every successful pair/reconnect, not just the first, so a
+  // desktop rename reaches mobile without a separate push mechanism.
+  optional string device_name = 4;
 }
 
 message ConfigSync {
