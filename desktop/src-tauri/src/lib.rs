@@ -55,10 +55,14 @@ fn get_config(app: tauri::AppHandle) -> Result<Config, String> {
 #[tauri::command]
 fn save_config(
     app: tauri::AppHandle,
-    config: Config,
+    mut config: Config,
     dirty_tx: tauri::State<ConfigDirtyTx>,
 ) -> Result<(), String> {
-    config::save_config(&config_path(&app)?, &config)?;
+    let path = config_path(&app)?;
+    if let Ok(existing) = config::load_config(&path) {
+        config::preserve_app_associations(&mut config, &existing);
+    }
+    config::save_config(&path, &config)?;
     let _ = dirty_tx.send(config);
     Ok(())
 }

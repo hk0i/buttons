@@ -242,6 +242,14 @@ pub fn save_config(config_path: &Path, config: &Config) -> Result<(), String> {
     fs::write(config_path, data).map_err(|e| e.to_string())
 }
 
+pub fn preserve_app_associations(incoming: &mut Config, existing: &Config) {
+    for profile in &mut incoming.profiles {
+        if let Some(old) = existing.profiles.iter().find(|p| p.id == profile.id) {
+            profile.associated_app_by_platform = old.associated_app_by_platform.clone();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,5 +276,28 @@ mod tests {
         assert_eq!(out_map["macos"], "com.x");
         assert_eq!(out_map["fake_platform_1"], "y.exe");
         assert_eq!(out_map["fake_platform_2"], "z");
+    }
+
+    #[test]
+    fn save_config_never_clobbers_an_association_the_frontend_doesnt_know_about() {
+        let mut existing = default_config();
+        let profile_id = existing.profiles[0].id.clone();
+        existing.profiles[0]
+            .associated_app_by_platform
+            .insert(Platform::MacOs, "com.apple.calculator".to_string());
+
+        let mut incoming = default_config();
+        incoming.profiles[0].id = profile_id.clone();
+        incoming.active_profile_id = profile_id;
+
+        preserve_app_associations(&mut incoming, &existing);
+
+        assert_eq!(
+            incoming.profiles[0]
+                .associated_app_by_platform
+                .get(&Platform::MacOs)
+                .unwrap(),
+            "com.apple.calculator"
+        );
     }
 }

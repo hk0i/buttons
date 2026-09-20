@@ -93,7 +93,7 @@ pub async fn running_apps(app: tauri::AppHandle) -> Vec<(String, String)> {
 // recognize to pick from and often no bundle id to associate at all.
 fn running_apps_sync() -> Vec<(String, String)> {
     let workspace = NSWorkspace::sharedWorkspace();
-    workspace
+    let mut apps: Vec<(String, String)> = workspace
         .runningApplications()
         .iter()
         .filter(|app| app.activationPolicy() == NSApplicationActivationPolicy::Regular)
@@ -105,7 +105,9 @@ fn running_apps_sync() -> Vec<(String, String)> {
                 .unwrap_or_else(|| bundle_id.clone());
             Some((bundle_id, name))
         })
-        .collect()
+        .collect();
+    apps.sort_by(|a, b| a.1.to_lowercase().cmp(&b.1.to_lowercase()));
+    apps
 }
 
 // Loads fresh, not a cached snapshot — same "an edit made on desktop must
