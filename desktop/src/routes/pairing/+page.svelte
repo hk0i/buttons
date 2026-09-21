@@ -14,6 +14,13 @@
   let error = $state<string | null>(null);
   let expireTimer: ReturnType<typeof setTimeout> | undefined;
 
+  // window.prompt() doesn't render in Tauri's WKWebView — inline edit,
+  // same pattern as ProfileSwitcher.svelte's create/rename fields, not a
+  // blocking dialog. See docs/slices/07c. Desktop Device Name.spec.md.
+  let deviceName = $state<string | null>(null);
+  let isEditingName = $state(false);
+  let draftName = $state("");
+
   async function requestNewCode() {
     clearTimeout(expireTimer);
     error = null;
@@ -30,8 +37,35 @@
     }
   }
 
+  async function loadDeviceName() {
+    deviceName = await invoke<string>("get_device_name");
+  }
+
+  function startEditingName() {
+    isEditingName = true;
+    draftName = deviceName ?? "";
+  }
+
+  function cancelEditingName() {
+    isEditingName = false;
+    draftName = "";
+  }
+
+  async function confirmEditingName() {
+    const name = draftName.trim();
+    if (!name) return cancelEditingName();
+    await invoke("set_device_name", { name });
+    deviceName = name;
+    cancelEditingName();
+  }
+
+  function focusOnMount(node: HTMLInputElement) {
+    node.focus();
+  }
+
   onMount(() => {
     requestNewCode();
+    loadDeviceName();
     return () => clearTimeout(expireTimer);
   });
 </script>
@@ -42,6 +76,27 @@
     <!-- The only way back — mouse/trackpad "back" gesture is browser
          behavior this app shouldn't rely on as the sole exit. -->
     <a class="close-link" href={resolve("/")} aria-label="Close">✕</a>
+  </div>
+
+  <div class="device-name">
+    {#if isEditingName}
+      <input
+        type="text"
+        bind:value={draftName}
+        placeholder="Desktop name"
+        maxlength="63"
+        use:focusOnMount
+        onkeydown={(e) => {
+          if (e.key === "Enter") confirmEditingName();
+          else if (e.key === "Escape") cancelEditingName();
+        }}
+      />
+      <button type="button" onclick={confirmEditingName} title="Confirm">✓</button>
+      <button type="button" onclick={cancelEditingName} title="Cancel">✕</button>
+    {:else}
+      <span class="device-name-label">{deviceName ?? "…"}</span>
+      <button type="button" onclick={startEditingName} title="Rename this desktop">✎</button>
+    {/if}
   </div>
 
   {#if error}
@@ -107,6 +162,48 @@
   .close-link:hover {
     opacity: 1;
     background: var(--neutral-500);
+  }
+
+  .device-name {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .device-name-label {
+    opacity: 0.85;
+    font-size: 14px;
+  }
+
+  .device-name input {
+    flex: 1;
+    min-width: 0;
+    max-width: 240px;
+    padding: 4px 8px;
+    background: var(--neutral-500);
+    border: 1px solid var(--neutral-700);
+    color: var(--key-white);
+    border-radius: 4px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    height: 28px;
+    box-sizing: border-box;
+  }
+
+  .device-name button {
+    background: var(--neutral-500);
+    border: 1px solid var(--neutral-700);
+    color: var(--key-white);
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    font-family: var(--font-body);
+    font-size: 12px;
+    cursor: pointer;
   }
 
   .qr {
