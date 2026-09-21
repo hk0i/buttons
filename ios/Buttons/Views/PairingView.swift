@@ -17,9 +17,20 @@ import VisionKit
 struct PairingView: View {
     let session: PairingSession
 
-    @State private var state: PairingState = .landing
+    @State private var state: PairingState
 
-    private enum PairingState: Equatable {
+    init(session: PairingSession) {
+        self.session = session
+        _state = State(initialValue: .landing)
+    }
+
+    /// Preview-only; production always starts at `.landing`.
+    fileprivate init(session: PairingSession, initialState: PairingState) {
+        self.session = session
+        _state = State(initialValue: initialState)
+    }
+
+    fileprivate enum PairingState: Equatable {
         case landing
         case cameraPreAsk
         case cameraDenied
@@ -337,8 +348,31 @@ private struct QRScannerRepresentable: UIViewControllerRepresentable {
     }
 }
 
-#Preview {
-    PairingView(
-        session: PairingSession(
-            connection: DesktopConnection(), discovery: DesktopDiscovery(), pairingStore: PairingStore()))
+@MainActor
+private func makePreviewSession() -> PairingSession {
+    PairingSession(connection: DesktopConnection(), discovery: DesktopDiscovery(), pairingStore: PairingStore())
+}
+
+#Preview("Landing") {
+    PairingView(session: makePreviewSession())
+}
+
+#Preview("Camera Pre-Ask") {
+    PairingView(session: makePreviewSession(), initialState: .cameraPreAsk)
+}
+
+#Preview("Camera Denied") {
+    PairingView(session: makePreviewSession(), initialState: .cameraDenied)
+}
+
+#Preview("Scanning") {
+    PairingView(session: makePreviewSession(), initialState: .scanning)
+}
+
+#Preview("Connecting") {
+    PairingView(session: makePreviewSession(), initialState: .connecting)
+}
+
+#Preview("Failed") {
+    PairingView(session: makePreviewSession(), initialState: .failed("Couldn't connect to desktop."))
 }
