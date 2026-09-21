@@ -58,7 +58,7 @@ final class DesktopConnection: NSObject {
     private var actionResultSequence = 0
 
     /// A blocked Local Network permission doesn't fail the socket open —
-    /// it just never delivers anything, so `receiveLoop()`'s `.failure`
+    /// it just never delivers anything, so `receiveMessages()`'s `.failure`
     /// case never fires and `pairCompletion` never runs. Without this, a
     /// QR scan attempted with the permission off leaves `PairingView`
     /// stuck on "Connecting…" forever (DoD 4's gap, concretely). 10s is
@@ -208,7 +208,7 @@ final class DesktopConnection: NSObject {
         let task = session.webSocketTask(with: url)
         webSocketTask = task
         task.resume()
-        receiveLoop()
+        receiveMessages()
         sendPairRequest()
     }
 
@@ -251,7 +251,7 @@ final class DesktopConnection: NSObject {
                 guard let self, let error else { return }
                 print("DesktopConnection: failed to send Envelope: \(error)")
                 DispatchQueue.main.async {
-                    // Same in-flight-attempt guard as receiveLoop()'s
+                    // Same in-flight-attempt guard as receiveMessages()'s
                     // failure branch — whichever of the two callbacks
                     // fires first resolves pairCompletion; the other is a
                     // no-op via the guard.
@@ -269,7 +269,7 @@ final class DesktopConnection: NSObject {
         }
     }
 
-    private func receiveLoop() {
+    private func receiveMessages() {
         // Bound to this specific task, not read fresh from `webSocketTask`
         // in the completion — `disconnect()` cancelling the task still
         // delivers this closure a failure, and by then `webSocketTask` is
@@ -281,7 +281,7 @@ final class DesktopConnection: NSObject {
             switch result {
             case .success(let message):
                 self.handle(message)
-                self.receiveLoop()
+                self.receiveMessages()
             case .failure(let error):
                 DispatchQueue.main.async {
                     guard self.webSocketTask === task else { return }
@@ -375,7 +375,7 @@ final class DesktopConnection: NSObject {
 
     /// Turns a connect-time `URLError` into copy that names the likely cause.
     ///
-    /// - Parameter error: The error `receiveLoop()` got from a failed connect.
+    /// - Parameter error: The error `receiveMessages()` got from a failed connect.
     // `NSURLErrorNotConnectedToInternet` (-1009) fires for a denied Local
     // Network permission, but also for desktop-off, wrong subnet, or
     // Wi-Fi dropping mid-handshake — `URLSession` collapses all of these

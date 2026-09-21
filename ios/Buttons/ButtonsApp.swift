@@ -10,9 +10,8 @@ struct ButtonsApp: App {
         self.connection = connection
         let session = PairingSession(connection: connection, discovery: DesktopDiscovery(), pairingStore: PairingStore())
         self.session = session
-        // Only fires for a real drop of an established connection
-        // (Connection.swift's receiveLoop) — a manual disconnect()
-        // (switching devices) never triggers it, no flag needed.
+        // Only fires for a real drop of an established connection — a
+        // manual disconnect() (switching devices) never triggers it.
         connection.onConnectionLost = { [weak session] in
             Task { await session?.attemptAutoReconnect() }
         }
