@@ -43,14 +43,17 @@ private struct RootView: View {
         }
         // safeAreaInset, not overlay — reserves real layout space above
         // DeckView's grid instead of stacking on top of it, so the top
-        // row's buttons stay tappable underneath. Self-guards via
-        // configSync/profiles.count: renders nothing (zero height) over
-        // PairingView (no configSync yet) or the single-Profile case.
+        // row's buttons stay tappable underneath. Gated on isConnected —
+        // zero height over PairingView, where this has nothing to show.
         .safeAreaInset(edge: .top) {
-            if let config = connection.configSync, config.profiles.count > 1 {
+            if connection.isConnected {
                 HStack {
                     Spacer()
-                    ProfileSwitcherMenu(config: config, connection: connection)
+                    if let config = connection.configSync, config.profiles.count > 1 {
+                        ProfileSwitcherMenu(config: config, connection: connection)
+                    }
+                    Button("Switch Device", action: connection.disconnectToSwitchDevices)
+                        .padding()
                 }
             }
         }
@@ -59,11 +62,15 @@ private struct RootView: View {
         // suspends the socket, the OS eventually delivers a reset — with
         // no user action to hang a retry off of. Re-running the same
         // silent mDNS reconnect used at launch is what actually recovers
-        // without requiring a force-quit.
+        // without requiring a force-quit. Skipped when the drop was the
+        // user tapping "Switch Device" — that's not a failure to recover.
         .onChange(of: connection.isConnected) { wasConnected, isConnected in
-            if wasConnected, !isConnected {
-                Task { await session.attemptAutoReconnect() }
+            guard wasConnected, !isConnected else { return }
+            if connection.wasDisconnectedIntentionally {
+                connection.acknowledgeIntentionalDisconnect()
+                return
             }
+            Task { await session.attemptAutoReconnect() }
         }
         // `didBecomeActiveNotification` can't distinguish "returned from
         // background" from a transient interruption (Control Center, a
