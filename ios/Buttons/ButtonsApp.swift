@@ -8,7 +8,14 @@ struct ButtonsApp: App {
     init() {
         let connection = DesktopConnection()
         self.connection = connection
-        session = PairingSession(connection: connection, discovery: DesktopDiscovery(), pairingStore: PairingStore())
+        let session = PairingSession(connection: connection, discovery: DesktopDiscovery(), pairingStore: PairingStore())
+        self.session = session
+        // Only fires for a real drop of an established connection
+        // (Connection.swift's receiveLoop) — a manual disconnect()
+        // (switching devices) never triggers it, no flag needed.
+        connection.onConnectionLost = { [weak session] in
+            Task { await session?.attemptAutoReconnect() }
+        }
     }
 
     var body: some Scene {
@@ -52,26 +59,12 @@ private struct RootView: View {
                     if let config = connection.configSync, config.profiles.count > 1 {
                         ProfileSwitcherMenu(config: config, connection: connection)
                     }
-                    Button("Switch Device", action: connection.disconnectToSwitchDevices)
+                    Button("Switch Device", action: connection.disconnect)
                         .padding()
                 }
             }
         }
         .onAppear(perform: attemptReconnectIfPaired)
-        // A live connection can die mid-session — phone locks, iOS
-        // suspends the socket, the OS eventually delivers a reset — with
-        // no user action to hang a retry off of. Re-running the same
-        // silent mDNS reconnect used at launch is what actually recovers
-        // without requiring a force-quit. Skipped when the drop was the
-        // user tapping "Switch Device" — that's not a failure to recover.
-        .onChange(of: connection.isConnected) { wasConnected, isConnected in
-            guard wasConnected, !isConnected else { return }
-            if connection.wasDisconnectedIntentionally {
-                connection.acknowledgeIntentionalDisconnect()
-                return
-            }
-            Task { await session.attemptAutoReconnect() }
-        }
         // `didBecomeActiveNotification` can't distinguish "returned from
         // background" from a transient interruption (Control Center, a
         // dismissed banner) — both fire it identically. `scenePhase`

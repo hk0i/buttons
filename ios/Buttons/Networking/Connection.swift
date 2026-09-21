@@ -41,10 +41,12 @@ final class DesktopConnection: NSObject {
     private(set) var pairError: String?
     private(set) var lastActionResult: ActionResultEvent?
 
-    /// Set by `disconnect()`, consumed once by the drop-recovery observer
-    /// — an intentional disconnect (switching devices) must not trigger
-    /// the same auto-reconnect that recovers an involuntary drop.
-    private(set) var wasDisconnectedIntentionally = false
+    /// Fired only when an *established* connection drops on its own
+    /// (`receiveLoop`'s failure branch) — never from `disconnect()`. Set
+    /// once at the composition root; deciding "should we auto-reconnect"
+    /// at the point of detection means an intentional disconnect
+    /// (switching devices) simply never triggers it, no flag needed.
+    var onConnectionLost: (() -> Void)?
 
     /// button_id -> is "on" showing, for every Switch button. Rebuilt from
     /// scratch (not merged) on every configSync, flipped optimistically by
@@ -157,18 +159,6 @@ final class DesktopConnection: NSObject {
         // guard permanently. See slice 09b spec, § Scope → In #2.
         pairCompletion = nil
         pendingToken = nil
-    }
-
-    /// User-initiated, via the device picker's "Switch Device" button —
-    /// marks the drop intentional so the drop-recovery observer doesn't
-    /// immediately reconnect to the device just left.
-    func disconnectToSwitchDevices() {
-        wasDisconnectedIntentionally = true
-        disconnect()
-    }
-
-    func acknowledgeIntentionalDisconnect() {
-        wasDisconnectedIntentionally = false
     }
 
     /// Actively confirms the socket is still alive.
@@ -296,7 +286,10 @@ final class DesktopConnection: NSObject {
                     // non-nil) means this is a connect-time failure, not a
                     // later drop of an already-paired session — surface it
                     // now instead of waiting out the full pairTimeout.
-                    guard self.pairCompletion != nil else { return }
+                    guard self.pairCompletion != nil else {
+                        self.onConnectionLost?()
+                        return
+                    }
                     self.pairTimeout?.cancel()
                     self.pairTimeout = nil
                     let message = Self.pairingFailureMessage(for: error)
