@@ -149,6 +149,7 @@ final class DesktopConnection: NSObject {
         // § Scope → In #3.
         netService = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
+        webSocketTask = nil
         isConnected = false
         // Without this, a caller invoking disconnect() while an attempt is
         // still unresolved would leave pairCompletion set with nothing
@@ -269,15 +270,22 @@ final class DesktopConnection: NSObject {
     }
 
     private func receiveLoop() {
-        webSocketTask?.receive { [weak self] result in
+        // Bound to this specific task, not read fresh from `webSocketTask`
+        // in the completion — `disconnect()` cancelling the task still
+        // delivers this closure a failure, and by then `webSocketTask` is
+        // nil/a different task, which is how the guard below tells a real
+        // drop apart from an expected one.
+        let task = webSocketTask
+        task?.receive { [weak self] result in
             guard let self else { return }
             switch result {
             case .success(let message):
                 self.handle(message)
                 self.receiveLoop()
             case .failure(let error):
-                print("DesktopConnection: receive error: \(error)")
                 DispatchQueue.main.async {
+                    guard self.webSocketTask === task else { return }
+                    print("DesktopConnection: receive error: \(error)")
                     self.isConnected = false
                     // A pairing attempt still in flight (pairCompletion
                     // non-nil) means this is a connect-time failure, not a
