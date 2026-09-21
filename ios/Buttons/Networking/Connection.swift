@@ -1,15 +1,25 @@
 import Foundation
 import Network
 
-/// Result of a pairing attempt: the `auth_token` (and, per `07c`, an
-/// optional `device_name`) to persist on success, or a human-readable
-/// reason on failure. Not `Result<String, String>` — `String` doesn't
-/// conform to `Error`, and defining a throwaway `Error` wrapper just to
-/// satisfy that is more ceremony than this needs.
+/// Result of a pairing attempt: the `auth_token` and `device_name` (per
+/// `07c`) to persist on success, or a human-readable reason on failure.
+/// Not `Result<String, String>` — `String` doesn't conform to `Error`,
+/// and defining a throwaway `Error` wrapper just to satisfy that is more
+/// ceremony than this needs.
+///
+/// `deviceName` is non-optional here, not `String?` — every real sender
+/// (desktop app, the `websocat` test fixture per `PAIRING.md`) populates
+/// `PairResponse.device_name`, so an absent field is a genuine anomaly,
+/// not a routine case worth threading `Optional` through every consumer
+/// for. This is the one place that anomaly gets absorbed into a fallback.
 enum PairResult {
-    case success(authToken: String, deviceName: String?)
+    case success(authToken: String, deviceName: String)
     case failure(String)
 }
+
+/// Shown only if a `PairResponse` genuinely omits `device_name` — not
+/// expected in practice, see `PairResult` above.
+private let unnamedDeviceFallback = "Unnamed Device"
 
 /// Wraps an incoming `ActionResult` with a `sequence` that always
 /// advances, even when two consecutive results are otherwise identical
@@ -320,7 +330,7 @@ final class DesktopConnection: NSObject {
                 pairCompletion?(
                     .success(
                         authToken: response.authToken,
-                        deviceName: response.hasDeviceName ? response.deviceName : nil
+                        deviceName: response.hasDeviceName ? response.deviceName : unnamedDeviceFallback
                     )
                 )
             } else {

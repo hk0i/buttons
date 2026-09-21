@@ -23,17 +23,22 @@ struct PairingPayload: Equatable {
     }
 }
 
-/// A known desktop's persisted credential. `deviceName` is nil only for a
-/// pairing stored before `07c`'s wire field existed. See
-/// docs/slices/11a. Pairing Flow Robustness.spec.md.
+/// A known desktop's persisted credential. `deviceName` is non-optional —
+/// every real sender (desktop app, `websocat` fixture) populates it, so a
+/// missing value is an anomaly absorbed into a fallback at the wire
+/// boundary (`Connection.swift`), not threaded through as `Optional`
+/// here. See docs/slices/11a. Pairing Flow Robustness.spec.md.
 struct StoredPairing: Equatable {
     let deviceId: String
     let authToken: String
-    let deviceName: String?
+    let deviceName: String
 }
 
 /// `authToken`/`deviceName` packed into one Keychain value — `deviceId` is
-/// the key, not repeated in the value.
+/// the key, not repeated in the value. `deviceName` stays optional here
+/// (decode-tolerant of an entry written before this field existed) even
+/// though `StoredPairing.deviceName` isn't — `knownDevices()` is the
+/// boundary that resolves the fallback.
 private struct StoredCredential: Codable {
     let authToken: String
     let deviceName: String?
@@ -61,7 +66,10 @@ final class PairingStore {
             guard let raw = secrets.read(namespace: Self.devicesNamespace, key: deviceId),
                 let credential = try? JSONDecoder().decode(StoredCredential.self, from: Data(raw.utf8))
             else { return nil }
-            return StoredPairing(deviceId: deviceId, authToken: credential.authToken, deviceName: credential.deviceName)
+            return StoredPairing(
+                deviceId: deviceId, authToken: credential.authToken,
+                deviceName: credential.deviceName ?? "Unnamed Device"
+            )
         }
     }
 
@@ -96,7 +104,10 @@ enum PairedDeviceStatus {
 struct PairedDeviceRow: Identifiable {
     var id: String { deviceId }
     let deviceId: String
-    let name: String?  // nil falls back to a truncated deviceId in the UI, never a raw UUID string
+    /// Never a raw UUID — users should never see one. Two distinct
+    /// literal fallbacks, not `Optional`: "known but no name" and "never
+    /// paired, no name to have" are different facts, not the same nil.
+    let name: String
     let status: PairedDeviceStatus
 }
 
@@ -118,7 +129,7 @@ func mergedDeviceRows(
     }
     let newRows = discovered
         .filter { !knownIds.contains($0.deviceId) }
-        .map { PairedDeviceRow(deviceId: $0.deviceId, name: nil, status: .pairable(endpoint: $0.endpoint)) }
+        .map { PairedDeviceRow(deviceId: $0.deviceId, name: "New Device", status: .pairable(endpoint: $0.endpoint)) }
 
     return knownRows + newRows
 }
@@ -187,7 +198,7 @@ final class PairingSession {
         lastError = nil
         connection.connect(host: payload.host, port: payload.port, token: payload.token) {
             [weak self] (result: PairResult) in
-            self?.handlePairResult(result, deviceId: payload.deviceId, fallbackName: nil)
+            self?.handlePairResult(result, deviceId: payload.deviceId)
         }
     }
 
@@ -200,7 +211,7 @@ final class PairingSession {
         lastError = nil
         connection.connect(toBonjourEndpoint: endpoint, token: stored.authToken) {
             [weak self] (result: PairResult) in
-            self?.handlePairResult(result, deviceId: stored.deviceId, fallbackName: stored.deviceName)
+            self?.handlePairResult(result, deviceId: stored.deviceId)
         }
     }
 
@@ -222,11 +233,11 @@ final class PairingSession {
     /// "makes it active"). `deviceName` overwrites the stored value on
     /// every success, not just first pair — a desktop rename reaches the
     /// phone without a separate push mechanism.
-    private func handlePairResult(_ result: PairResult, deviceId: String, fallbackName: String?) {
+    private func handlePairResult(_ result: PairResult, deviceId: String) {
         switch result {
         case .success(let authToken, let deviceName):
             pairingStore.save(
-                StoredPairing(deviceId: deviceId, authToken: authToken, deviceName: deviceName ?? fallbackName),
+                StoredPairing(deviceId: deviceId, authToken: authToken, deviceName: deviceName),
                 makeActive: true
             )
             refreshDeviceRows()
