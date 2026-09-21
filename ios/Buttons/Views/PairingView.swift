@@ -104,18 +104,10 @@ struct PairingView: View {
     /// and learns the same interaction the real list later uses.
     private var deviceRowsList: some View {
         VStack(spacing: 8) {
-            Button {
-                checkCameraAndAdvance()
-            } label: {
-                deviceRowLabel(
-                    "Scan QR Code to Add…",
-                    trailing: "Scan",
-                    icon: "plus",
-                    isInteractive: true
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens the camera to pair a new desktop")
+            deviceRowButton(
+                "Scan QR Code to Add…", trailing: "Scan", icon: "plus",
+                accessibilityHint: "Opens the camera to pair a new desktop",
+                action: checkCameraAndAdvance)
 
             ForEach(session.deviceRows) { row in
                 deviceRow(row)
@@ -127,27 +119,30 @@ struct PairingView: View {
     private func deviceRow(_ row: PairedDeviceRow) -> some View {
         switch row.status {
         case .connectable:
-            Button {
+            deviceRowButton(row.name, trailing: "Connect", accessibilityHint: "Connects to this desktop") {
                 state = .connecting
                 session.connect(to: row)
-            } label: {
-                deviceRowLabel(row.name, trailing: "Connect", isInteractive: true)
             }
-            .buttonStyle(.plain)
-            .accessibilityHint("Connects to this desktop")
         case .offline:
             deviceRowLabel(row.name, trailing: "Offline")
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("\(row.name), offline")
         case .pairable:
-            Button {
-                checkCameraAndAdvance()
-            } label: {
-                deviceRowLabel(row.name, trailing: "Pair")
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Opens the camera to pair this desktop")
+            deviceRowButton(
+                row.name, trailing: "Pair", accessibilityHint: "Opens the camera to pair this desktop",
+                action: checkCameraAndAdvance)
         }
+    }
+
+    private func deviceRowButton(
+        _ name: String, trailing: String, icon: String = "desktopcomputer", accessibilityHint: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            deviceRowLabel(name, trailing: trailing, icon: icon, isInteractive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(accessibilityHint)
     }
 
     /// `isInteractive` tints the trailing label with the app's accent
@@ -224,8 +219,10 @@ struct PairingView: View {
         VStack(spacing: 16) {
             Text("Buttons needs your camera to scan the desktop's pairing code.")
                 .multilineTextAlignment(.center)
-            Button("Scan QR Code") { requestCameraAccess() }
-                .buttonStyle(.borderedProminent)
+            deviceRowButton(
+                "Scan QR Code to Add…", trailing: "Scan", icon: "plus",
+                accessibilityHint: "Opens the camera to pair a new desktop",
+                action: requestCameraAccess)
         }
     }
 
@@ -267,8 +264,10 @@ struct PairingView: View {
                     .foregroundStyle(.red)
                     .multilineTextAlignment(.center)
             }
-            Button("Scan QR Again") { checkCameraAndAdvance() }
-                .buttonStyle(.borderedProminent)
+            deviceRowButton(
+                "Scan QR Code to Add…", trailing: "Scan", icon: "plus",
+                accessibilityHint: "Opens the camera to pair a new desktop",
+                action: checkCameraAndAdvance)
             Button("Open Settings", action: openSystemSettings)
                 .buttonStyle(.bordered)
         }
