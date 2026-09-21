@@ -72,13 +72,11 @@ struct PairingView: View {
         }
     }
 
-    /// Always shows "Scan QR Code" as an action.
-    ///
-    /// The silent reconnect (`statusText`, below) is a background
-    /// convenience layered on top — never a gate on the manual path. Still
-    /// shown even when Local Network is confirmed denied — scanning fails
-    /// the same way pairing would, and gives a definite `failedView`
-    /// message instead of quietly disabling the button.
+    /// The silent reconnect (`autoReconnectStatus`, below) is a background
+    /// convenience layered on top — never a gate on the manual "Scan QR
+    /// Code" row, still present even when Local Network is confirmed
+    /// denied (scanning fails the same way pairing would, with a definite
+    /// `failedView` message instead of a quietly disabled row).
     // Open Settings shows whenever denial is confirmed
     // (`session.isLocalNetworkDenied`), independent of
     // `autoReconnectState` — denial affects `.idle` and `.notFound`
@@ -87,12 +85,12 @@ struct PairingView: View {
     // 2026-09-13.
     private var landingView: some View {
         VStack(spacing: 20) {
-            statusText
-            if !session.deviceRows.isEmpty {
-                deviceRowsList
+            VStack(spacing: 8) {
+                Text("Select a desktop to connect")
+                    .font(.headline)
+                autoReconnectStatus
             }
-            Button("Scan QR Code") { checkCameraAndAdvance() }
-                .buttonStyle(.borderedProminent)
+            deviceRowsList
             if session.isLocalNetworkDenied {
                 Button("Open Settings", action: openSystemSettings)
                     .buttonStyle(.bordered)
@@ -100,14 +98,25 @@ struct PairingView: View {
         }
     }
 
-    /// Known desktops (annotated by live discovery) and freshly-discovered
-    /// unpaired ones, merged. Empty at a true first-run (nothing known,
-    /// nothing discovered yet) — falls back to the plain scan prompt above.
+    /// Known desktops (annotated by live discovery), freshly-discovered
+    /// unpaired ones, and a "Scan QR Code" row — always present, so a
+    /// fresh install with nothing known yet still sees one tappable row
+    /// and learns the same interaction the real list later uses.
     private var deviceRowsList: some View {
         VStack(spacing: 8) {
             ForEach(session.deviceRows) { row in
                 deviceRow(row)
             }
+            if !session.deviceRows.isEmpty {
+                Divider()
+            }
+            Button {
+                checkCameraAndAdvance()
+            } label: {
+                deviceRowLabel("Scan QR Code…", trailing: "Scan", isInteractive: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the camera to pair a new desktop")
         }
     }
 
@@ -119,28 +128,34 @@ struct PairingView: View {
                 state = .connecting
                 session.connect(to: row)
             } label: {
-                deviceRowLabel(row.name, trailing: "Connect")
+                deviceRowLabel(row.name, trailing: "Connect", isInteractive: true)
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Connects to this desktop")
         case .offline:
-            deviceRowLabel(row.name, trailing: "Offline")
+            deviceRowLabel(row.name, trailing: "Offline", isInteractive: false)
                 .foregroundStyle(.secondary)
+                .accessibilityLabel("\(row.name), offline")
         case .pairable:
             Button {
                 checkCameraAndAdvance()
             } label: {
-                deviceRowLabel(row.name, trailing: "Pair")
+                deviceRowLabel(row.name, trailing: "Pair", isInteractive: true)
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Opens the camera to pair this desktop")
         }
     }
 
-    private func deviceRowLabel(_ name: String, trailing: String) -> some View {
+    /// `isInteractive` tints the trailing label with the app's accent
+    /// color — the system's own primary-action mechanism, so a real theme
+    /// at step 12 needs no change here, just a new `AccentColor` asset.
+    private func deviceRowLabel(_ name: String, trailing: String, isInteractive: Bool) -> some View {
         HStack {
             Text(name)
             Spacer()
             Text(trailing)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isInteractive ? Color.accentColor : Color.secondary)
         }
         .padding()
         .frame(maxWidth: .infinity, minHeight: 44)
@@ -148,13 +163,12 @@ struct PairingView: View {
     }
 
     @ViewBuilder
-    private var statusText: some View {
+    private var autoReconnectStatus: some View {
         switch session.autoReconnectState {
         case .idle where session.isLocalNetworkDenied:
             localNetworkDeniedText
         case .idle:
-            Text("Scan your desktop's QR code to pair.")
-                .multilineTextAlignment(.center)
+            EmptyView()
         case .searching:
             VStack(spacing: 8) {
                 ProgressView()
@@ -164,10 +178,8 @@ struct PairingView: View {
         case .notFound where session.isLocalNetworkDenied:
             localNetworkDeniedText
         case .notFound:
-            Text(
-                "Couldn't find Buttons desktop automatically. Make sure it's running on this network, or scan its QR code."
-            )
-            .multilineTextAlignment(.center)
+            Text("Couldn't find it automatically — select it below if it's listed, or scan its QR code.")
+                .multilineTextAlignment(.center)
         }
     }
 
