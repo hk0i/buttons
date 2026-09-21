@@ -41,11 +41,8 @@ final class DesktopConnection: NSObject {
     private(set) var pairError: String?
     private(set) var lastActionResult: ActionResultEvent?
 
-    /// Fired only when an *established* connection drops on its own
-    /// (`receiveLoop`'s failure branch) — never from `disconnect()`. Set
-    /// once at the composition root; deciding "should we auto-reconnect"
-    /// at the point of detection means an intentional disconnect
-    /// (switching devices) simply never triggers it, no flag needed.
+    /// Fires only when an established connection drops on its own — never
+    /// from `disconnect()`, so an intentional disconnect never triggers it.
     var onConnectionLost: (() -> Void)?
 
     /// button_id -> is "on" showing, for every Switch button. Rebuilt from

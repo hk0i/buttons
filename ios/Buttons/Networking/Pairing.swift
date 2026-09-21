@@ -145,8 +145,7 @@ enum AutoReconnectState: Equatable {
 
 /// Drives a pairing attempt — either a scanned QR or a silent mDNS
 /// reconnect — and the Keychain write on success. Owns `DesktopDiscovery`
-/// outright and exposes the merged known/discovered list `PairingView`
-/// renders.
+/// outright, not passed per-call.
 ///
 /// QR scanning itself (`DataScannerViewController`) lives in
 /// `Views/PairingView.swift`; this only takes the decoded string.
@@ -178,10 +177,8 @@ final class PairingSession {
         deviceRows = mergedDeviceRows(known: pairingStore.knownDevices(), discovered: discovery.discovered)
     }
 
-    /// Keeps `deviceRows` live for as long as the caller keeps this task
-    /// running — `PairingView` wraps it in `.task`, so it starts on
-    /// appear and cancels on disappear for free. mDNS can find or lose a
-    /// device at any time, not just during `attemptAutoReconnect`'s own
+    /// Refreshes `deviceRows` on a loop until cancelled — mDNS can find or
+    /// lose a device at any time, not just during `attemptAutoReconnect`'s
     /// poll window.
     func watchDeviceRows() async {
         while !Task.isCancelled {

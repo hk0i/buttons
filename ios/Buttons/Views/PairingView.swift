@@ -31,9 +31,7 @@ struct PairingView: View {
     var body: some View {
         content
             .padding()
-            // Cancels automatically when this view disappears (i.e. once
-            // actually connected and RootView swaps it out) — keeps the
-            // picker's list live without a bespoke start/stop lifecycle.
+            // Cancels automatically when view disappears.
             .task { await session.watchDeviceRows() }
             // Returning from Settings (the "Open Settings" affordance
             // below) re-activates the app but doesn't trigger onAppear —
