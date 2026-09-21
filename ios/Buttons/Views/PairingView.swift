@@ -31,6 +31,10 @@ struct PairingView: View {
     var body: some View {
         content
             .padding()
+            // Cancels automatically when this view disappears (i.e. once
+            // actually connected and RootView swaps it out) — keeps the
+            // picker's list live without a bespoke start/stop lifecycle.
+            .task { await session.watchDeviceRows() }
             // Returning from Settings (the "Open Settings" affordance
             // below) re-activates the app but doesn't trigger onAppear —
             // without this, granting camera access there leaves the user
@@ -86,6 +90,9 @@ struct PairingView: View {
     private var landingView: some View {
         VStack(spacing: 20) {
             statusText
+            if !session.deviceRows.isEmpty {
+                deviceRowsList
+            }
             Button("Scan QR Code") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
             if session.isLocalNetworkDenied {
@@ -93,6 +100,53 @@ struct PairingView: View {
                     .buttonStyle(.bordered)
             }
         }
+    }
+
+    /// Known desktops (annotated by live discovery) and freshly-discovered
+    /// unpaired ones, merged. Empty at a true first-run (nothing known,
+    /// nothing discovered yet) — falls back to the plain scan prompt above.
+    private var deviceRowsList: some View {
+        VStack(spacing: 8) {
+            ForEach(session.deviceRows) { row in
+                deviceRow(row)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func deviceRow(_ row: PairedDeviceRow) -> some View {
+        switch row.status {
+        case .connectable:
+            Button {
+                state = .connecting
+                session.connect(to: row)
+            } label: {
+                deviceRowLabel(row.name, trailing: "Connect")
+            }
+            .buttonStyle(.plain)
+        case .offline:
+            deviceRowLabel(row.name, trailing: "Offline")
+                .foregroundStyle(.secondary)
+        case .pairable:
+            Button {
+                checkCameraAndAdvance()
+            } label: {
+                deviceRowLabel(row.name, trailing: "Pair")
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func deviceRowLabel(_ name: String, trailing: String) -> some View {
+        HStack {
+            Text(name)
+            Spacer()
+            Text(trailing)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.3)))
     }
 
     @ViewBuilder

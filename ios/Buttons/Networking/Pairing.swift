@@ -178,6 +178,18 @@ final class PairingSession {
         deviceRows = mergedDeviceRows(known: pairingStore.knownDevices(), discovered: discovery.discovered)
     }
 
+    /// Keeps `deviceRows` live for as long as the caller keeps this task
+    /// running — `PairingView` wraps it in `.task`, so it starts on
+    /// appear and cancels on disappear for free. mDNS can find or lose a
+    /// device at any time, not just during `attemptAutoReconnect`'s own
+    /// poll window.
+    func watchDeviceRows() async {
+        while !Task.isCancelled {
+            refreshDeviceRows()
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+    }
+
     func pair(scannedQR: String) {
         guard let payload = PairingPayload(qrString: scannedQR) else {
             lastError = "unrecognized QR code"
@@ -203,9 +215,6 @@ final class PairingSession {
         }
     }
 
-    /// Tapping a device while a *different* one is already live currently
-    /// no-ops silently (`DesktopConnection`'s single-slot guard drops the
-    /// attempt) — open question, not resolved here.
     func connect(to row: PairedDeviceRow) {
         guard case .connectable(let endpoint) = row.status,
             let stored = pairingStore.knownDevices().first(where: { $0.deviceId == row.deviceId })
@@ -250,10 +259,8 @@ final class PairingSession {
         else { return }
         autoReconnectState = .searching
         // ~5s of polling at 250ms — generous for LAN mDNS, not a
-        // network round trip to wait indefinitely on. Also doubles as
-        // the picker's periodic refresh while this runs.
+        // network round trip to wait indefinitely on.
         for _ in 0..<20 {
-            refreshDeviceRows()
             if let endpoint = discovery.endpoint(forDeviceId: stored.deviceId) {
                 autoReconnectState = .idle
                 reconnect(stored: stored, endpoint: endpoint)
