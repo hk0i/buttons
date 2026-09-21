@@ -116,12 +116,13 @@ pub async fn run(
     app: tauri::AppHandle,
 ) {
     let device_id = pairing.device_id();
+    let device_name = pairing.device_name();
 
     let mdns = ServiceDaemon::new().expect("failed to create mDNS daemon");
     let host_name = format!("{INSTANCE_NAME}.local.");
     let mut txt = HashMap::new();
     txt.insert("device_id".to_string(), device_id);
-    let service_info = ServiceInfo::new(SERVICE_TYPE, INSTANCE_NAME, &host_name, "", PORT, Some(txt))
+    let service_info = ServiceInfo::new(SERVICE_TYPE, &device_name, &host_name, "", PORT, Some(txt))
         .expect("valid mDNS service info")
         .enable_addr_auto();
     mdns.register(service_info)
