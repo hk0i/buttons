@@ -1,24 +1,17 @@
 import Foundation
 import Network
 
-/// Result of a pairing attempt: the `auth_token` and `device_name` (per
-/// `07c`) to persist on success, or a human-readable reason on failure.
-/// Not `Result<String, String>` — `String` doesn't conform to `Error`,
-/// and defining a throwaway `Error` wrapper just to satisfy that is more
-/// ceremony than this needs.
-///
-/// `deviceName` is non-optional here, not `String?` — every real sender
-/// (desktop app, the `websocat` test fixture per `PAIRING.md`) populates
-/// `PairResponse.device_name`, so an absent field is a genuine anomaly,
-/// not a routine case worth threading `Optional` through every consumer
-/// for. This is the one place that anomaly gets absorbed into a fallback.
+/// Result of a pairing attempt: `auth_token`/`device_name` to persist on
+/// success, or a human-readable reason on failure. Not `Result<String,
+/// String>` — `String` doesn't conform to `Error`, and a throwaway
+/// wrapper just to satisfy that is more ceremony than this needs.
+/// `deviceName` is non-optional: every real sender populates it, so an
+/// absent field is an anomaly absorbed into a fallback right here.
 enum PairResult {
     case success(authToken: String, deviceName: String)
     case failure(String)
 }
 
-/// Shown only if a `PairResponse` genuinely omits `device_name` — not
-/// expected in practice, see `PairResult` above.
 private let unnamedDeviceFallback = "Unnamed Device"
 
 /// Wraps an incoming `ActionResult` with a `sequence` that always

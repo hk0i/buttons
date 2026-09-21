@@ -23,32 +23,23 @@ struct PairingPayload: Equatable {
     }
 }
 
-/// A known desktop's persisted credential. `deviceName` is non-optional —
-/// every real sender (desktop app, `websocat` fixture) populates it, so a
-/// missing value is an anomaly absorbed into a fallback at the wire
-/// boundary (`Connection.swift`), not threaded through as `Optional`
-/// here. See docs/slices/11a. Pairing Flow Robustness.spec.md.
 struct StoredPairing: Equatable {
     let deviceId: String
     let authToken: String
     let deviceName: String
 }
 
-/// `authToken`/`deviceName` packed into one Keychain value — `deviceId` is
-/// the key, not repeated in the value. `deviceName` stays optional here
-/// (decode-tolerant of an entry written before this field existed) even
-/// though `StoredPairing.deviceName` isn't — `knownDevices()` is the
-/// boundary that resolves the fallback.
+/// `authToken`/`deviceName` packed into one Keychain value, keyed by
+/// `deviceId`. `deviceName` stays optional for decode-tolerance of an
+/// older entry; `knownDevices()` resolves the fallback.
 private struct StoredCredential: Codable {
     let authToken: String
     let deviceName: String?
 }
 
-/// Pairing-specific logic layered on top of `SecretStore` — one Keychain
-/// entry per known device, plus a separate pointer to which one is
-/// active. Two namespaces, not one, so listing known devices never has to
-/// filter out the active-pointer entry by name (it's physically in a
-/// different namespace). See docs/slices/11a. Pairing Flow Robustness.spec.md.
+/// One Keychain entry per known device, plus a separate namespace for
+/// which one is active — kept separate so listing devices never has to
+/// filter out the active pointer by name.
 final class PairingStore {
     private static let devicesNamespace = "gg.pekk.buttons.pairing.devices"
     private static let activeNamespace = "gg.pekk.buttons.pairing.active"
@@ -104,16 +95,15 @@ enum PairedDeviceStatus {
 struct PairedDeviceRow: Identifiable {
     var id: String { deviceId }
     let deviceId: String
-    /// Never a raw UUID — users should never see one. Two distinct
-    /// literal fallbacks, not `Optional`: "known but no name" and "never
-    /// paired, no name to have" are different facts, not the same nil.
     let name: String
     let status: PairedDeviceStatus
 }
 
-/// Keyed by `deviceId`. `name` always comes from the *stored* credential,
-/// never a live mDNS value — `07c`'s Out item 1 deliberately keeps the
-/// device name off the (unauthenticated) Bonjour TXT record.
+/// Keyed by `deviceId`. `name` comes from the stored credential, never a
+/// live mDNS value (`07c`'s Out item 1 keeps names off the unauthenticated
+/// Bonjour TXT record). Duplicate names get an AirPlay/AppleTV-style
+/// " (2)", " (3)" suffix — a name collision, not a raw ID, is what a user
+/// should see when it happens.
 func mergedDeviceRows(
     known: [StoredPairing], discovered: [DiscoveredDesktop]
 ) -> [PairedDeviceRow] {
@@ -131,7 +121,17 @@ func mergedDeviceRows(
         .filter { !knownIds.contains($0.deviceId) }
         .map { PairedDeviceRow(deviceId: $0.deviceId, name: "New Device", status: .pairable(endpoint: $0.endpoint)) }
 
-    return knownRows + newRows
+    return numberingDuplicateNames(knownRows + newRows)
+}
+
+private func numberingDuplicateNames(_ rows: [PairedDeviceRow]) -> [PairedDeviceRow] {
+    var seenCounts: [String: Int] = [:]
+    return rows.map { row in
+        seenCounts[row.name, default: 0] += 1
+        let count = seenCounts[row.name]!
+        guard count > 1 else { return row }
+        return PairedDeviceRow(deviceId: row.deviceId, name: "\(row.name) (\(count))", status: row.status)
+    }
 }
 
 /// The state of a silent mDNS reconnect attempt.
@@ -145,9 +145,8 @@ enum AutoReconnectState: Equatable {
 
 /// Drives a pairing attempt — either a scanned QR or a silent mDNS
 /// reconnect — and the Keychain write on success. Owns `DesktopDiscovery`
-/// outright (not passed per-call) and exposes the merged known/discovered
-/// list `PairingView` renders — see docs/slices/11a. Pairing Flow
-/// Robustness.spec.md, Design decisions 7/10.
+/// outright and exposes the merged known/discovered list `PairingView`
+/// renders.
 ///
 /// QR scanning itself (`DataScannerViewController`) lives in
 /// `Views/PairingView.swift`; this only takes the decoded string.
@@ -157,28 +156,17 @@ final class PairingSession {
     private(set) var lastError: String?
     private(set) var autoReconnectState: AutoReconnectState = .idle
 
-    /// What `PairingView` renders — it never touches `DesktopDiscovery`
-    /// or `PairingStore` directly. Refreshed explicitly, not computed: a
-    /// Keychain write has no signal SwiftUI can observe on its own.
+    /// Refreshed explicitly, not computed: a Keychain write has no
+    /// signal SwiftUI can observe on its own.
     private(set) var deviceRows: [PairedDeviceRow] = []
 
-    /// Whether a silent reconnect is already in progress — derived from
-    /// `autoReconnectState` rather than a separate stored flag, so
-    /// `attemptAutoReconnect` has one source of truth for its own dedupe
-    /// guard instead of two things to keep in sync.
     var isReconnectInFlight: Bool { autoReconnectState == .searching }
-
-    /// Passthrough so `PairingView` doesn't need its own `DesktopDiscovery`
-    /// reference just for this one flag.
     var isLocalNetworkDenied: Bool { discovery.isLocalNetworkDenied }
 
     private let connection: DesktopConnection
     private let discovery: DesktopDiscovery
     private let pairingStore: PairingStore
 
-    /// No default on `pairingStore` — there's exactly one composition
-    /// root (`ButtonsApp.swift`); a default here would hide where wiring
-    /// actually happens for no benefit.
     init(connection: DesktopConnection, discovery: DesktopDiscovery, pairingStore: PairingStore) {
         self.connection = connection
         self.discovery = discovery
@@ -215,11 +203,9 @@ final class PairingSession {
         }
     }
 
-    /// The picker's "Connect" action — looks up the matching stored
-    /// credential and reconnects. Tapping a device while a *different*
-    /// one is already live currently no-ops silently
-    /// (`DesktopConnection`'s single-slot guard drops the attempt) —
-    /// Design decision 12, still open, not resolved by this method.
+    /// Tapping a device while a *different* one is already live currently
+    /// no-ops silently (`DesktopConnection`'s single-slot guard drops the
+    /// attempt) — open question, not resolved here.
     func connect(to row: PairedDeviceRow) {
         guard case .connectable(let endpoint) = row.status,
             let stored = pairingStore.knownDevices().first(where: { $0.deviceId == row.deviceId })
@@ -227,12 +213,9 @@ final class PairingSession {
         reconnect(stored: stored, endpoint: endpoint)
     }
 
-    /// A successful pair/reconnect always makes that device active (the
-    /// auto-reconnect path already targeted the active device, so this is
-    /// a no-op there; a manual "Connect" tap is exactly DoD item 6's
-    /// "makes it active"). `deviceName` overwrites the stored value on
-    /// every success, not just first pair — a desktop rename reaches the
-    /// phone without a separate push mechanism.
+    /// Always makes the paired device active, and always overwrites
+    /// `deviceName` — a desktop rename reaches the phone on the next
+    /// successful pair, not just the first.
     private func handlePairResult(_ result: PairResult, deviceId: String) {
         switch result {
         case .success(let authToken, let deviceName):

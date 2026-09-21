@@ -2,10 +2,7 @@ import Foundation
 import Security
 
 /// A namespaced key-value store for secrets — Keychain-backed in
-/// production, fakeable in tests. Reusable beyond pairing: any future
-/// feature needing to persist a secret (a Tier 2 integration's API
-/// token, say) is a new namespace, not a new protocol. See
-/// docs/slices/11a. Pairing Flow Robustness.spec.md.
+/// production, fakeable in tests.
 protocol SecretStore {
     /// The stored value for `key` under `namespace`, or nil if nothing's
     /// stored (or the read fails).
