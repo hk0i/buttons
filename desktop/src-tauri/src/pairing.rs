@@ -36,9 +36,9 @@ const DEVICE_NAME_MAX_BYTES: usize = 63;
 #[derive(Serialize, Deserialize)]
 struct DeviceFile {
     device_id: String,
-    /// Independent of `paired` — a name exists whether or not anything
-    /// is paired yet. Defaults to the machine hostname on first launch,
-    /// overridable via desktop settings.
+    /// `default`, not required — avoids a crash loading a device.json
+    /// from before this field existed.
+    #[serde(default = "default_device_name")]
     device_name: String,
     paired: Option<PairedSlot>,
 }
@@ -54,6 +54,17 @@ fn truncate_device_name(name: &str) -> String {
         end -= 1;
     }
     name[..end].to_string()
+}
+
+/// Hostname fallback, shared by a fresh `device.json` and by
+/// `#[serde(default)]` on load.
+fn default_device_name() -> String {
+    truncate_device_name(
+        &hostname::get()
+            .ok()
+            .and_then(|h| h.into_string().ok())
+            .unwrap_or_else(|| "Buttons Desktop".to_string()),
+    )
 }
 
 struct OneTimeToken {
@@ -80,12 +91,7 @@ impl Pairing {
         } else {
             let fresh = DeviceFile {
                 device_id: Uuid::new_v4().to_string(),
-                device_name: truncate_device_name(
-                    &hostname::get()
-                        .ok()
-                        .and_then(|h| h.into_string().ok())
-                        .unwrap_or_else(|| "Buttons Desktop".to_string()),
-                ),
+                device_name: default_device_name(),
                 paired: None,
             };
             let data = serde_json::to_string_pretty(&fresh).map_err(|e| e.to_string())?;
@@ -268,6 +274,17 @@ mod tests {
     fn protocol_version_check() {
         assert!(check_protocol_version(PROTOCOL_VERSION));
         assert!(!check_protocol_version("2"));
+    }
+
+    #[test]
+    fn loads_a_pre_existing_device_json_missing_device_name_without_panicking() {
+        // Regression: an old device.json with no device_name must still load.
+        let path = temp_device_path("pre-existing-shape");
+        fs::write(&path, r#"{"device_id":"abc-123","paired":null}"#).unwrap();
+        let p = Pairing::load_or_create(path.clone()).unwrap();
+        assert_eq!(p.device_id(), "abc-123");
+        assert!(!p.device_name().is_empty());
+        fs::remove_file(&path).ok();
     }
 
     #[test]
