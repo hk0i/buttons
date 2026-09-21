@@ -86,7 +86,7 @@ struct PairingView: View {
     private var landingView: some View {
         VStack(spacing: 20) {
             VStack(spacing: 8) {
-                Text("Select a desktop to connect")
+                Text("Select a desktop to connect to")
                     .font(.headline)
                 autoReconnectStatus
             }
@@ -104,19 +104,22 @@ struct PairingView: View {
     /// and learns the same interaction the real list later uses.
     private var deviceRowsList: some View {
         VStack(spacing: 8) {
-            ForEach(session.deviceRows) { row in
-                deviceRow(row)
-            }
-            if !session.deviceRows.isEmpty {
-                Divider()
-            }
             Button {
                 checkCameraAndAdvance()
             } label: {
-                deviceRowLabel("Scan QR Code…", trailing: "Scan", isInteractive: true)
+                deviceRowLabel(
+                    "Scan QR Code to Add…",
+                    trailing: "Scan",
+                    icon: "plus",
+                    isInteractive: true
+                )
             }
             .buttonStyle(.plain)
             .accessibilityHint("Opens the camera to pair a new desktop")
+
+            ForEach(session.deviceRows) { row in
+                deviceRow(row)
+            }
         }
     }
 
@@ -133,14 +136,14 @@ struct PairingView: View {
             .buttonStyle(.plain)
             .accessibilityHint("Connects to this desktop")
         case .offline:
-            deviceRowLabel(row.name, trailing: "Offline", isInteractive: false)
+            deviceRowLabel(row.name, trailing: "Offline")
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("\(row.name), offline")
         case .pairable:
             Button {
                 checkCameraAndAdvance()
             } label: {
-                deviceRowLabel(row.name, trailing: "Pair", isInteractive: true)
+                deviceRowLabel(row.name, trailing: "Pair")
             }
             .buttonStyle(.plain)
             .accessibilityHint("Opens the camera to pair this desktop")
@@ -150,9 +153,14 @@ struct PairingView: View {
     /// `isInteractive` tints the trailing label with the app's accent
     /// color — the system's own primary-action mechanism, so a real theme
     /// at step 12 needs no change here, just a new `AccentColor` asset.
-    private func deviceRowLabel(_ name: String, trailing: String, isInteractive: Bool) -> some View {
+    private func deviceRowLabel(
+        _ name: String,
+        trailing: String,
+        icon: String = "desktopcomputer",
+        isInteractive: Bool = false
+    ) -> some View {
         HStack {
-            Text(name)
+            Text("\(Image(systemName: icon)) \(name)")
             Spacer()
             Text(trailing)
                 .foregroundStyle(isInteractive ? Color.accentColor : Color.secondary)
