@@ -16,6 +16,7 @@
 		69DFF701F6288CC3FB70B2A1 /* Connection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25FFB6620D32ADD48DAB3167 /* Connection.swift */; };
 		7AEB1018A2FC4D5D85A451A9 /* Envelope+Send.swift in Sources */ = {isa = PBXBuildFile; fileRef = A452F5FEFBBA7185667E186D /* Envelope+Send.swift */; };
 		8AA258A7B337257EB93A2742 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D27FA16BBBA5ACB9FCF01F0B /* PairingView.swift */; };
+		92EA8CAED9BB81716B1E6B9A /* SecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01C1CD810C48198B527BE554 /* SecretStore.swift */; };
 		B9735537876E8367A80D7744 /* DeckButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837BB78F51101BAAF346F8D2 /* DeckButton.swift */; };
 		BAAC61285D48302D17293BD5 /* Discovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61E5950233A0AF2021367194 /* Discovery.swift */; };
 		CC883E9181767737343DC9D6 /* SwiftProtobuf in Frameworks */ = {isa = PBXBuildFile; productRef = F9D4B63899320FF149A60B86 /* SwiftProtobuf */; };
@@ -25,6 +26,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		01C1CD810C48198B527BE554 /* SecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretStore.swift; sourceTree = "<group>"; };
 		06CFCD777C2F722E767A13EB /* ButtonGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ButtonGrid.swift; sourceTree = "<group>"; };
 		07A1855026025D3756DFE4E1 /* Buttons.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Buttons.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		25FFB6620D32ADD48DAB3167 /* Connection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connection.swift; sourceTree = "<group>"; };
@@ -73,6 +75,7 @@
 				61E5950233A0AF2021367194 /* Discovery.swift */,
 				A452F5FEFBBA7185667E186D /* Envelope+Send.swift */,
 				79D7AABE6ACF186EBB03068F /* Pairing.swift */,
+				01C1CD810C48198B527BE554 /* SecretStore.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -198,6 +201,7 @@
 				F4A322D336051B904DA34261 /* Pairing.swift in Sources */,
 				8AA258A7B337257EB93A2742 /* PairingView.swift in Sources */,
 				5906FB84EBB7E981E75DC0CD /* PreviewFixtures.swift in Sources */,
+				92EA8CAED9BB81716B1E6B9A /* SecretStore.swift in Sources */,
 				DEE34D9A1AB8365709AAF625 /* StatusColors.swift in Sources */,
 				56C07AC6BEEE9A606CFE9FD2 /* buttons.pb.swift in Sources */,
 				1DDCED855B9AF798C8BECC11 /* wire.pb.swift in Sources */,

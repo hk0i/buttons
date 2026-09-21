@@ -1,12 +1,13 @@
 import Foundation
 import Network
 
-/// Result of a pairing attempt: the `auth_token` to persist on success, or
-/// a human-readable reason on failure. Not `Result<String, String>` —
-/// `String` doesn't conform to `Error`, and defining a throwaway `Error`
-/// wrapper just to satisfy that is more ceremony than this needs.
+/// Result of a pairing attempt: the `auth_token` (and, per `07c`, an
+/// optional `device_name`) to persist on success, or a human-readable
+/// reason on failure. Not `Result<String, String>` — `String` doesn't
+/// conform to `Error`, and defining a throwaway `Error` wrapper just to
+/// satisfy that is more ceremony than this needs.
 enum PairResult {
-    case success(String)
+    case success(authToken: String, deviceName: String?)
     case failure(String)
 }
 
@@ -316,7 +317,12 @@ final class DesktopConnection: NSObject {
             if response.ok, response.hasAuthToken {
                 isConnected = true
                 pairError = nil
-                pairCompletion?(.success(response.authToken))
+                pairCompletion?(
+                    .success(
+                        authToken: response.authToken,
+                        deviceName: response.hasDeviceName ? response.deviceName : nil
+                    )
+                )
             } else {
                 isConnected = false
                 let message =

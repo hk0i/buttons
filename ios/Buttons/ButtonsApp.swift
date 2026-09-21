@@ -3,18 +3,17 @@ import SwiftUI
 @main
 struct ButtonsApp: App {
     private let connection: DesktopConnection
-    private let discovery = DesktopDiscovery()
     private let session: PairingSession
 
     init() {
         let connection = DesktopConnection()
         self.connection = connection
-        session = PairingSession(connection: connection)
+        session = PairingSession(connection: connection, discovery: DesktopDiscovery(), pairingStore: PairingStore())
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView(connection: connection, discovery: discovery, session: session)
+            RootView(connection: connection, session: session)
         }
     }
 }
@@ -23,7 +22,6 @@ struct ButtonsApp: App {
 /// fallback → `ContentView` once paired.
 private struct RootView: View {
     let connection: DesktopConnection
-    let discovery: DesktopDiscovery
     let session: PairingSession
 
     @State private var hasAttemptedReconnect = false
@@ -40,7 +38,7 @@ private struct RootView: View {
                 // failure state.
                 ProgressView("Loading…")
             } else {
-                PairingView(session: session, discovery: discovery)
+                PairingView(session: session)
             }
         }
         // safeAreaInset, not overlay — reserves real layout space above
@@ -64,7 +62,7 @@ private struct RootView: View {
         // without requiring a force-quit.
         .onChange(of: connection.isConnected) { wasConnected, isConnected in
             if wasConnected, !isConnected {
-                Task { await session.attemptAutoReconnect(discovery: discovery) }
+                Task { await session.attemptAutoReconnect() }
             }
         }
         // `didBecomeActiveNotification` can't distinguish "returned from
@@ -83,7 +81,7 @@ private struct RootView: View {
             wasBackgrounded = false
             Task {
                 if !(await connection.isConnectionAlive()) {
-                    await session.attemptAutoReconnect(discovery: discovery)
+                    await session.attemptAutoReconnect()
                 }
             }
         }
@@ -102,7 +100,7 @@ private struct RootView: View {
     private func attemptReconnectIfPaired() {
         guard !hasAttemptedReconnect else { return }
         hasAttemptedReconnect = true
-        Task { await session.attemptAutoReconnect(discovery: discovery) }
+        Task { await session.attemptAutoReconnect() }
     }
 }
 

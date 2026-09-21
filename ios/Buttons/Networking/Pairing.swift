@@ -1,6 +1,5 @@
 import Foundation
 import Network
-import Security
 
 /// A scanned QR's decoded payload: `"<device_id> <lan_ip> <port>
 /// <pairing_token>"`, four space-delimited fields — not `ip:port`
@@ -24,76 +23,104 @@ struct PairingPayload: Equatable {
     }
 }
 
-/// The persisted pairing credential — `device_id` + `auth_token` — read on
-/// launch to attempt a silent reconnect, written once a fresh pair's
-/// `PairResponse` confirms it.
+/// A known desktop's persisted credential. `deviceName` is nil only for a
+/// pairing stored before `07c`'s wire field existed. See
+/// docs/slices/11a. Pairing Flow Robustness.spec.md.
 struct StoredPairing: Equatable {
     let deviceId: String
     let authToken: String
+    let deviceName: String?
 }
 
-/// Keychain-backed, not Keychain-only by convention — a secret like
-/// `auth_token` belongs there, not `UserDefaults`/a plist, the mobile-side
-/// analog of desktop's `device.json` getting real file permissions instead
-/// of `localStorage`.
-enum PairingStore {
-    private static let service = "gg.pekk.buttons.pairing"
-    private static let deviceIdAccount = "device_id"
-    private static let authTokenAccount = "auth_token"
+/// `authToken`/`deviceName` packed into one Keychain value — `deviceId` is
+/// the key, not repeated in the value.
+private struct StoredCredential: Codable {
+    let authToken: String
+    let deviceName: String?
+}
 
-    static func load() -> StoredPairing? {
-        guard let deviceId = readString(account: deviceIdAccount),
-            let authToken = readString(account: authTokenAccount)
-        else { return nil }
-        return StoredPairing(deviceId: deviceId, authToken: authToken)
+/// Pairing-specific logic layered on top of `SecretStore` — one Keychain
+/// entry per known device, plus a separate pointer to which one is
+/// active. Two namespaces, not one, so listing known devices never has to
+/// filter out the active-pointer entry by name (it's physically in a
+/// different namespace). See docs/slices/11a. Pairing Flow Robustness.spec.md.
+final class PairingStore {
+    private static let devicesNamespace = "gg.pekk.buttons.pairing.devices"
+    private static let activeNamespace = "gg.pekk.buttons.pairing.active"
+    private static let activeKey = "active"
+
+    private let secrets: SecretStore
+
+    /// Defaults to the real Keychain; tests inject a fake `SecretStore`.
+    init(secrets: SecretStore = KeychainStore()) {
+        self.secrets = secrets
     }
 
-    static func save(_ pairing: StoredPairing) {
-        writeString(pairing.deviceId, account: deviceIdAccount)
-        writeString(pairing.authToken, account: authTokenAccount)
-    }
-
-    static func clear() {
-        delete(account: deviceIdAccount)
-        delete(account: authTokenAccount)
-    }
-
-    private static func query(account: String) -> [String: Any] {
-        [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-    }
-
-    private static func readString(account: String) -> String? {
-        var lookup = query(account: account)
-        lookup[kSecReturnData as String] = true
-        lookup[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: AnyObject?
-        let status = SecItemCopyMatching(lookup as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    private static func writeString(_ value: String, account: String) {
-        let base = query(account: account)
-        let data = Data(value.utf8)
-        let attributes = [kSecValueData as String: data]
-
-        let status = SecItemCopyMatching(base as CFDictionary, nil)
-        if status == errSecSuccess {
-            SecItemUpdate(base as CFDictionary, attributes as CFDictionary)
-        } else {
-            var newItem = base
-            newItem[kSecValueData as String] = data
-            SecItemAdd(newItem as CFDictionary, nil)
+    func knownDevices() -> [StoredPairing] {
+        secrets.keys(namespace: Self.devicesNamespace).compactMap { deviceId in
+            guard let raw = secrets.read(namespace: Self.devicesNamespace, key: deviceId),
+                let credential = try? JSONDecoder().decode(StoredCredential.self, from: Data(raw.utf8))
+            else { return nil }
+            return StoredPairing(deviceId: deviceId, authToken: credential.authToken, deviceName: credential.deviceName)
         }
     }
 
-    private static func delete(account: String) {
-        SecItemDelete(query(account: account) as CFDictionary)
+    func activeDeviceId() -> String? {
+        secrets.read(namespace: Self.activeNamespace, key: Self.activeKey)
     }
+
+    func save(_ pairing: StoredPairing, makeActive: Bool = true) {
+        let credential = StoredCredential(authToken: pairing.authToken, deviceName: pairing.deviceName)
+        guard let data = try? JSONEncoder().encode(credential), let json = String(data: data, encoding: .utf8) else { return }
+        secrets.write(json, namespace: Self.devicesNamespace, key: pairing.deviceId)
+        if makeActive { setActive(deviceId: pairing.deviceId) }
+    }
+
+    func setActive(deviceId: String) {
+        secrets.write(deviceId, namespace: Self.activeNamespace, key: Self.activeKey)
+    }
+
+    func remove(deviceId: String) {
+        secrets.delete(namespace: Self.devicesNamespace, key: deviceId)
+    }
+}
+
+/// One row in the pairing picker — a known device, a freshly-discovered
+/// one, or both.
+enum PairedDeviceStatus {
+    case connectable(endpoint: NWEndpoint)  // known + discovered
+    case offline                            // known + not discovered
+    case pairable(endpoint: NWEndpoint)     // discovered + unknown
+}
+
+struct PairedDeviceRow: Identifiable {
+    var id: String { deviceId }
+    let deviceId: String
+    let name: String?  // nil falls back to a truncated deviceId in the UI, never a raw UUID string
+    let status: PairedDeviceStatus
+}
+
+/// Keyed by `deviceId`. `name` always comes from the *stored* credential,
+/// never a live mDNS value — `07c`'s Out item 1 deliberately keeps the
+/// device name off the (unauthenticated) Bonjour TXT record.
+func mergedDeviceRows(
+    known: [StoredPairing], discovered: [DiscoveredDesktop]
+) -> [PairedDeviceRow] {
+    let discoveredById = Dictionary(discovered.map { ($0.deviceId, $0) }, uniquingKeysWith: { first, _ in first })
+    let knownIds = Set(known.map(\.deviceId))
+
+    let knownRows = known.map { pairing in
+        PairedDeviceRow(
+            deviceId: pairing.deviceId,
+            name: pairing.deviceName,
+            status: discoveredById[pairing.deviceId].map { .connectable(endpoint: $0.endpoint) } ?? .offline
+        )
+    }
+    let newRows = discovered
+        .filter { !knownIds.contains($0.deviceId) }
+        .map { PairedDeviceRow(deviceId: $0.deviceId, name: nil, status: .pairable(endpoint: $0.endpoint)) }
+
+    return knownRows + newRows
 }
 
 /// The state of a silent mDNS reconnect attempt.
@@ -106,7 +133,10 @@ enum AutoReconnectState: Equatable {
 }
 
 /// Drives a pairing attempt — either a scanned QR or a silent mDNS
-/// reconnect — and the Keychain write on success.
+/// reconnect — and the Keychain write on success. Owns `DesktopDiscovery`
+/// outright (not passed per-call) and exposes the merged known/discovered
+/// list `PairingView` renders — see docs/slices/11a. Pairing Flow
+/// Robustness.spec.md, Design decisions 7/10.
 ///
 /// QR scanning itself (`DataScannerViewController`) lives in
 /// `Views/PairingView.swift`; this only takes the decoded string.
@@ -116,16 +146,37 @@ final class PairingSession {
     private(set) var lastError: String?
     private(set) var autoReconnectState: AutoReconnectState = .idle
 
+    /// What `PairingView` renders — it never touches `DesktopDiscovery`
+    /// or `PairingStore` directly. Refreshed explicitly, not computed: a
+    /// Keychain write has no signal SwiftUI can observe on its own.
+    private(set) var deviceRows: [PairedDeviceRow] = []
+
     /// Whether a silent reconnect is already in progress — derived from
     /// `autoReconnectState` rather than a separate stored flag, so
     /// `attemptAutoReconnect` has one source of truth for its own dedupe
     /// guard instead of two things to keep in sync.
     var isReconnectInFlight: Bool { autoReconnectState == .searching }
 
-    private let connection: DesktopConnection
+    /// Passthrough so `PairingView` doesn't need its own `DesktopDiscovery`
+    /// reference just for this one flag.
+    var isLocalNetworkDenied: Bool { discovery.isLocalNetworkDenied }
 
-    init(connection: DesktopConnection) {
+    private let connection: DesktopConnection
+    private let discovery: DesktopDiscovery
+    private let pairingStore: PairingStore
+
+    /// No default on `pairingStore` — there's exactly one composition
+    /// root (`ButtonsApp.swift`); a default here would hide where wiring
+    /// actually happens for no benefit.
+    init(connection: DesktopConnection, discovery: DesktopDiscovery, pairingStore: PairingStore) {
         self.connection = connection
+        self.discovery = discovery
+        self.pairingStore = pairingStore
+        refreshDeviceRows()
+    }
+
+    private func refreshDeviceRows() {
+        deviceRows = mergedDeviceRows(known: pairingStore.knownDevices(), discovered: discovery.discovered)
     }
 
     func pair(scannedQR: String) {
@@ -136,12 +187,7 @@ final class PairingSession {
         lastError = nil
         connection.connect(host: payload.host, port: payload.port, token: payload.token) {
             [weak self] (result: PairResult) in
-            switch result {
-            case .success(let authToken):
-                PairingStore.save(StoredPairing(deviceId: payload.deviceId, authToken: authToken))
-            case .failure(let message):
-                self?.lastError = message
-            }
+            self?.handlePairResult(result, deviceId: payload.deviceId, fallbackName: nil)
         }
     }
 
@@ -150,41 +196,70 @@ final class PairingSession {
     /// - Parameters:
     ///   - stored: The Keychain-backed credential to reconnect with.
     ///   - endpoint: The desktop's resolved Bonjour endpoint.
-    // `auth_token` doesn't rotate on reconnect (v1), so nothing new needs
-    // writing to Keychain here.
     func reconnect(stored: StoredPairing, endpoint: NWEndpoint) {
         lastError = nil
         connection.connect(toBonjourEndpoint: endpoint, token: stored.authToken) {
             [weak self] (result: PairResult) in
-            if case .failure(let message) = result {
-                self?.lastError = message
-            }
+            self?.handlePairResult(result, deviceId: stored.deviceId, fallbackName: stored.deviceName)
         }
     }
 
-    /// Starts the mDNS browse, and — if the Keychain holds a stored
-    /// pairing — polls it for a silent reconnect.
+    /// The picker's "Connect" action — looks up the matching stored
+    /// credential and reconnects. Tapping a device while a *different*
+    /// one is already live currently no-ops silently
+    /// (`DesktopConnection`'s single-slot guard drops the attempt) —
+    /// Design decision 12, still open, not resolved by this method.
+    func connect(to row: PairedDeviceRow) {
+        guard case .connectable(let endpoint) = row.status,
+            let stored = pairingStore.knownDevices().first(where: { $0.deviceId == row.deviceId })
+        else { return }
+        reconnect(stored: stored, endpoint: endpoint)
+    }
+
+    /// A successful pair/reconnect always makes that device active (the
+    /// auto-reconnect path already targeted the active device, so this is
+    /// a no-op there; a manual "Connect" tap is exactly DoD item 6's
+    /// "makes it active"). `deviceName` overwrites the stored value on
+    /// every success, not just first pair — a desktop rename reaches the
+    /// phone without a separate push mechanism.
+    private func handlePairResult(_ result: PairResult, deviceId: String, fallbackName: String?) {
+        switch result {
+        case .success(let authToken, let deviceName):
+            pairingStore.save(
+                StoredPairing(deviceId: deviceId, authToken: authToken, deviceName: deviceName ?? fallbackName),
+                makeActive: true
+            )
+            refreshDeviceRows()
+        case .failure(let message):
+            lastError = message
+        }
+    }
+
+    /// Starts the mDNS browse, and — if a known device is active — polls
+    /// for a silent reconnect to specifically that one.
     ///
-    /// The browse always starts, even with no stored pairing: it's what
+    /// The browse always starts, even with no active device: it's what
     /// lets a fresh install detect a denied Local Network permission
-    /// (`discovery.isLocalNetworkDenied`) before the user ever taps
-    /// "Scan QR Code," not just on reconnect. With no stored pairing,
-    /// `autoReconnectState` itself still stays `.idle` — the landing
-    /// screen shows first-pair copy, not a false "searching" state.
-    ///
-    /// - Parameter discovery: Browser to start and poll; left running on return.
+    /// before the user ever taps "Scan QR Code," not just on reconnect.
+    /// With no active device, `autoReconnectState` itself stays `.idle` —
+    /// the landing screen shows first-pair copy, not a false "searching"
+    /// state.
     // `discovery.start()` runs before the in-flight guard, not after —
     // restarting the browse is what recovers from a Local-Network-denied-
     // then-granted permission change (07d spec, DoD item 6), and that has
     // to happen even when a reconnect poll is already running. Moving
     // `start()` below the guard would silently break that recovery path.
-    func attemptAutoReconnect(discovery: DesktopDiscovery) async {
+    func attemptAutoReconnect() async {
         discovery.start()
-        guard !isReconnectInFlight, let stored = PairingStore.load() else { return }
+        guard !isReconnectInFlight, let deviceId = pairingStore.activeDeviceId(),
+            let stored = pairingStore.knownDevices().first(where: { $0.deviceId == deviceId })
+        else { return }
         autoReconnectState = .searching
         // ~5s of polling at 250ms — generous for LAN mDNS, not a
-        // network round trip to wait indefinitely on.
+        // network round trip to wait indefinitely on. Also doubles as
+        // the picker's periodic refresh while this runs.
         for _ in 0..<20 {
+            refreshDeviceRows()
             if let endpoint = discovery.endpoint(forDeviceId: stored.deviceId) {
                 autoReconnectState = .idle
                 reconnect(stored: stored, endpoint: endpoint)
@@ -193,9 +268,7 @@ final class PairingSession {
             try? await Task.sleep(for: .milliseconds(250))
         }
         // Not found within the window — landing state shows this and
-        // still offers "Scan QR Code" as the recovery path (slice 07
-        // spec, § Scope → Out, "Manual IP entry / QR
-        // redisplay-for-reconnect fallback").
+        // still offers "Scan QR Code" as the recovery path.
         autoReconnectState = .notFound
     }
 }

@@ -16,7 +16,6 @@ import VisionKit
 // dead scanner.
 struct PairingView: View {
     let session: PairingSession
-    let discovery: DesktopDiscovery
 
     @State private var state: PairingState = .landing
 
@@ -79,7 +78,7 @@ struct PairingView: View {
     /// the same way pairing would, and gives a definite `failedView`
     /// message instead of quietly disabling the button.
     // Open Settings shows whenever denial is confirmed
-    // (`discovery.isLocalNetworkDenied`), independent of
+    // (`session.isLocalNetworkDenied`), independent of
     // `autoReconnectState` — denial affects `.idle` and `.notFound`
     // equally now. See Discovery.swift and slice 07 spec, §
     // Implementation Notes, "Local Network (mDNS/`NWBrowser`)," amended
@@ -89,7 +88,7 @@ struct PairingView: View {
             statusText
             Button("Scan QR Code") { checkCameraAndAdvance() }
                 .buttonStyle(.borderedProminent)
-            if discovery.isLocalNetworkDenied {
+            if session.isLocalNetworkDenied {
                 Button("Open Settings", action: openSystemSettings)
                     .buttonStyle(.bordered)
             }
@@ -99,7 +98,7 @@ struct PairingView: View {
     @ViewBuilder
     private var statusText: some View {
         switch session.autoReconnectState {
-        case .idle where discovery.isLocalNetworkDenied:
+        case .idle where session.isLocalNetworkDenied:
             localNetworkDeniedText
         case .idle:
             Text("Scan your desktop's QR code to pair.")
@@ -110,7 +109,7 @@ struct PairingView: View {
                 Text("Looking for your paired desktop on this network…")
                     .multilineTextAlignment(.center)
             }
-        case .notFound where discovery.isLocalNetworkDenied:
+        case .notFound where session.isLocalNetworkDenied:
             localNetworkDeniedText
         case .notFound:
             Text(
@@ -178,7 +177,7 @@ struct PairingView: View {
 
     /// Also offers "Open Settings" alongside the primary retry.
     ///
-    /// `discovery.isLocalNetworkDenied` resolves one specific ambiguity —
+    /// `session.isLocalNetworkDenied` resolves one specific ambiguity —
     /// when true, the failure is definitely permission, not a stale token
     /// or wrong network, and the copy says so instead of showing
     /// `message`. Otherwise this stays a genuine hedge: a stale token and
@@ -188,7 +187,7 @@ struct PairingView: View {
     /// closes the gap without guessing wrong.
     private func failedView(_ message: String) -> some View {
         VStack(spacing: 16) {
-            if discovery.isLocalNetworkDenied {
+            if session.isLocalNetworkDenied {
                 localNetworkDeniedText
                     .foregroundStyle(.red)
             } else {
@@ -269,5 +268,6 @@ private struct QRScannerRepresentable: UIViewControllerRepresentable {
 
 #Preview {
     PairingView(
-        session: PairingSession(connection: DesktopConnection()), discovery: DesktopDiscovery())
+        session: PairingSession(
+            connection: DesktopConnection(), discovery: DesktopDiscovery(), pairingStore: PairingStore()))
 }
