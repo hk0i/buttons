@@ -206,9 +206,11 @@ real QR to restore normal pairing — don't skip this.
 5. **Watch `ws_out.log` for the incoming `PairRequest`**, then write
    responses into the FIFO, one JSON line each (canonical proto3 JSON,
    same shape as the client-side section above — oneof case as a
-   top-level key):
+   top-level key). `deviceName` is included and deliberately distinct
+   from a real desktop's — this fixture should be tellable apart from
+   the real app in `11a`'s device picker, not just structurally valid:
    ```bash
-   echo '{"protocolVersion":"1","pairResponse":{"ok":true,"authToken":"fake-token"}}' > ws_in
+   echo '{"protocolVersion":"1","pairResponse":{"ok":true,"authToken":"fake-token","deviceName":"websocat fixture"}}' > ws_in
    echo '{"protocolVersion":"1","configSync":{"config":{"profiles":[{"id":"p1","name":"Test","pages":[{"id":"pg1","buttons":[{"id":"btnA","label":"A","switchContent":{"off":{"label":"Off A"},"on":{"label":"On A"}}},{"id":"btnB","label":"B","switchContent":{"off":{"label":"Off B"},"on":{"label":"On B"}}}]}]}],"activeProfileId":"p1"}}}' > ws_in
    ```
    Mobile shows the two Switch buttons once `ConfigSync` lands. Now send
@@ -226,7 +228,7 @@ real QR to restore normal pairing — don't skip this.
    back-and-forth:
    ```bash
    for i in $(seq 1 40); do
-     grep -q pairRequest ws_out.log && { echo '{"protocolVersion":"1","pairResponse":{"ok":true,"authToken":"fake-token"}}' > ws_in; break; }
+     grep -q pairRequest ws_out.log && { echo '{"protocolVersion":"1","pairResponse":{"ok":true,"authToken":"fake-token","deviceName":"websocat fixture"}}' > ws_in; break; }
      sleep 0.25
    done
    ```
