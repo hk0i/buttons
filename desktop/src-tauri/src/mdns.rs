@@ -8,13 +8,13 @@ const INSTANCE_NAME: &str = "buttons-desktop";
 /// Owns the mDNS advertisement so it can be re-announced under a new name
 /// without restarting the server. `device_id` never changes, so it's fixed
 /// at construction; only the instance name is ever replaced.
-pub struct MdnsAdvertisement {
+pub struct Advertisement {
     daemon: ServiceDaemon,
     device_id: String,
     current_fullname: std::sync::Mutex<String>,
 }
 
-impl MdnsAdvertisement {
+impl Advertisement {
     pub fn start(device_id: String, device_name: &str) -> Self {
         let daemon = ServiceDaemon::new().expect("failed to create mDNS daemon");
         let service_info =

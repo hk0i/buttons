@@ -232,7 +232,7 @@ fn get_device_name(pairing: tauri::State<Arc<Pairing>>) -> String {
 #[tauri::command]
 fn set_device_name(
     pairing: tauri::State<Arc<Pairing>>,
-    mdns: tauri::State<Arc<mdns::MdnsAdvertisement>>,
+    mdns: tauri::State<Arc<mdns::Advertisement>>,
     name: String,
 ) -> Result<(), String> {
     pairing.set_device_name(name)?;
@@ -251,7 +251,7 @@ pub fn run() {
             let switch_state_path = switch_state_path(handle)?;
             let pairing = Arc::new(Pairing::load_or_create(device_path)?);
             app.manage(Arc::clone(&pairing));
-            let mdns = Arc::new(mdns::MdnsAdvertisement::start(pairing.device_id(), &pairing.device_name()));
+            let mdns = Arc::new(mdns::Advertisement::start(pairing.device_id(), &pairing.device_name()));
             app.manage(mdns);
             let switch_states: SwitchStates = switch_state::load(&switch_state_path);
             app.manage(switch_states.clone());
