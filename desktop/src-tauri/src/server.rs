@@ -102,8 +102,51 @@ struct ConnectionHandle {
 /// a valid-token connection can evict).
 type ConnSlot = Arc<Mutex<Option<ConnectionHandle>>>;
 
-/// Advertises mDNS, binds the WebSocket listener, and runs the accept loop
-/// forever. Spawned as a background task from Tauri's `.setup()` hook.
+/// Owns the mDNS advertisement so it can be re-announced under a new name
+/// without restarting the server. `device_id` never changes, so it's fixed
+/// at construction; only the instance name is ever replaced.
+pub struct MdnsAdvertisement {
+    daemon: ServiceDaemon,
+    device_id: String,
+    current_fullname: std::sync::Mutex<String>,
+}
+
+impl MdnsAdvertisement {
+    pub fn start(device_id: String, device_name: &str) -> Self {
+        let daemon = ServiceDaemon::new().expect("failed to create mDNS daemon");
+        let service_info =
+            Self::build_service_info(&device_id, device_name).expect("valid mDNS service info");
+        let fullname = service_info.get_fullname().to_string();
+        daemon.register(service_info).expect("failed to register mDNS service");
+        Self { daemon, device_id, current_fullname: std::sync::Mutex::new(fullname) }
+    }
+
+    /// Re-announces under `new_name` — unregisters the old instance, then
+    /// registers a fresh one. This is Bonjour's own goodbye-then-announce
+    /// mechanism for a live rename (RFC 6762 §10.1), the same one AirPlay
+    /// uses for an instant device rename.
+    pub fn rename(&self, new_name: &str) -> Result<(), String> {
+        let service_info =
+            Self::build_service_info(&self.device_id, new_name).map_err(|e| e.to_string())?;
+        let new_fullname = service_info.get_fullname().to_string();
+        let old_fullname = self.current_fullname.lock().unwrap().clone();
+        self.daemon.unregister(&old_fullname).map_err(|e| e.to_string())?;
+        self.daemon.register(service_info).map_err(|e| e.to_string())?;
+        *self.current_fullname.lock().unwrap() = new_fullname;
+        Ok(())
+    }
+
+    fn build_service_info(device_id: &str, device_name: &str) -> mdns_sd::Result<ServiceInfo> {
+        let host_name = format!("{INSTANCE_NAME}.local.");
+        let mut txt = HashMap::new();
+        txt.insert("device_id".to_string(), device_id.to_string());
+        Ok(ServiceInfo::new(SERVICE_TYPE, device_name, &host_name, "", PORT, Some(txt))?.enable_addr_auto())
+    }
+}
+
+/// Binds the WebSocket listener and runs the accept loop forever. Spawned
+/// as a background task from Tauri's `.setup()` hook, after the mDNS
+/// advertisement is already registered there.
 pub async fn run(
     pairing: Arc<Pairing>,
     config_path: PathBuf,
@@ -115,19 +158,6 @@ pub async fn run(
     profile_switch_tx: ProfileSwitchTx,
     app: tauri::AppHandle,
 ) {
-    let device_id = pairing.device_id();
-    let device_name = pairing.device_name();
-
-    let mdns = ServiceDaemon::new().expect("failed to create mDNS daemon");
-    let host_name = format!("{INSTANCE_NAME}.local.");
-    let mut txt = HashMap::new();
-    txt.insert("device_id".to_string(), device_id);
-    let service_info = ServiceInfo::new(SERVICE_TYPE, &device_name, &host_name, "", PORT, Some(txt))
-        .expect("valid mDNS service info")
-        .enable_addr_auto();
-    mdns.register(service_info)
-        .expect("failed to register mDNS service");
-
     let listener = TcpListener::bind(("0.0.0.0", PORT))
         .await
         .expect("failed to bind WebSocket listener");

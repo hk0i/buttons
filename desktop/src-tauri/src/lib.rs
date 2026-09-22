@@ -229,8 +229,13 @@ fn get_device_name(pairing: tauri::State<Arc<Pairing>>) -> String {
 /// Overrides the persisted device name — see
 /// docs/slices/07c. Desktop Device Name.spec.md, Scope → In item 2.
 #[tauri::command]
-fn set_device_name(pairing: tauri::State<Arc<Pairing>>, name: String) -> Result<(), String> {
-    pairing.set_device_name(name)
+fn set_device_name(
+    pairing: tauri::State<Arc<Pairing>>,
+    mdns: tauri::State<Arc<server::MdnsAdvertisement>>,
+    name: String,
+) -> Result<(), String> {
+    pairing.set_device_name(name)?;
+    mdns.rename(&pairing.device_name())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -245,6 +250,8 @@ pub fn run() {
             let switch_state_path = switch_state_path(handle)?;
             let pairing = Arc::new(Pairing::load_or_create(device_path)?);
             app.manage(Arc::clone(&pairing));
+            let mdns = Arc::new(server::MdnsAdvertisement::start(pairing.device_id(), &pairing.device_name()));
+            app.manage(mdns);
             let switch_states: SwitchStates = switch_state::load(&switch_state_path);
             app.manage(switch_states.clone());
             // Created once at startup, cloned into server::run and into
