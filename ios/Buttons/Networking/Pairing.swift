@@ -99,11 +99,12 @@ struct PairedDeviceRow: Identifiable {
     let status: PairedDeviceStatus
 }
 
-/// Keyed by `deviceId`. `name` comes from the stored credential, never a
-/// live mDNS value (`07c`'s Out item 1 keeps names off the unauthenticated
-/// Bonjour TXT record). Duplicate names get an AirPlay/AppleTV-style
-/// " (2)", " (3)" suffix — a name collision, not a raw ID, is what a user
-/// should see when it happens.
+/// Keyed by `deviceId`. A known device's `name` comes from the stored
+/// credential (set at pairing time), never overwritten by a live mDNS
+/// value. An unpaired device's `name` comes from the live Bonjour instance
+/// name, falling back to "Unpaired Desktop" if that's ever empty. Duplicate
+/// names get an AirPlay/AppleTV-style " (2)", " (3)" suffix — a name
+/// collision, not a raw ID, is what a user should see when it happens.
 func mergedDeviceRows(
     known: [StoredPairing], discovered: [DiscoveredDesktop]
 ) -> [PairedDeviceRow] {
@@ -119,7 +120,10 @@ func mergedDeviceRows(
     }
     let newRows = discovered
         .filter { !knownIds.contains($0.deviceId) }
-        .map { PairedDeviceRow(deviceId: $0.deviceId, name: "New Device", status: .pairable(endpoint: $0.endpoint)) }
+        .map { desktop -> PairedDeviceRow in
+            let name = desktop.name.isEmpty ? "Unpaired Desktop" : desktop.name
+            return PairedDeviceRow(deviceId: desktop.deviceId, name: name, status: .pairable(endpoint: desktop.endpoint))
+        }
 
     return numberingDuplicateNames(knownRows + newRows)
 }

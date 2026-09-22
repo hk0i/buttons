@@ -9,6 +9,11 @@ struct DiscoveredDesktop: Identifiable, Equatable {
     var id: String { deviceId }
     let deviceId: String
     let endpoint: NWEndpoint
+    /// The Bonjour instance name (RFC 6763 §4.1.1) — same mechanism AirPlay
+    /// uses for a live-editable display name. Empty only if `endpoint`
+    /// isn't a `.service` case, which shouldn't happen for a
+    /// `_buttons._tcp` result.
+    let name: String
 }
 
 /// Browses for `_buttons._tcp` on the LAN. No manual IP entry this slice —
@@ -92,6 +97,10 @@ final class DesktopDiscovery {
         guard case let .bonjour(txt) = result.metadata,
             let deviceId = txt["device_id"]
         else { return nil }
-        return DiscoveredDesktop(deviceId: deviceId, endpoint: result.endpoint)
+        let name: String = {
+            guard case let .service(serviceName, _, _, _) = result.endpoint else { return "" }
+            return serviceName
+        }()
+        return DiscoveredDesktop(deviceId: deviceId, endpoint: result.endpoint, name: name)
     }
 }
