@@ -2,8 +2,11 @@ import AVFoundation
 import SwiftUI
 import VisionKit
 
-/// Landing / "Scan to Pair" / connecting / failed states, plus the three
-/// camera-permission states.
+/// `.landing`/`.connecting`/`.failed` all render `landingView` — device
+/// rows stay visible and tappable throughout, so a failed reconnect never
+/// hides the very list a user needs to pick a device manually. Only the
+/// camera states (`.cameraPreAsk`/`.cameraDenied`/`.scanning`) are
+/// full-screen and exclusive — camera genuinely owns the screen there.
 ///
 /// The QR scanner is never shown automatically — only an explicit "Scan QR
 /// Code" tap enters the camera-check flow. Landing itself is driven by
@@ -68,26 +71,22 @@ struct PairingView: View {
     @ViewBuilder
     private var content: some View {
         switch state {
-        case .landing:
-            landingView
         case .cameraPreAsk:
             preAskView
         case .cameraDenied:
             cameraDeniedView
         case .scanning:
             scannerView
-        case .connecting:
-            ProgressView("Connecting…")
-        case .failed(let message):
-            failedView(message)
+        case .landing, .connecting, .failed:
+            landingView
         }
     }
 
-    /// The silent reconnect (`autoReconnectStatus`, below) is a background
+    /// The silent reconnect (`landingStatus`, below) is a background
     /// convenience layered on top — never a gate on the manual "Scan QR
     /// Code" row, still present even when Local Network is confirmed
     /// denied (scanning fails the same way pairing would, with a definite
-    /// `failedView` message instead of a quietly disabled row).
+    /// error message instead of a quietly disabled row).
     // Open Settings shows whenever denial is confirmed
     // (`session.isLocalNetworkDenied`), independent of
     // `autoReconnectState` — denial affects `.idle` and `.notFound`
@@ -99,13 +98,38 @@ struct PairingView: View {
             VStack(spacing: 8) {
                 Text("Select a desktop to connect to")
                     .font(.headline)
-                autoReconnectStatus
+                landingStatus
             }
+            // `DesktopConnection.connect(...)`'s own re-entrancy guard
+            // already drops a second tap mid-attempt as a no-op — this is
+            // purely tap feedback, not a correctness requirement.
             deviceRowsList
+                .disabled(state == .connecting)
             if session.isLocalNetworkDenied {
                 Button("Open Settings", action: openSystemSettings)
                     .buttonStyle(.bordered)
             }
+        }
+    }
+
+    /// The header slot above `deviceRowsList` — exactly one of connecting
+    /// progress, a connect failure, or the silent-reconnect status, never
+    /// stacked together.
+    @ViewBuilder
+    private var landingStatus: some View {
+        switch state {
+        case .connecting:
+            ProgressView("Connecting…")
+        case .failed(let message):
+            if session.isLocalNetworkDenied {
+                localNetworkDeniedText.foregroundStyle(.red)
+            } else {
+                Text(message)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+            }
+        default:
+            autoReconnectStatus
         }
     }
 
@@ -253,35 +277,6 @@ struct PairingView: View {
             session.pair(scannedQR: payload)
         }
         .ignoresSafeArea()
-    }
-
-    /// Also offers "Open Settings" alongside the primary retry.
-    ///
-    /// `session.isLocalNetworkDenied` resolves one specific ambiguity —
-    /// when true, the failure is definitely permission, not a stale token
-    /// or wrong network, and the copy says so instead of showing
-    /// `message`. Otherwise this stays a genuine hedge: a stale token and
-    /// an unconfirmed blocked Local Network permission both surface as
-    /// the same generic connect failure, with no way to tell them apart
-    /// from the error alone. Offering both actions either way is what
-    /// closes the gap without guessing wrong.
-    private func failedView(_ message: String) -> some View {
-        VStack(spacing: 16) {
-            if session.isLocalNetworkDenied {
-                localNetworkDeniedText
-                    .foregroundStyle(.red)
-            } else {
-                Text(message)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-            }
-            deviceRowButton(
-                "Scan QR Code to Add…", trailing: "Scan", icon: "plus",
-                accessibilityHint: "Opens the camera to pair a new desktop",
-                action: checkCameraAndAdvance)
-            Button("Open Settings", action: openSystemSettings)
-                .buttonStyle(.bordered)
-        }
     }
 
     private var cameraDeniedView: some View {
