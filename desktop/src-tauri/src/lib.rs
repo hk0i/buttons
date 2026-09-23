@@ -314,6 +314,13 @@ pub fn run() {
             get_app_association,
             set_app_association
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Sends the mDNS goodbye packet before the process actually
+                // exits — see `mdns::Advertisement::goodbye`.
+                app_handle.state::<Arc<mdns::Advertisement>>().goodbye();
+            }
+        });
 }

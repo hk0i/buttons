@@ -39,6 +39,22 @@ impl Advertisement {
         Ok(())
     }
 
+    /// Sends the mDNS goodbye packet before the process exits.
+    ///
+    /// `rename()`'s `unregister` is fire-and-forget because the process
+    /// keeps running afterward, giving the daemon's background thread time
+    /// to flush the goodbye on its own. On exit there's no "later" —
+    /// without blocking here, the process can die before the goodbye ever
+    /// reaches the wire, leaving browsers holding the PTR record until its
+    /// TTL expires (`mdns-sd`'s default is 75 minutes for non-host
+    /// records).
+    pub fn goodbye(&self) {
+        let fullname = self.current_fullname.lock().unwrap().clone();
+        if let Ok(receiver) = self.daemon.unregister(&fullname) {
+            let _ = receiver.recv_timeout(std::time::Duration::from_millis(500));
+        }
+    }
+
     fn build_service_info(device_id: &str, device_name: &str) -> mdns_sd::Result<ServiceInfo> {
         let host_name = format!("{INSTANCE_NAME}.local.");
         let mut txt = HashMap::new();
