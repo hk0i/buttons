@@ -55,7 +55,7 @@ final class PairingStore {
     func knownDevices() -> [StoredPairing] {
         secrets.keys(namespace: Self.devicesNamespace).compactMap { deviceId in
             guard let raw = secrets.read(namespace: Self.devicesNamespace, key: deviceId),
-                let credential = try? JSONDecoder().decode(StoredCredential.self, from: Data(raw.utf8))
+                  let credential = try? JSONDecoder().decode(StoredCredential.self, from: Data(raw.utf8))
             else { return nil }
             return StoredPairing(
                 deviceId: deviceId, authToken: credential.authToken,
@@ -66,6 +66,13 @@ final class PairingStore {
 
     func activeDeviceId() -> String? {
         secrets.read(namespace: Self.activeNamespace, key: Self.activeKey)
+    }
+
+    func activeDeviceName() -> String? {
+        guard let deviceId = activeDeviceId() else { return nil }
+        return knownDevices()
+            .first { $0.deviceId == deviceId }
+            .map { $0.deviceName }
     }
 
     func save(_ pairing: StoredPairing, makeActive: Bool = true) {
@@ -169,6 +176,10 @@ final class PairingSession {
     private let connection: DesktopConnection
     private let discovery: DesktopDiscovery
     private let pairingStore: PairingStore
+
+    var activeDeviceName: String {
+        pairingStore.activeDeviceName() ?? "last connected desktop"
+    }
 
     init(connection: DesktopConnection, discovery: DesktopDiscovery, pairingStore: PairingStore) {
         self.connection = connection

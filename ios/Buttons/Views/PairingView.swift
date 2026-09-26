@@ -210,13 +210,13 @@ struct PairingView: View {
         case .searching:
             VStack(spacing: 8) {
                 ProgressView()
-                Text("Looking for your paired desktop on this network…")
+                Text("Searching for \(session.activeDeviceName)...")
                     .multilineTextAlignment(.center)
             }
         case .notFound where session.isLocalNetworkDenied:
             localNetworkDeniedText
         case .notFound:
-            Text("Couldn't find it automatically — select it below if it's listed, or scan its QR code.")
+                Text("Couldn't find \(session.activeDeviceName) automatically — select it below if it's listed, or scan its QR code.")
                 .multilineTextAlignment(.center)
         }
     }
